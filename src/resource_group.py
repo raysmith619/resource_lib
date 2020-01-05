@@ -19,7 +19,7 @@ class ResourceEntry:
             if isinstance(obj, str):
                 name = obj
             else:
-                SlTrace.lg(f"object(entry needs a name")
+                SlTrace.lg(f"object(entry needs a name", "resource")
             
         self.obj = obj
         self.name = name
@@ -79,14 +79,33 @@ class ResourceGroup:
         for name in group_names:
             self.destroy(name)
                         
-    def remove(self, name):
-        """ Remove member, if present
+    def get(self, name):
+        """ Retrieve member, if present
         :returns: member else None
         """
         if not name in self.group_dict:
             return None
         
         mem = self.group_dict[name]
+        return mem
+                        
+    def get_obj(self, name):
+        """ Retrieve member's object, if present
+        :returns: member.obj else None
+        """
+        if not name in self.group_dict:
+            return None
+        
+        obj = self.group_dict[name].obj
+        return obj
+                        
+    def remove(self, name):
+        """ Remove member, if present
+        :returns: member else None
+        """
+        mem = self.get(name)
+        if mem is None:
+            return None
         del self.group_dict[name]
         return mem
     
