@@ -35,7 +35,7 @@ class VariableControl(Toplevel):
         vc_x0 = 800
         vc_y0 = 100
         vc_w = 200
-        vc_h = 200
+        vc_h = 500
         vc_geo = f"{vc_w}x{vc_h}+{vc_x0}+{vc_y0}"
         self.vc_mw.geometry(vc_geo)
         self.vc_mw.title("Variable Control")
@@ -63,13 +63,14 @@ class VariableControl(Toplevel):
         for var_name in names:
             entry_type = self.var_ctl.get_entry_type(var_name)
             var = self.var_ctl.get_var(var_name)
+            var_label = self.var_ctl.get_var_label(var_name)
             val = self.var_ctl.get_val(var_name)
             if entry_type == "internal":
                 continue
             if entry_type == "label":
                 len_var = len(val)
             elif isinstance(var, BooleanVar):
-                len_var = len(var_name) + 2
+                len_var = len(var_label) + 2
                 nfound += 1
             else:
                 continue
@@ -95,19 +96,25 @@ class VariableControl(Toplevel):
         for var_name in self.var_ctl.get_var_names(label=True):
             entry_type = self.var_ctl.get_entry_type(var_name)
             var = self.var_ctl.get_var(var_name)
+            var_label = self.var_ctl.get_var_label(var_name)
             val = self.var_ctl.get_val(var_name)
+            SlTrace.lg(f"VariableControl: {var_name} var_label:'{var_label}' entry_type:{entry_type} val:'{val}'")
             if entry_type == "internal":
                 continue
             if entry_type == "label":
-                fmt_text = "%-*s" % (max_width, val)
-                lb = Label(var_frame, text=fmt_text, background="white")
+                fmt_text = "%-*s" % (max_width, var_label)
+                background = "white"
+                if var_label == "":
+                    fmt_text = var_label
+                    background = None       # vertical spacer
+                lb = Label(var_frame, text=fmt_text, background=background)
                 lb.pack(side=TOP)
             elif isinstance(var, BooleanVar):
                 entry_frame = Frame(var_frame)
                 entry_frame.pack(side=TOP)
                 fmt_text = "%-*s" % (max_width, val)
                 self.var_ctl.make_val(var_name, val, repeat=True)
-                lb = Label(entry_frame, text=var_name)
+                lb = Label(entry_frame, text=var_label)
                 lb.pack(side=LEFT)
                 wj = Checkbutton(entry_frame, variable=self.var_ctl.get_var(var_name))
                 wj.pack(side=RIGHT)
@@ -115,7 +122,7 @@ class VariableControl(Toplevel):
             elif isinstance(var, (IntVar, DoubleVar, StringVar)):
                 entry_frame = Frame(var_frame)
                 entry_frame.pack(side=TOP)
-                lb = Label(entry_frame, text=var_name)
+                lb = Label(entry_frame, text=var_label)
                 lb.pack(side=LEFT)
                 self.var_ctl.make_val(var_name, val, repeat=True, textvar=True)
                 wj = Entry(entry_frame, width=10, textvariable=self.var_ctl.get_textvar(var_name))
@@ -123,7 +130,9 @@ class VariableControl(Toplevel):
                 self.var_ctl.add_widget(var_name, wj, repeat=True)
                 
             else:
-                SlTrace.lg(f"variable({var_name} type({type(var)}) is not yet supported")    
+                SlTrace.lg(f"variable({var_name} type({type(var)}) is not yet supported")
+            ###self.vc_mw.update()    # To view each field as added
+            pass    
 
     def destroy(self):
         """ Destroy us
@@ -234,9 +243,15 @@ if __name__ == '__main__':
     ncol = cF.make_val("ncol", 4)     # default, override from properties
     nrow = cF.make_val("nrow", 5)
     size = cF.make_val("size", 123.456, textvar=True)
-    cF.make_label("Run Speed")
+    cF.make_label("")
+    cF.make_label("Run Processing")
+    cF.make_val("step_time", 1., label="Step Time")
+    cF.make_label("")
     cF.make_label("Display Time")
-    cF.make_val("Display_time", .5)            # Display time, None - no display
+    cF.make_val("Display_time", .5, label="Display Time")      # Display time, None - no display
+    cF.make_label("")
+    cF.make_label("More Interesting Tools")
+    cF.make_val("show_time", .5, label="Show Time")            # Display time, None - no display
     
     SlTrace.lg(f"After make_val ncol={ncol} nrow={nrow} size={size}")    
     cF.list_vals("Pre-command line parsing")

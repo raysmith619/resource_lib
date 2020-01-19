@@ -62,6 +62,7 @@ class SelectControl:
         self.name_by_no = []      # entry names by order of creation
         self.label_no = 0           # Ordering labels, to keep name unique
         self.entry_types = {}       # Entry types: "std", "label", "internal"
+        self.entry_labels = {}      # Entry labels (for display)
         self.update_report = update_report
         self.make_val("_save_no", self.save_no, entry_type="internal")
         self.make_val("_restore_no", self.restore_no, entry_type="internal")
@@ -210,6 +211,15 @@ class SelectControl:
             raise SelectError(f"field {name} not present")
         return self.ctls_vars[name]
 
+    def get_var_label(self, name):
+        """ Get variable label for field
+        :name: field name
+        :returns: field label
+        """
+        if name not in self.ctls_vars:
+            raise SelectError(f"field {name} not present")
+        return self.entry_labels[name]
+
     def get_var_names(self, std=True, internal=False, label=False):
         """ Get list of variable names
         in order of creation
@@ -265,10 +275,10 @@ class SelectControl:
         """
         self.label_no += 1
         name = f"label_{self.label_no}"
-        self.make_val(name, default=label, entry_type="label")
+        self.make_val(name, default=label, entry_type="label", label=label)
         
     def make_val(self, name, default=None, repeat=False, textvar=False,
-                 entry_type=None):
+                 entry_type=None, label=None):
         """ Create field, if not present, returning value
         :name: field name
         :default: value used if field not present
@@ -277,6 +287,7 @@ class SelectControl:
         :entry_type: entry type: "std" standard variable
                                 "label" display label
                                 "internal" internal variable
+        :label: Entry label text, default: use name
         :returns: value set
         """
         if default is None:
@@ -285,7 +296,10 @@ class SelectControl:
         if name in self.vals:
             if not repeat:
                 raise SelectError(f"name: {name} already made")
-            
+        if label is None:
+            label = name
+        self.entry_labels[name] = label
+                
         if entry_type is None:
             entry_type = "std"
         
