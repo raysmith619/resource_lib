@@ -27,7 +27,7 @@ def str2bool(v):
     
     
 class SelectControl:
-    CONTROL_NAME_PREFIX = "variable_control"
+    CONTROL_NAME_PREFIX = "select_control"
     _instance = None         # Instance
     instance_no = 0         # Count instances
     
@@ -36,10 +36,12 @@ class SelectControl:
         
             
     def _init(self, play_control=None,
-                control_prefix=None
+                control_prefix=None,
+                update_report=None,
                  ):
         """ Control attributes
         :title: window title
+        :update_report: function if present, called after update_settings
         """
         SelectControl.instance_no += 1
         self.play_control = play_control
@@ -56,9 +58,14 @@ class SelectControl:
         self.save_no = 0            # Track saves
         self.restore_no = 0
         self.redo_no = 0
-        self.make_val("_save_no", self.save_no)
-        self.make_val("_restore_no", self.restore_no)
-        self.make_val("_redo_no", self.redo_no)
+        self.entry_no = 0           # entry position as created for display
+        self.name_by_no = []      # entry names by order of creation
+        self.label_no = 0           # Ordering labels, to keep name unique
+        self.entry_types = {}       # Entry types: "std", "label", "internal"
+        self.update_report = update_report
+        self.make_val("_save_no", self.save_no, entry_type="internal")
+        self.make_val("_restore_no", self.restore_no, entry_type="internal")
+        self.make_val("_redo_no", self.redo_no, entry_type="internal")
         
     def __new__(cls, *args, **kwargs):
         """ Make a singleton
@@ -69,13 +76,15 @@ class SelectControl:
             cls._instance._init(*args, **kwargs)
         return cls._instance
 
-    def add_widget(self, name, widget):
+    def add_widget(self, name, widget, repeat=False):
         """ Add control widget in sync with variables
         :name: control name
         :widget: widget
+        :repeat: allow replacement of previous widget
         """
         if name in self.ctls:
-            raise SelectError(f"duplicate widget add: {name}")
+            if not repeat:
+                raise SelectError(f"duplicate widget add: {name}")
         
         self.ctls[name] = widget
         
@@ -153,6 +162,11 @@ class SelectControl:
         else:
             return prop_val
 
+    def get_entry_type(self, name):
+        """ Get entry type: std, label, internal
+        :name: entry name
+        """
+        return self.entry_types[name]
     
     def get_val(self, name, default=None):
         """ Get current value, if any, else property value, if any,
@@ -195,7 +209,34 @@ class SelectControl:
         if name not in self.ctls_vars:
             raise SelectError(f"field {name} not present")
         return self.ctls_vars[name]
-    
+
+    def get_var_names(self, std=True, internal=False, label=False):
+        """ Get list of variable names
+        in order of creation
+        :std: True include standard names
+                default: True
+        :internal:  Include special entry names 
+                _... internal values
+                default: False
+        :label: Include group labels
+                default: False
+        """
+        names = []
+        for ie in range(len(self.name_by_no)):
+            name = self.name_by_no[ie]
+            entry_type = self.entry_types[name]
+            if entry_type == "internal":
+                if internal:
+                    names.append(name)
+            elif entry_type == "std":
+                if std:
+                    names.append(name)
+            elif entry_type == "label":
+                if label:
+                    names.append(name)
+                
+        return names
+        
     def list_vals(self, prefix=None):
         """ List all key,value pairs
         :prefix: Optional text prefix
@@ -203,8 +244,9 @@ class SelectControl:
         if prefix is None:
             prefix = ""
         for name in self.vals:
+            entry_type = self.get_entry_type(name)
             val = self.vals[name]
-            SlTrace.lg(f"{prefix} {name}: {val}")
+            SlTrace.lg(f"{prefix} {name}({entry_type}): {val}")
     
     def list_textvals(self, prefix=None):
         """ List all key,value text variable pairs
@@ -216,22 +258,41 @@ class SelectControl:
             var = self.ctls_textvars[name]
             SlTrace.lg(f"{prefix} {name}: {var.get()}")
             
-            
-    def make_val(self, name, default=None, repeat=False, textvar=False):
+
+    def make_label(self, label):
+        """ Make label for control panel display
+        :label: label string
+        """
+        self.label_no += 1
+        name = f"label_{self.label_no}"
+        self.make_val(name, default=label, entry_type="label")
+        
+    def make_val(self, name, default=None, repeat=False, textvar=False,
+                 entry_type=None):
         """ Create field, if not present, returning value
         :name: field name
         :default: value used if field not present
         :repeat: True->allow repeats default: False
         :textvar: True - create text field variable for widjets such as Entry etc.
+        :entry_type: entry type: "std" standard variable
+                                "label" display label
+                                "internal" internal variable
         :returns: value set
         """
         if default is None:
             raise SelectError(f"make_val[{name}] REQUIRED default is Missing")
+        
         if name in self.vals:
             if not repeat:
                 raise SelectError(f"name: {name} already made")
+            
+        if entry_type is None:
+            entry_type = "std"
         
-        else:
+        if name not in self.vals:
+            self.entry_types[name] = entry_type
+            self.name_by_no.append(name)
+            self.entry_no = len(self.name_by_no)
             self.ctls_vars[name] = self.content_var(type(default))
             self.vals[name] = default
         prop_key = self.get_prop_key(name)
@@ -359,6 +420,8 @@ class SelectControl:
                 trace_str += f"{name}:{val_str}"
         if trace_str != "":
             SlTrace.lg(f"update_settings: {trace_str}")
+        if self.update_report is not None:
+            self.update_report(self)
 
     def restore_vals(self, redo=False):
         """ Backup current values, clearing changed flag
@@ -485,7 +548,8 @@ if __name__ == '__main__':
     
     
     mw = Tk()
-    cF = SelectControl()
+    cF = SelectControl(control_prefix="select_control_self_test")
+    cF.make_label("Puzzle Dimensions")
     ncol = cF.make_val("ncol", 4)     # default, override from properties
     nrow = cF.make_val("nrow", 5)
     size = cF.make_val("size", 123.456, textvar=True)
@@ -580,4 +644,3 @@ if __name__ == '__main__':
     SlTrace.lg(f"After undo_settings redo=True")
     cF.list_vals()
     cF.list_textvals("textvals")
-

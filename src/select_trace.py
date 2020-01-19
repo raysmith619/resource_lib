@@ -282,6 +282,7 @@ class SlTrace:
     def save_propfile(cls):
         """ Save properties file - snapshot
         """
+        print("save_propfile")
         try:
             if cls.defaultProps is not None:
                 abs_propName = cls.defaultProps.get_path()
@@ -434,16 +435,22 @@ class SlTrace:
     
     @classmethod
     def getLevel(cls, trace_name):
+        trace_name = trace_name.lower()
         cls.recordTraceFlag(trace_name)
-        try:
-            v = cls.traceFlags[trace_name]
-        except:
+        if trace_name not in cls.traceFlags:
             v = 0
             cls.traceFlags[trace_name] = v
+        v = cls.traceFlags[trace_name]
         if v is None or v == '':
-            return 0            # Not there == 0
+            v = 0            # Not there == 0
         if isinstance(v, str):
-            v = int(v)
+            v = str.lower()
+            if v == "true":
+                v = True
+            elif v == "false":
+                v = False
+            else:
+                v = int(v)
         return v
 
 
@@ -452,6 +459,16 @@ class SlTrace:
     def setLevel(cls, trace_name, level=1):
         trace_name = trace_name.lower()
         cls.recordTraceFlag(trace_name, level=level)
+        flag_key = cls.getTraceFlagKey(trace_name)
+        cls.setProperty(flag_key, level)
+        if isinstance(level, str):
+            level = level.lower()
+            if level == "true":
+                level = True
+            elif level == "false":
+                level = False
+            else:
+                level = int(level)
         if trace_name == "all":
             cls.traceAll = level
         else:
@@ -483,7 +500,7 @@ class SlTrace:
         
         cls.recTraceFlags[flag] =  level
         flag_key = cls.getTraceFlagKey(flag)
-        cls.setProperty(flag_key, level)
+        cls.setProperty(flag_key, level, onlyifnew=True)
 
 
     @classmethod
@@ -504,28 +521,28 @@ class SlTrace:
         load trace flags from properties
         """
         props = cls.defaultProps.get_properties()
-        pattern = cls.traceFlagPrefix + r"\.(.*)"
+        pattern = r"^\s*" + cls.traceFlagPrefix + r"\.(.*)"
         r = re.compile(pattern)
-        name_list = {}
         ### TBD I need to think about what is going on here
-        for name in props.keys():
-            if name.startswith(cls.traceFlagPrefix + "."):
-                while True:
-                    ms = re.findall(r, name)    # unwrap traceFlag.traceFlag....
-                    if len(ms) == 0:
-                        break
-                    name = ms[0]        # stuff after prefix
-                    value = "1"
-                    mn = re.match(r'(\w+)\s*=\s*(\S.*)', name)
-                    if mn:
-                        name = mn[1]
-                        value = mn[2]
-
-                cls.recordTraceFlag(name, value)
-
+        keys =  list(props.keys())
+        for key in keys:
+            m = r.match(key)
+            if m:
+                post_prefix = m[1]
+                name = post_prefix        # stuff after prefix
+                value = props[key]  # Default to property value
+                mn = re.match(r'(\w+)\s*=\s*(\S.*)', post_prefix)
+                if mn:
+                    name = mn[1]
+                    value = mn[2]
+                    break
+                cls.setLevel(name, value)
         all_flags = cls.getAllTraceFlags()
         all_flags_str = ",".join(all_flags)
         cls.lg("loadTraceFlags: %s" % all_flags_str)
+        for flag in all_flags:
+            level = cls.getLevel(flag)
+            SlTrace.lg(f"{flag} = {level}")
 
     
     @classmethod
@@ -603,11 +620,12 @@ class SlTrace:
 
 
     @classmethod
-    def setProperty(cls, key, value):
+    def setProperty(cls, key, value, onlyifnew=False):
         if cls.defaultProps is None:
             cls.setupLogging()
             cls.setProps()
-        cls.defaultProps.setProperty(key, value)
+        if not cls.hasProp(key) or not onlyifnew:
+            cls.defaultProps.setProperty(key, value)
 
     @classmethod
     def getLogFile(cls):
@@ -731,6 +749,13 @@ class SlTrace:
         """
         cls.traceFlags[trace_name] = level
 
+    @classmethod
+    def hasProp(cls, key):
+        """ Check if property is already present
+        :key: property key
+        :returns: True iff property is present
+        """
+        return cls.defaultProps.hasProp(key)
             
     
 if __name__ == "__main__":
@@ -804,5 +829,6 @@ if __name__ == "__main__":
                 test_fail("flag %s(%d) skipped(None)" % (flag, level))
             else:
                 test_fail("flag %s(%d) skipped(%d)" % (flag, level, trace_level))
-    
+    SlTrace.lg("calling sys.exit")
+    sys.exit()
     SlTrace.lg("End of Test")

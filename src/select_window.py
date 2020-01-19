@@ -388,8 +388,12 @@ if __name__ == "__main__":
     # root window created. Here, that would be the only window, but
     # you can later have windows within windows.
     mw = Tk()
+    SlTrace.lg("Startup")
+    
     def user_exit():
         print("user_exit")
+        print("Calling SlTrace.onexit()")
+        SlTrace.onexit()
         exit()
     
     def user_file_open():
@@ -400,7 +404,13 @@ if __name__ == "__main__":
             
             
     SlTrace.setProps()
-    SlTrace.setFlags("flag1=1,flag2=0,flag3=1,flag4=0, flag5=1, flag6=1")
+    set_flags = True
+    set_flags = False
+    if set_flags:
+        SlTrace.lg("setFlags")
+        SlTrace.setFlags("flag1=1,flag2=0,flag3=1,flag4=0, flag5=1, flag6=1")
+    else:
+        SlTrace.lg("no setFlags")
         
     mw.geometry("400x300")
     
@@ -412,7 +422,10 @@ if __name__ == "__main__":
                     file_open = user_file_open,
                     file_save = user_file_save,
                     )
-    
+
+    show_trace = True
+    if show_trace:
+        app.trace_control()
 
     
     #mainloop 

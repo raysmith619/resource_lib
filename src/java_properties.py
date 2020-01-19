@@ -57,6 +57,17 @@ class JavaProperties:
         return self.props
 
 
+    def hasProp(self, key):
+        """ Check if property is already present
+        :key: property key
+        :returns: True iff property is present
+        """
+        if key in self.props:
+            return True
+        
+        return False
+
+
     def setProperty(self, key, value):
         """ Set property(key) value
         """
@@ -72,7 +83,9 @@ class JavaProperties:
             if title is not None:
                 print("# %s" % title, file=fp)
             for key in self.props:
-                print("%s=%s" % (key, self.props[key]), file=fp)
+                prop_str = f"{key}={self.props[key]}"
+                print(prop_str, file=fp)
+                print(prop_str)
             fp.close()
         except IOError as ioex:
             print("Error in storing Properties file %s" % title)

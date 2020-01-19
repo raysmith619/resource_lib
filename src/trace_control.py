@@ -4,7 +4,7 @@ from tkinter import *
 from select_trace import SlTrace
 
 class TraceControl(Toplevel):
-    def __init__(self, tcbase, strace=None, change_call=None):
+    def __init__(self, tcbase, change_call=None):
         """ Trace flag dictionary
         :tcbase: - parent - call basis must have tc_destroy to be called if we close
         :strace: Reference to SlTrace object
@@ -13,9 +13,6 @@ class TraceControl(Toplevel):
         ###Toplevel.__init__(self, parent)
         self.tcbase = tcbase
         
-        if strace is None:
-            strace = SlTrace
-        self.strace = strace
         self.change_call = change_call
 
                     
@@ -48,7 +45,7 @@ class TraceControl(Toplevel):
         t_height = min_height
         max_height = 20
         nfound = 0
-        for flag in strace.getAllTraceFlags():
+        for flag in SlTrace.getAllTraceFlags():
             if len(flag) > max_width:
                 max_width = len(flag)
             nfound += 1
@@ -63,8 +60,8 @@ class TraceControl(Toplevel):
         text.pack(side="top", fill="both", expand=True)
         self.flag_by_cb = {}             # Dictionary hashed on cb widget
         self.data_by_flag = {}
-        for flag in sorted(strace.getAllTraceFlags()):
-            level = strace.getLevel(flag)
+        for flag in sorted(SlTrace.getAllTraceFlags()):
+            level = SlTrace.getLevel(flag)
             var = BooleanVar()
             var.set(level)
             fmt_text = "%-*s" % (max_width, flag)
@@ -91,14 +88,14 @@ class TraceControl(Toplevel):
     def select_all(self):
         """ Select all known trace flags
         """
-        for flag in sorted(self.strace.getTraceFlags()):   # In display order
+        for flag in sorted(SlTrace.getTraceFlags()):   # In display order
             self.set_trace_level(flag, 1)
 
 
     def select_none(self):
         """ Select all known trace flags
         """
-        for flag in sorted(self.strace.getTraceFlags()):   # In display order
+        for flag in sorted(SlTrace.getTraceFlags()):   # In display order
             self.set_trace_level(flag, 0)
 
 
@@ -112,7 +109,7 @@ class TraceControl(Toplevel):
     def select_button(self, event):
         flag = self.flag_by_cb[event.widget]
         cb, flag, var = self.data_by_flag[flag]
-        val = self.strace.getLevel(flag)        # Variable doesn't seem to work for us
+        val = SlTrace.getLevel(flag)        # Variable doesn't seem to work for us
         val = not val                           # Keep value in strace
         self.set_trace_level(flag, val, change_cb=False)  # CB already set
         
@@ -124,12 +121,12 @@ class TraceControl(Toplevel):
         :change_cb: True(default) appropriately change the control
         """
         if flag not in self.data_by_flag:
-            self.strace.lg("set_trace_level(%s,%d) - flag has no check button" % (flag, val))
+            SlTrace.lg("set_trace_level(%s,%d) - flag has no check button" % (flag, val))
             return
          
         cb, flag, var = self.data_by_flag[flag]        
         if cb is None:
-            self.strace.lg("set_trace_level(%s,%d) - flag None check button" % (flag, val))
+            SlTrace.lg("set_trace_level(%s,%d) - flag None check button" % (flag, val))
             return
 
         if change_cb:
@@ -138,8 +135,8 @@ class TraceControl(Toplevel):
             else:
                 cb.deselect()
                     
-        self.strace.lg("flag=%s, var=%s, val=%s" %(flag, var, val), "controls")
-        self.strace.setLevel(flag, val)
+        SlTrace.lg("flag=%s, var=%s, val=%s" %(flag, var, val), "controls")
+        SlTrace.setLevel(flag, val)
             
         if self.change_call is not None:
             self.change_call(flag, val)
