@@ -5,12 +5,10 @@ modeled after smTrace.java
 
 Debug Tracing with logging support
 """
-from math import log, cos, sin, exp, sqrt, tan, atan, pi, ceil
 import re
 import os
 import atexit
 
-import time
 from datetime import datetime
 import sys
 import traceback
@@ -520,6 +518,7 @@ class SlTrace:
         """
         load trace flags from properties
         """
+        SlTrace.lg("Trace levels from properties file")
         props = cls.defaultProps.get_properties()
         pattern = r"^\s*" + cls.traceFlagPrefix + r"\.(.*)"
         r = re.compile(pattern)
@@ -542,7 +541,7 @@ class SlTrace:
         cls.lg("loadTraceFlags: %s" % all_flags_str)
         for flag in all_flags:
             level = cls.getLevel(flag)
-            SlTrace.lg(f"{flag} = {level}")
+            cls.lg(f"{flag} = {level}")
 
     
     @classmethod

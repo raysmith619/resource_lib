@@ -82,7 +82,7 @@ class JavaProperties:
         try:
             if title is not None:
                 print("# %s" % title, file=fp)
-            for key in self.props:
+            for key in sorted(self.props):
                 prop_str = f"{key}={self.props[key]}"
                 print(prop_str, file=fp)
                 print(prop_str)

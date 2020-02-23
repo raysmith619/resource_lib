@@ -1,7 +1,7 @@
 # variable_control.py 06Jan2020
 """
 Simple Control and Display of program variables
-Adapted from trace_control.py/TraceControl
+Adapted from trace_control_window.py/TraceControl
 Essentially presents a scrollable list of variable names and values
 Uses select_control/SelectControl to store and manipulate variable contents
 
