@@ -1,6 +1,6 @@
 # logging_tracing_menu.py    22Feb2020  crs
 # Simple with a menu:
-#  1. Named / Dated log filess
+#  1. Named / Dated log files
 #  2. Tracing by flag
 #  3. Plus change settings easily during running
 #

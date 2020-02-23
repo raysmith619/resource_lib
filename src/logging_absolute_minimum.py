@@ -2,4 +2,4 @@
 
 from select_trace import SlTrace
 
-SlTrace.lg("Just Minumum for logging")
+SlTrace.lg("Just the minimum for logging")
