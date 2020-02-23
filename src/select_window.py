@@ -6,7 +6,7 @@ Program Level Menu control
 import os
 from tkinter import *
 from select_trace import SlTrace
-from trace_control import TraceControl
+from trace_control_window import TraceControlWindow
 from arrange_control import ArrangeControl
 
 # Here, we are creating our class, Window, and inheriting from the Frame
@@ -365,11 +365,11 @@ class SelectWindow(Frame):
             self.tc.delete_tc_window()
             self.tc = None
         
-        self.tc = TraceControl(self, change_call=report_change)
+        self.tc = TraceControlWindow(self, change_call=report_change)
 
 
     def tc_destroy(self):
-        """ Called if TraceControl window closes
+        """ Called if TraceControlWindow window closes
         """
         self.tc = None
 
@@ -383,17 +383,13 @@ class SelectWindow(Frame):
 #          Self Test                                                    #
 #########################################################################
 if __name__ == "__main__":
-    from trace_control import TraceControl    
+    from trace_control_window import TraceControlWindow    
         
     # root window created. Here, that would be the only window, but
     # you can later have windows within windows.
     mw = Tk()
-    SlTrace.lg("Startup")
-    
     def user_exit():
         print("user_exit")
-        print("Calling SlTrace.onexit()")
-        SlTrace.onexit()
         exit()
     
     def user_file_open():
@@ -404,13 +400,7 @@ if __name__ == "__main__":
             
             
     SlTrace.setProps()
-    set_flags = True
-    set_flags = False
-    if set_flags:
-        SlTrace.lg("setFlags")
-        SlTrace.setFlags("flag1=1,flag2=0,flag3=1,flag4=0, flag5=1, flag6=1")
-    else:
-        SlTrace.lg("no setFlags")
+    SlTrace.setFlags("flag1=1,flag2=0,flag3=1,flag4=0, flag5=1, flag6=1")
         
     mw.geometry("400x300")
     
@@ -422,10 +412,7 @@ if __name__ == "__main__":
                     file_open = user_file_open,
                     file_save = user_file_save,
                     )
-
-    show_trace = True
-    if show_trace:
-        app.trace_control()
+    
 
     
     #mainloop 
