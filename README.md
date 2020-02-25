@@ -4,7 +4,7 @@ Contains files used to support other projects.
 Provides logging, tracing, properties support.
 
 ## Brief listing of document files (Docs directory)
-- Program_Logging_Tracking.pptx PowerPoint presentation about Logging/Tracing demonstrating the classes SlTrace and TraceControlWindow
+- Program_Logging_Tracing.pptx PowerPoint presentation about Logging/Tracing demonstrating the classes SlTrace and TraceControlWindow
 ## Brief listing of source files (src directory) with purpose.
 - arrange_control.py: window sizing/placement support
 - java_properties.py: simple properties file support
