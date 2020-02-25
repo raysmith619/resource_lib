@@ -1,9 +1,11 @@
 # resource_lib
-Common files / support for other projects
-Files and objects used to support other projects
-Supporting logging, tracing, properties files
+## Common files / support for other projects
+Contains files used to support other projects.
+Provides logging, tracing, properties support.
 
-Brief listing of source files (src directory) with purpose.
+## Brief listing of document files (Docs directory)
+- Program_Logging_Tracking.pptx PowerPoint presentation about Logging/Tracing demonstrating the classes SlTrace and TraceControlWindow
+## Brief listing of source files (src directory) with purpose.
 - arrange_control.py: window sizing/placement support
 - java_properties.py: simple properties file support
 - logging_absolute_minimum.py: smallest example of logging
@@ -22,3 +24,12 @@ Brief listing of source files (src directory) with purpose.
   * trace/logging package
   * derived from smTrace.java (ours)
   * properties file support
+- select_window.py  Program Level Menu control
+- tkMath.py Useful window math thanks to: tkMath from recipe-552745-1.py  Ronald Longo
+- trace_control_window.py class TraceControlWindow
+  * Window support for SlTrace flag manipulation
+- variable_control.py class VariableControlWindow
+  * Simple Control and Display of program variables
+  * Adapted from trace_control_window.py/TraceControl
+  * Essentially presents a scrollable list of variable names and values
+  * Uses select_control/SelectControl to store and manipulate variable contents
