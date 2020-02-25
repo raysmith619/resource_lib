@@ -1,6 +1,8 @@
 # trace_control_window.py 27Jan2020
 
 from tkinter import *
+import atexit
+
 import time
 
 from select_trace import SlTrace
@@ -81,8 +83,15 @@ class TraceControlWindow(Toplevel):
             ###cb.pack()
         self.list_ckbuttons()
         if self.standalone:
+            atexit.register(self.on_exit)
             self.update_loop()
 
+    def on_exit(self):
+        """ Close down window on program exit
+        """
+        SlTrace.lg("Closing down Trace Control Window")
+        self.delete_tc_window()
+        
     def update_loop(self):
         """ continue repeated tk.update() calls
         to enable window operation
@@ -94,7 +103,7 @@ class TraceControlWindow(Toplevel):
     def sleep(self, sec):
         """ "sleep" for a number of sec
         without stoping tkinter stuff
-        :ms: number of milliseconds to delay before returning
+        :sec: number of milliseconds to delay before returning
         """
         now = time.time()
         end_time = now + sec
