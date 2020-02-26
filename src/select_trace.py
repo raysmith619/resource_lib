@@ -12,7 +12,7 @@ import atexit
 from datetime import datetime
 import sys
 import traceback
-###import psutil
+import psutil
 
 from java_properties import JavaProperties
 ###from test.support import change_cwd
