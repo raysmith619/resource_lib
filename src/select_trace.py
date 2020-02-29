@@ -12,7 +12,6 @@ import atexit
 from datetime import datetime
 import sys
 import traceback
-import psutil
 
 from java_properties import JavaProperties
 ###from test.support import change_cwd
@@ -34,13 +33,19 @@ class SlTrace:
     Logging Support
     """
     propName = None     # Properties file name None - use script base name
+    newExt = None       # if not None => output will have newExt extension
+    update = True       # True => write out updated properties at end (save_propfile)     
+
     logName = None # Logfile name
     logExt = "sllog" # Logfile extension (without ".")
+    started = False     # Set True when logging is started
+    closed = False      # Set True when log file is closed
     logWriter = None
     logToScreen = True # true - log, additionally to STDOUT
     stdOutHasTs = False # true - timestamp prefix on STDOUT
     lgsString = "" # Staging area for lgs, lgln
     traceObj = None
+    decpl = 0       # Decimal places in time stamp
     defaultProps = None # program properties
     traceAll = False # For "all" trace
     traceFlags = {} # tracing flag/levels
@@ -99,45 +104,70 @@ class SlTrace:
         """
         cls.logName = logName
         if cls.defaultProps is None:
-            propName = os.path.basename(logName)
-            propName = os.path.splitext(propName)[0]
+            propName = cls.propName
+            if propName is None:
+                propName = os.path.basename(logName)
+                propName = os.path.splitext(propName)[0]
             cls.setProps(propName)
 
 
     @classmethod
     def setLogToStd(cls, on):
         """ Set logging to stdout
+        :on: output to screen
+            default: log to screen
         """
+        if on is None:
+            on = True
         cls.logToScreen = on
 
     @classmethod
-    def setLogStdTs(cls, on):
+    def setLogStdTs(cls, on=None):
         """ Set stdout log to have timestamp prefix
         """
+        if on is None:
+            on = True
         cls.stdOutHasTs = on
 
 
     @classmethod
-    def setupLogging(cls, logName=None):
+    def setupLogging(cls, logName=None,propName=None, dp=None,
+                     logToScreen=None,
+                     stdOutHasTs=None):
         """
-        Setup writing to log file ( via lg(string))
+        Setup writing to log file ( via lg(string)) if not already setup
         :logName: name or prefix to log file
+        :propName: name for properties file
+                default: generated
+        :dp: number of decimal places in timestamp
+                Iff present, modify current setting
+        :logToScreen: put log to screen in addition to log file
+            default: output goes to both
+            iff present, modify current setting
+        :stdOutHasTs: put timestamp on STDOUT (screen)
+            default: no timestamp on screen
+            if present, modify current setting
         """
             
-        if cls.logWriter is not None:
+        if dp is not None:
+            cls.decpl = dp          # Set/change default ts decimal places
+        if logToScreen is not None:
+            cls.logToScreen = logToScreen
+        if stdOutHasTs is not None:
+            cls.stdOutHasTs = stdOutHasTs
+        if propName is not None:
+            cls.propName = propName
+        if cls.started is True:
             return cls.logWriter
         
         if logName is None:
             logName = cls.logName
-        if logName is not None:
-            cls.setLogName(logName)
     
-        if cls.logName is None:
+        if logName is None:
             script_name = os.path.basename(sys.argv[0])
             script_name = os.path.splitext(script_name)[0]
-            cls.logName = script_name
-            
-        if not os.path.isabs(cls.logName):
+            logName = script_name
+        if not os.path.isabs(logName):
             cwd = os.getcwd()
             dir_base = os.path.basename(cwd)
             if dir_base == "src":
@@ -145,7 +175,14 @@ class SlTrace:
                 log_dir = os.path.abspath(log_dir)
             else:
                 log_dir = "log"
-            cls.logName = os.path.join(log_dir, cls.logName)
+            logName = os.path.join(log_dir, logName)
+        if "." not in logName:
+            if not logName.endswith("_"):
+                logName += "_"
+            ts = cls.getTs()
+            logName += ts
+            logName += "." + cls.logExt  # Default extension
+        cls.logName = logName    
 
         base_file = os.path.abspath(cls.logName)
         directory = os.path.dirname(base_file)
@@ -160,13 +197,6 @@ class SlTrace:
             print("Logging Directory %s  created\n"
                   % os.path.abspath(directory))
 
-        if "." not in cls.logName:
-            if not cls.logName.endswith("_"):
-                cls.logName += "_"
-            ts = cls.getTs()
-            cls.logName = cls.logName + ts
-            cls.logName += "." + cls.logExt  # Default extension
-
         fw = None
         try:
             abs_logName = os.path.abspath(cls.logName)
@@ -175,7 +205,10 @@ class SlTrace:
         except IOError as e:
             print("Can't open logWriter %s - %s" % (abs_logName, e))
             sys.exit(1)
+        cls.started = True
+        atexit.register(cls.onexit)        # close down at end
         cls.lg("Creating Log File Name: %s" % abs_logName)
+        cls.setProps(cls.propName)         # Setup properties file
 
         return fw
 
@@ -199,7 +232,7 @@ class SlTrace:
 
 
     @classmethod
-    def lg(cls, msg="", trace_flag=None, level=1, to_stdout=True, dp=0):
+    def lg(cls, msg="", trace_flag=None, level=1, to_stdout=None, dp=None):
         """
         Log string to file, and optionally to console STDOUT display is based on
         trace info
@@ -209,7 +242,11 @@ class SlTrace:
                    - when to trace - None - always
         @param level
                    - level to trace - default 1
+        @param to_stdout
+                   - put output to STDOUT (screen) in addition to log file
+                     default: use setup value
         @param dp decimal points in timestamp seconds
+                default: use pgm default
         @throws IOException
        
         @throws IOException
@@ -217,15 +254,17 @@ class SlTrace:
         if not SlTrace.trace(trace_flag, level):
             return
 
-        if re.match(r'^\s*$', msg):
-            return        
         try:
             cls.setupLogging()
         except:
             print("IOException in lg setupLogging")
             return
- 
+
+        if dp is None:
+            dp = cls.decpl 
         ts = cls.getTs(dp=dp)
+        if to_stdout is None:
+            to_stdout = cls.logToScreen
         if to_stdout:
             prefix = ""
             if cls.stdOutHasTs:
@@ -236,6 +275,9 @@ class SlTrace:
             except:
                 print("Unexpected error:", sys.exc_info()[0])
             
+        if cls.closed:
+            return
+        
         if cls.logWriter is None:
             print("Can't write to log file")
             return
@@ -280,14 +322,24 @@ class SlTrace:
     def save_propfile(cls):
         """ Save properties file - snapshot
         """
-        print("save_propfile")
+        print("Executing save_propfile")
+        if not cls.update:
+            print("Not writing updated properties file")
+            return
+        
         try:
             if cls.defaultProps is not None:
                 abs_propName = cls.defaultProps.get_path()
-                cls.lg("Saving properties file %s"
-                    % abs_propName)
+                if cls.newExt is not None:
+                    m = re.match(r'(^.*)\.[^.]*$', abs_propName)
+                    if m:
+                        abs_propName = m[1] + "." + cls.newExt
+                tsfmt = "%Y%m%d_%H%M%S"
+                ts = datetime.now().strftime(tsfmt)
+                title = f" {abs_propName}  {ts}"
+                cls.lg(f"Saving properties file {title}")
                 outf = open(abs_propName, "w")
-                cls.defaultProps.store(outf, abs_propName)
+                cls.defaultProps.store(outf, title)
                 cls.defaultProps = None     # Flag as no longer available
                 outf.close()
         except IOError as e:
@@ -299,17 +351,21 @@ class SlTrace:
     def onexit(cls):
         cls.save_propfile()
         try:
-            if cls.logWriter is not None:
+            if not cls.closed and cls.logWriter is not None:
                 abs_logName = os.path.abspath(cls.logName)
                 cls.lg("Closing log file %s"
                     % abs_logName)
                 cls.logWriter.close()
+                cls.closed = True
                 cls.logWriter = None        # Flag as not available
         except IOError as e:
+            cls.closed = True
             tbstr = traceback.extract_stack()
-            print("Close logfile %s failed %s - %s"
+            cls.lg("Close logfile %s failed %s - %s"
                     % (abs_logName, tbstr), str(e))
+        cls.closed = True
         cls.runningJob = False
+
     @classmethod
     def getTs(cls, dp=0):
         """
@@ -356,15 +412,22 @@ class SlTrace:
 
 
     @classmethod
-    def setProps(cls, propName=None):
+    def setProps(cls, propName=None, newExt=None, update=None):
         """
         Set up based on Java style properties file
-        
+        :propName: given properties file name
+            default: generated from script
+        :newExt: Extension of created properties file
+            default: Created properties file is same as source propertites
+        :update: write out updated properties file a end (save_propfile)
         @throws IOException
         """
         if propName is not None:
             cls.propName = propName
-    
+        cls.newExt = newExt
+        if update is not None:
+            cls.update = update
+        
         if cls.propName is None:
             script_name = os.path.basename(sys.argv[0])
             script_name = os.path.splitext(script_name)[0]
@@ -386,8 +449,6 @@ class SlTrace:
 
         cls.loadTraceFlags()        # Populate flags from properties
                                      
-        atexit.register(cls.onexit)
-        # Write out updated properties file
 
 
     @classmethod
@@ -409,6 +470,13 @@ class SlTrace:
     def getMemory(cls):
         """ Get current memory usage for this process
         """
+        import importlib
+        try:
+            psutil = importlib.import_module("psutil")
+        except:
+            cls.lg("getMemory - needs pip install of psutil")
+            sys.exit(1)
+            
         process = psutil.Process(os.getpid())
         mem = process.memory_info().rss  # in bytes
         cls.mem_used_change = mem - cls.mem_used
@@ -518,7 +586,8 @@ class SlTrace:
         """
         load trace flags from properties
         """
-        SlTrace.lg("Trace levels from properties file")
+        propfile = cls.defaultProps.get_path()
+        SlTrace.lg(f"Trace levels from properties file {propfile}")
         props = cls.defaultProps.get_properties()
         pattern = r"^\s*" + cls.traceFlagPrefix + r"\.(.*)"
         r = re.compile(pattern)
@@ -758,15 +827,45 @@ class SlTrace:
             
     
 if __name__ == "__main__":
-    quit_on_first_fail = True      # True - stop testing on first failure
+    import argparse
+    propfile = "none_expected"
+    propfile_new_ext = "prop_out"
+    propfile_update = True
     show_passes = True
-    show_passes = False
+    ###show_passes = False
+    quit_on_fail = True      # True - stop testing on first failure
+    
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-p', '--propfile', default=propfile,
+                        help=("properties file name"
+                              " (default:generate from script name)"))
+    parser.add_argument('-n', '--propfile_new_ext', default=propfile_new_ext,
+                        help=("new properties file ext"
+                              " (default:no extension change)"))
+    parser.add_argument('-u', '--propfile_update', default=propfile_update,
+                        help=("update properties file"
+                              " (default:write out new properties file)"))
+    parser.add_argument('-s', '--show_passes', action='store_true', default=show_passes,
+                        help=(f"Show passes"
+                              f" (default: {show_passes}"))
+    parser.add_argument('-q', '--quit_on_fail', action='store_true', default=quit_on_fail,
+                        help=(f"Quit on first failure"
+                              f" (default: {quit_on_fail}"))
+
+    args = parser.parse_args()             # or die "Illegal options"
+    
+    propfile = args.propfile
+    propfile_new_ext = args.propfile_new_ext
+    propfile_update = args.propfile_update
+    show_passes = args.show_passes
+    quit_on_fail = args.quit_on_fail
+        
     def test_fail(msg):
         """ Show error and quit if quit_on_first_error
         """
         SlTrace.lg("FAIL: %s" % msg)
-        if quit_on_first_fail:
-            SlTrace.lg("Quitting of first fail")
+        if quit_on_fail:
+            SlTrace.lg("Quitting on first fail")
             sys.exit(1)
 
             
@@ -779,8 +878,9 @@ if __name__ == "__main__":
         SlTrace.lg(print_msg, to_stdout=False)
             
     logName = "sltest"
-    SlTrace.setLogName(logName)     # Setup default log name
-    SlTrace.setProps("SlTrace")
+    SlTrace.setupLogging(logName, propName=propfile)     # Setup log/properties names
+    SlTrace.setProps(newExt=propfile_new_ext, update=propfile_update)
+    SlTrace.lg("args: {}\n".format(args))
     SlTrace.lg("setupTest()")
     flag = "sf1"
     SlTrace.setLevel(flag)
@@ -828,6 +928,24 @@ if __name__ == "__main__":
                 test_fail("flag %s(%d) skipped(None)" % (flag, level))
             else:
                 test_fail("flag %s(%d) skipped(%d)" % (flag, level, trace_level))
-    SlTrace.lg("calling sys.exit")
-    sys.exit()
+    SlTrace.lg("Making the following output only to log")
+    SlTrace.setupLogging(logToScreen=False, dp=6)
+    for i in range(250):
+        SlTrace.lg(f"{i}: only to log file")
+    SlTrace.setupLogging(logToScreen=True, dp=0)
+    SlTrace.lg("Output is now to both log file and screen")
+    SlTrace.setupLogging(stdOutHasTs=True)
+    SlTrace.lg("Timestamp now included on screen")
+    SlTrace.setupLogging(dp=4)
+    SlTrace.lg("with new timestamp precision")
+    SlTrace.lg("More of the same")
+    SlTrace.setupLogging(dp=0)
+    SlTrace.lg("dp back at 0")
+    SlTrace.setLogStdTs(False)
+    SlTrace.lg("No timestamp to STDOUT")
+    test_memory = False
+    test_memory = True
+    if test_memory:
+        mem = SlTrace.getMemory()
+        SlTrace.lg(f"memory = {mem} bytes")
     SlTrace.lg("End of Test")
