@@ -177,11 +177,16 @@ class SlTrace:
                 log_dir = "log"
             logName = os.path.join(log_dir, logName)
         if "." not in logName:
-            if not logName.endswith("_"):
+            if logName.endswith("_"):
+                pass
+            else:
                 logName += "_"
             ts = cls.getTs()
             logName += ts
-            logName += "." + cls.logExt  # Default extension
+            cls.logName = logName
+            logName += "."
+            logName += cls.logExt  # Default extension
+            cls.logName = logName
         cls.logName = logName    
 
         base_file = os.path.abspath(cls.logName)
@@ -459,12 +464,14 @@ class SlTrace:
 
 
     @classmethod
-    def getPropKeys(cls):
+    def getPropKeys(cls, startswith=None):
         """
         get properties keys
+        :startswith: starting with this string
+                default: All keys
         """
-        props = cls.defaultProps.get_properties()
-        return sorted(props.keys())
+        props = cls.defaultProps.getPropKeys(startswith=startswith)
+        return props
 
     @classmethod
     def getMemory(cls):
@@ -672,6 +679,17 @@ class SlTrace:
     def traceLevel(cls, flag):
         traceLevel = cls.getLevel(flag)
         return traceLevel
+
+
+    @classmethod
+    def deleteProperty(cls, key):
+        """ Delete property from properties file
+        """
+        if cls.defaultProps is None:
+            cls.setupLogging()
+            cls.setProps()
+        if cls.hasProp(key):
+            cls.defaultProps.deleteProperty(key)
 
 
     @classmethod

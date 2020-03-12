@@ -5,6 +5,7 @@ Simple single name.name.... = value
 """
 import os
 import sys
+import re
 
 class JavaProperties:
     
@@ -40,6 +41,19 @@ class JavaProperties:
                 props[name.strip()] = value.strip()
         return props
 
+    def getPropKeys(self, pat=None, startswith=None):
+        """ Get list of keys
+        :startswith: starting string
+            default: All keys
+        """
+        if startswith is None:
+            return sorted(self.props.keys())
+        
+        keys = []
+        for key in sorted(self.props.keys()):
+            if key.startswith(startswith):
+                keys.append(key)
+        return keys
 
     def getProperty(self, key, default):
         """ Get property, returning default if none
@@ -66,6 +80,13 @@ class JavaProperties:
             return True
         
         return False
+
+
+    def deleteProperty(self, key):
+        """ Delete property(key)
+        """
+        if self.hasProp(key):
+            del self.props[key]
 
 
     def setProperty(self, key, value):
@@ -145,5 +166,13 @@ if __name__ == "__main__":
                % (pk2, pval2, pval))
         print("Quitting")
         sys.exit
+    print(f"deleting key={pk}")
+    if pr2b.hasProp(pk):
+        print(f"Before: property {pk} is here")
+    pr2b.deleteProperty(pk)
+    if not pr2b.hasProp(pk):
+        print(f"After: property {pk} is gone")
+    if pr2b.hasProp(pk):
+        print(f"property {pk} is NOT gone")
     print("End of Test")        
         
