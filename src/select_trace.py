@@ -13,6 +13,7 @@ from datetime import datetime
 import sys
 import traceback
 
+from select_error import SelectError
 from java_properties import JavaProperties
 ###from test.support import change_cwd
 
@@ -21,6 +22,44 @@ Facilitate execution tracing / logging of execution.
  
 @author raysmith
 """
+class SelectErrorInput(Exception):
+    """ Input conversion error
+    """
+    pass
+
+def str2bool(v):
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise SelectError('Not a recognized Boolean value %s' % v)
+
+    
+def str2val(string, value_or_type):
+    """ Convert string to value of type default
+    :value_type: default value if string is None or variable type
+            used as type expected
+    :returns: converted value
+            throws SelectErrorInput if conversion error
+    """
+    try:
+        if isinstance(value_or_type, str) or value_or_type is str:
+            return string
+    
+        if isinstance(value_or_type, bool) or value_or_type is bool:
+            return str2bool(string)
+            
+        if isinstance(value_or_type, int) or value_or_type is int:
+            return int(string)
+        
+        if isinstance(value_or_type, float) or value_or_type is float:
+            return float(string)
+    except Exception:
+        ###SlTrace.lg(f"=>str2val input {string} error for type:{type(value)}")
+        pass
+    
+    raise SelectErrorInput(f"str2val input {string} error for type:{type(value_or_type)}")
 
 class TraceError(Exception):
     """Base class for exceptions in this module."""
