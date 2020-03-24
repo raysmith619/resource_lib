@@ -1,0 +1,16 @@
+resource_lib_TODO.txt
+
+trace_control_window(TraceControlWindow)
+Preserve size/location between invocations
+
+CHECKED - display all/only those currently checked
+	Should this be preserved between invocations
+UNCHECKED - display only those currently unchecked
+
+keyboard - display / foucus flag(s) starting with character(s) typed
+	Should this include flag(s) containing string typed
+	Should tabbing move to next
+
+Support int, float, string entries
+	What should the semantics be in the program
+	
