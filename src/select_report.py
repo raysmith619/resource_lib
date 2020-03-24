@@ -3,7 +3,7 @@
 """
 Report to user with a modeless message
 """
-from tkinter import Tk, Label
+from tkinter import Tk, Label, Frame
 import tkSimpleDialog
 
 class SelectReport(tkSimpleDialog.Dialog):
@@ -19,8 +19,7 @@ class SelectReport(tkSimpleDialog.Dialog):
         else:
             master_focus = Tk()
             self.standalone = True
-            master_focus.withdraw()               # Hide base window
-        self.initial_focus = master_focus
+        self.initial_focus = master
         super().__init__(master_focus, title=title, grab_set=grab_set)
         
     def body(self, master):
@@ -33,4 +32,5 @@ if __name__ == "__main__":
     root = Tk()
 
 
-    d = SelectReport(root, message="SelectReport Testing")
+    ###SelectReport(root, message="SelectReport Testing")
+    SelectReport(message="SelectReport Testing Stanalone")
