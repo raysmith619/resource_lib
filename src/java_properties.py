@@ -95,10 +95,11 @@ class JavaProperties:
         self.props[key] = value
 
 
-    def store(self, fp, title):
+    def store(self, fp, title, list_props=True):
         """ Store properties file
         :fp: Output file
         :title: Optional comment line
+        :list_props: List properties on stdout
         """
         try:
             if title is not None:
@@ -106,7 +107,8 @@ class JavaProperties:
             for key in sorted(self.props):
                 prop_str = f"{key}={self.props[key]}"
                 print(prop_str, file=fp)
-                print(prop_str)
+                if list_props:
+                    print(prop_str)
             fp.close()
         except IOError as ioex:
             print("Error in storing Properties file %s" % title)

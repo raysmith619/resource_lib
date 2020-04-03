@@ -51,7 +51,7 @@ def str2val(string, value_or_type):
             return str2bool(string)
             
         if isinstance(value_or_type, int) or value_or_type is int:
-            return int(string)
+            return int(float(string))       # Treat floats as ints
         
         if isinstance(value_or_type, float) or value_or_type is float:
             return float(string)
@@ -74,7 +74,7 @@ class SlTrace:
     propName = None     # Properties file name None - use script base name
     newExt = None       # if not None => output will have newExt extension
     update = True       # True => write out updated properties at end (save_propfile)     
-
+    propPathSaved = None   # Actual saved path, if saved
     logName = None # Logfile name
     logExt = "sllog" # Logfile extension (without ".")
     started = False     # Set True when logging is started
@@ -361,10 +361,10 @@ class SlTrace:
         cls.lg(cls.lgsString)
         cls.lgsString = None # Flush pending
 
-
     @classmethod
     def save_propfile(cls):
         """ Save properties file - snapshot
+            Can be called repeatedly, also called via atexit
         """
         print("Executing save_propfile")
         if not cls.update:
@@ -382,6 +382,7 @@ class SlTrace:
                 ts = datetime.now().strftime(tsfmt)
                 title = f" {abs_propName}  {ts}"
                 cls.lg(f"Saving properties file {title}")
+                cls.propPathSaved = abs_propName
                 outf = open(abs_propName, "w")
                 cls.defaultProps.store(outf, title)
                 cls.defaultProps = None     # Flag as no longer available
@@ -543,6 +544,11 @@ class SlTrace:
         """
         abs_propName = cls.defaultProps.get_path()
         return abs_propName
+
+
+    @classmethod
+    def getPropPathSaved(cls):
+        return cls.propPathSaved
     
     
     @classmethod
