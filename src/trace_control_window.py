@@ -174,7 +174,7 @@ class TraceControlWindow(Toplevel):
             else:
                 cb.deselect()
                     
-        SlTrace.lg("flag=%s, var=%s, val=%s" %(flag, var, val), "controls")
+        SlTrace.lg("flag=%s, var=%s, val=%s" %(flag, var, val), "trace_flags")
         SlTrace.setLevel(flag, val)
             
         if self.change_call is not None:

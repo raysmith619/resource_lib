@@ -5,13 +5,77 @@ Simple single name.name.... = value
 """
 import os
 import sys
+import copy
 import re
 
+from crs_funs import dot_sorted
+
 class JavaProperties:
-    
-    def __init__(self, filename):
-        self.props = self.load(filename)
+    @classmethod
+    def snapshot_properties(cls, sn=None,
+                                req=None, req_not=False,
+                                req_match=None,
+                                req_match_not=False):
+        """ Properties snapshot, selected by req string and or req_match
+        :sn: properties state
+            default: REQUIRED
+        :req: only keys which have this string
+        :req_not: only keys that don't have this string
+        :req_match: only keys which match this regular expression
+        :req_match_not: only keys which don't match this regex
+                
+        :returns: (JavaProperties(only in sn1),
+                  JavaProperties(sn1, sn1,sn2 differ),
+                  JavaProperties(sn2, sn1,sn2 differ),
+                  JavaProperties (only in sn2)) tuple
+        """
+        if req is None and req_match is None:
+            return sn.copy()
         
+        jp_in_sn = JavaProperties()
+        for prop_key in sn.getPropKeys():
+            if cls.is_our_key(prop_key, req=req, req_not=req_not, req_match=req_match, req_match_not=req_match_not):
+                jp_in_sn.setProperty(prop_key, sn.getProperty(prop_key, None))
+        return jp_in_sn
+
+
+
+    @classmethod
+    def is_our_key(cls, prop_key, req=None, req_not=False, req_match=None, req_match_not=False):
+        """ Test if this is our key
+        """
+        if req is not None:
+            if prop_key.find(req) >= 0:
+                if req_not:
+                    return False                # string found but not wanted - skip it
+            else:
+                return False                    # Required string not found - skip it
+    
+        if req_match is not None:
+            if re.match(req_match, prop_key) is not None:
+                if req_match_not:
+                    return False                # string found but not wanted - skip it
+            else:
+                if not req_match_not:
+                    return False                    # Required string not found - skip it
+        return True                                 # Our key
+
+    
+    def __init__(self, filename=None):
+        self.props = {}
+        self.filename = None
+        if filename is not None:
+            self.props = self.load(filename)
+
+    def copy(self):
+        """ Copy current properties data snapshot
+        elemebts copied to protect from changes to source
+        """
+        new_copy = JavaProperties()
+        for key in self.props:
+            new_copy.props[key] = copy.copy(self.props[key])
+        return new_copy
+                
     def load(self, filename):
         sep = "="
         if "." not in(filename):
@@ -41,25 +105,44 @@ class JavaProperties:
                 props[name.strip()] = value.strip()
         return props
 
-    def getPropKeys(self, pat=None, startswith=None):
+    def getPropKeys(self, startswith=None):
         """ Get list of keys
         :startswith: starting string
             default: All keys
+        :returns: keys sorted dot wise (dot_sorted)
         """
         if startswith is None:
-            return sorted(self.props.keys())
+            return dot_sorted(self.props.keys())
         
         keys = []
-        for key in sorted(self.props.keys()):
+        for key in dot_sorted(self.props.keys()):
             if key.startswith(startswith):
                 keys.append(key)
         return keys
 
+    def getPropTree(self, startswith=None):
+        """ Get tree based on doted keys
+           head.next_sections.....
+           :startswith: restrict tree to those keys that start with this string
+                           default: all keys
+        :returns: a dictionary tree by segment values each containing a dictionary of 
+                the subsequent sections, till the bottom leaf.
+                a.b.c, a.c, a.d, a.b.c2, b.c2 => {a, b}  a: {b,c,}  b: {c, c2}
+                each value will be the 
+        """
+        tree = {}
+        keys = getPropKeys(startswith=startswith)
+        for key in keys:
+            self.add_key_to_tree(key)
+        ### TBD
+            
+        
+        
     def getProperty(self, key, default):
         """ Get property, returning default if none
         """
         try:
-            value = self.props.get(key, default)
+            value = self.props[key]
         except:
             value = default
         return value
@@ -81,6 +164,13 @@ class JavaProperties:
         
         return False
 
+    def is_empty(self):
+        """ Check if no properties
+        """
+        if len(self.props) == 0:
+            return True
+        
+        return False
 
     def deleteProperty(self, key):
         """ Delete property(key)
@@ -104,7 +194,7 @@ class JavaProperties:
         try:
             if title is not None:
                 print("# %s" % title, file=fp)
-            for key in sorted(self.props):
+            for key in dot_sorted(self.props):
                 prop_str = f"{key}={self.props[key]}"
                 print(prop_str, file=fp)
                 if list_props:

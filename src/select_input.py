@@ -5,8 +5,10 @@ Facilitate input / re-input with a modeless message
 """
 from tkinter import Tk, Entry, Label, messagebox
 
-from select_error import SelectError
-from select_trace import SlTrace, SelectErrorInput, str2val
+from select_error import SelectError, SelectErrorInput
+from select_trace import SlTrace
+from crs_funs import str2val
+
 import tkSimpleDialog
 
 class SelectInput(tkSimpleDialog.Dialog):

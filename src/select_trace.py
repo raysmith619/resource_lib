@@ -12,54 +12,16 @@ import atexit
 from datetime import datetime
 import sys
 import traceback
+import difflib
 
 from select_error import SelectError
 from java_properties import JavaProperties
-###from test.support import change_cwd
 
 """
 Facilitate execution tracing / logging of execution.
  
 @author raysmith
 """
-class SelectErrorInput(Exception):
-    """ Input conversion error
-    """
-    pass
-
-def str2bool(v):
-    if v.lower() in ('yes', 'true', 't', 'y', '1'):
-        return True
-    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
-        return False
-    else:
-        raise SelectError('Not a recognized Boolean value %s' % v)
-
-    
-def str2val(string, value_or_type):
-    """ Convert string to value of type default
-    :value_type: default value if string is None or variable type
-            used as type expected
-    :returns: converted value
-            throws SelectErrorInput if conversion error
-    """
-    try:
-        if isinstance(value_or_type, str) or value_or_type is str:
-            return string
-    
-        if isinstance(value_or_type, bool) or value_or_type is bool:
-            return str2bool(string)
-            
-        if isinstance(value_or_type, int) or value_or_type is int:
-            return int(float(string))       # Treat floats as ints
-        
-        if isinstance(value_or_type, float) or value_or_type is float:
-            return float(string)
-    except Exception:
-        ###SlTrace.lg(f"=>str2val input {string} error for type:{type(value)}")
-        pass
-    
-    raise SelectErrorInput(f"str2val input {string} error for type:{type(value_or_type)}")
 
 class TraceError(Exception):
     """Base class for exceptions in this module."""
@@ -86,6 +48,7 @@ class SlTrace:
     traceObj = None
     decpl = 0       # Decimal places in time stamp
     defaultProps = None # program properties
+    loadedProps = None  # loaded properties
     traceAll = False # For "all" trace
     traceFlags = {} # tracing flag/levels
     recTraceFlags = {} # recorded
@@ -93,6 +56,12 @@ class SlTrace:
     mem_used_change = 0 # Memory change as of last getMemory call   
     runningJob = True
 
+    @classmethod
+    def getDefaultProps(cls):
+        """ Return properties access
+        """
+        return cls.defaultProps
+    
     @classmethod
     def setup(cls):
         dummy = 0
@@ -109,6 +78,45 @@ class SlTrace:
         """
         cls.traceFlags = {}        # <String, Integer>
         cls.traceAll = 0        # For "all" trace
+
+    
+    @classmethod
+    def diff(cls, file1, file2, req=None, req_match=None):
+        """ Compare files
+        :file1:  first
+        :file2: second
+        :req: required string only print lines including this string
+                default: no required string
+        req_match:  reqired re.match
+                default: no required match
+        """
+        try:
+            lines1 = open(file1).readlines()
+        except:
+            raise SelectError(f"diff missing file {file1}")
+        
+        try:
+            lines2 = open(file2).readlines()
+        except:
+            raise SelectError(f"diff missing file {file2}")
+        
+        for line in difflib.unified_diff(lines1, lines2,
+                                          fromfile='file1', tofile='file2', lineterm='\n', n=0):
+            for prefix in ('---', '+++', '@@'):
+                if line.startswith(prefix):
+                    break
+            else:
+                if ((req is not None and line.find(req) >= 0)
+                        or (req_match is not None and re.match(req_match, line))):
+                    cls.lg(line)        
+
+    @classmethod
+    def diff_prop_file(cls):
+        """ Prints change in most recent properties file
+        """
+        prop_file_beg = SlTrace.getPropPath()
+        prop_file_new = SlTrace.getPropPathSaved()
+        cls.diff(prop_file_beg, prop_file_new, ".name")
 
     
     """
@@ -361,12 +369,15 @@ class SlTrace:
         cls.lg(cls.lgsString)
         cls.lgsString = None # Flush pending
 
+
     @classmethod
     def save_propfile(cls):
         """ Save properties file - snapshot
             Can be called repeatedly, also called via atexit
         """
         print("Executing save_propfile")
+        if cls.trace("prop_change"):
+            cls.properties_change_print()
         if not cls.update:
             print("Not writing updated properties file")
             return
@@ -384,16 +395,137 @@ class SlTrace:
                 cls.lg(f"Saving properties file {title}")
                 cls.propPathSaved = abs_propName
                 outf = open(abs_propName, "w")
-                cls.defaultProps.store(outf, title)
+                list_props = cls.trace("list_props")
+                cls.defaultProps.store(outf, title, list_props=list_props)
                 cls.defaultProps = None     # Flag as no longer available
                 outf.close()
         except IOError as e:
             tbstr = traceback.extract_stack()
             cls.lg("Save propName %s store failed %s - %s"
                     % (abs_propName, tbstr), str(e))
-    
+
+    @classmethod
+    def snapshot_properties(cls, sn=None,
+                                req=None, req_not=False,
+                                req_match=None,
+                                req_match_not=False):
+        """ Properties snapshot, selected by req string and or req_match
+        :sn: properties state
+            default: current properties state
+        :req: only keys which have this string
+        :req_not: only keys that don't have this string
+        :req_match: only keys which match this regular expression
+        :req_match_not: only keys which don't match this regex
+                
+        :returns: (JavaProperties(only in sn1),
+                  JavaProperties(sn1, sn1,sn2 differ),
+                  JavaProperties(sn2, sn1,sn2 differ),
+                  JavaProperties (only in sn2)) tuple
+        """
+        if sn is None:
+            sn = cls.defaultProps
+        return sn.snapshot_properties(sn=sn, req=req, req_not=req_not,
+                                      req_match=req_match, req_match_not=req_match_not)
+
+    @classmethod
+    def snapshot_properties_diff(cls, sn1=None, sn2=None,
+                                req=None, req_not=False,
+                                req_match=None,
+                                req_match_not=False):
+        """ Generate differences between two properties state
+        :sn1: first properties state
+                default: after loading
+        :sn2: second properties state
+                default: current properties state
+        :req: only keys which have this string
+        :req_not: only keys that don't have this string
+        :req_match: only keys which match this regular expression
+        :req_match_not: only keys which don't match this regex
+                
+        :returns: (JavaProperties(only in sn1),
+                  JavaProperties(sn1, sn1,sn2 differ),
+                  JavaProperties(sn2, sn1,sn2 differ),
+                  JavaProperties (only in sn2)) tuple
+        """
+        if sn1 is None:
+            sn1 = cls.loadedProps
+        if sn2 is None:
+            sn2 = cls.snapshot_properties()
+        jp_in_sn1 = JavaProperties()
+        jp_sn1_differ = JavaProperties()
+        jp_sn2_differ = JavaProperties()
+        jp_in_sn2 = JavaProperties()
+        for prop_key in sn1.getPropKeys():
+            if sn1.is_our_key(prop_key, req=req, req_not=req_not, req_match=req_match, req_match_not=req_match_not):
+                if sn2.hasProp(prop_key):
+                    sn1_prop_val = sn1.getProperty(prop_key, None)
+                    sn2_prop_val = sn2.getProperty(prop_key, None)
+                    if sn1_prop_val != sn2_prop_val:
+                        jp_sn1_differ.setProperty(prop_key, sn1_prop_val)
+                        jp_sn2_differ.setProperty(prop_key, sn2_prop_val)
+                else:
+                    jp_in_sn1.setProperty(prop_key, sn1.getProperty(prop_key, None))
+        for prop_key in sn2.getPropKeys():
+            if sn2.is_our_key(prop_key, req=req, req_not=req_not, req_match=req_match, req_match_not=req_match_not):
+                if not sn1.hasProp(prop_key):
+                    jp_in_sn2.setProperty(prop_key, sn2.getProperty(prop_key, None))
+        return (jp_in_sn1, jp_sn1_differ, jp_sn2_differ, jp_in_sn2)
+        
+               
+    @classmethod
+    def properties_change_print(cls, sn1=None, sn2=None,
+                                 req=None, req_not=False,
+                                 req_match=None,
+                                 req_match_not=False,
+                                 prefix=""):
+        """ Print out properties change
+        :sn1: first properties state
+                default: after loading
+        :sn2: second properties state
+                default: current properties state
+        :req: only keys which have this string
+        :req_not: only keys that don't have this string
+        :req_match: only keys which match this regular expression
+        :req_match_not: only keys which don't match this regex
+        :prefix: text before each line print, space added if present
+        """
+        if prefix != "":
+            prefix += " "   # add separation
+        (jp_in_sn1, jp_sn1_differ, jp_sn2_differ, jp_in_sn2) = cls.snapshot_properties_diff(sn1=sn1, sn2=sn2,
+                                                        req=req, req_not=req_not,
+                                                        req_match=req_match,
+                                                        req_match_not=req_match_not)
+        props_in_sn1 = jp_in_sn1.getPropKeys()
+        props_in_sn2 = jp_in_sn2.getPropKeys()
+        props_sn1_differ = jp_sn1_differ.getPropKeys()  # Same keys as sn2_differ
+        if len(props_in_sn1) == 0 and len(props_in_sn2) == 0 and len(props_sn1_differ) == 0:
+            cls.lg(f"{prefix}No differences")
+            return
+        
+        if len(props_in_sn1) > 0:
+            SlTrace.lg("Only in first:")
+            for prop_key in props_in_sn1:
+                val = jp_in_sn1.getProperty(prop_key, None)
+                cls.lg(f"{prefix}    {prop_key} = {val}")
+        
+        if len(props_in_sn2) > 0:
+            SlTrace.lg("Only in last:")
+            for prop_key in props_in_sn2:
+                val = jp_in_sn2.getProperty(prop_key, None)
+                cls.lg(f"{prefix}    {prop_key} = {val}")
+        
+        if len(props_sn1_differ) > 0:
+            SlTrace.lg("Changed:")
+            for prop_key in props_sn1_differ:
+                val1 = jp_sn1_differ.getProperty(prop_key, None)
+                val2 = jp_sn2_differ.getProperty(prop_key, None)
+                cls.lg(f"{prefix}    {prop_key} : {val1} => {val2}")
+            
+        
+     
     @classmethod
     def onexit(cls):
+        print("onexit")
         cls.save_propfile()
         try:
             if not cls.closed and cls.logWriter is not None:
@@ -491,7 +623,7 @@ class SlTrace:
                 cls.propName = os.path.abspath(cls.propName)
             
         cls.defaultProps = JavaProperties(cls.propName)
-
+        cls.loadedProps = cls.defaultProps.copy()      # Save for possible comparison
         cls.loadTraceFlags()        # Populate flags from properties
                                      
 
@@ -504,13 +636,17 @@ class SlTrace:
 
 
     @classmethod
-    def getPropKeys(cls, startswith=None):
+    def getPropKeys(cls, snapshot=None, startswith=None):
         """
         get properties keys
+        :snapshot: properties snapshot
+                default:current properties
         :startswith: starting with this string
                 default: All keys
         """
-        props = cls.defaultProps.getPropKeys(startswith=startswith)
+        if snapshot is None:
+            snapshot = cls.defaultProps
+        props = snapshot.getPropKeys(startswith=startswith)
         return props
 
     @classmethod
@@ -660,9 +796,10 @@ class SlTrace:
         all_flags = cls.getAllTraceFlags()
         all_flags_str = ",".join(all_flags)
         cls.lg("loadTraceFlags: %s" % all_flags_str)
-        for flag in all_flags:
-            level = cls.getLevel(flag)
-            cls.lg(f"{flag} = {level}")
+        if cls.trace("trace_flags"):
+            for flag in all_flags:
+                level = cls.getLevel(flag)
+                cls.lg(f"{flag} = {level}")
 
     
     @classmethod
