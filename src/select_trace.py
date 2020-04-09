@@ -14,6 +14,7 @@ import sys
 import traceback
 import difflib
 
+from crs_funs import str2bool, str2val
 from select_error import SelectError
 from java_properties import JavaProperties
 
@@ -55,6 +56,7 @@ class SlTrace:
     mem_used = 0        # Memory used as of last getMemory call
     mem_used_change = 0 # Memory change as of last getMemory call   
     runningJob = True
+    properties_diff_sn = None       # Most recently used snapshot
 
     @classmethod
     def getDefaultProps(cls):
@@ -127,7 +129,7 @@ class SlTrace:
     @classmethod
     def setFlags(cls, settings):
         cls.setup() # Insure access
-        pat_flag_val = re.compile(r"(\w+)(=(\d+),*)?")
+        pat_flag_val = re.compile(r"(\w+)(=(\w+),*)?")
         sets = re.findall(pat_flag_val, settings)
         for setting in sets:
             flag, value = setting[0], setting[2]
@@ -451,6 +453,7 @@ class SlTrace:
             sn1 = cls.loadedProps
         if sn2 is None:
             sn2 = cls.snapshot_properties()
+        cls.properties_diff_sn = sn2    
         jp_in_sn1 = JavaProperties()
         jp_sn1_differ = JavaProperties()
         jp_sn2_differ = JavaProperties()
@@ -522,6 +525,11 @@ class SlTrace:
                 cls.lg(f"{prefix}    {prop_key} : {val1} => {val2}")
             
         
+    @classmethod
+    def properties_properties_prev_sn(cls):
+        """ Get previously properties diff snapshot
+        """
+        return cls.properties_diff_sn
      
     @classmethod
     def onexit(cls):
@@ -695,34 +703,26 @@ class SlTrace:
             v = 0
             cls.traceFlags[trace_name] = v
         v = cls.traceFlags[trace_name]
-        if v is None or v == '':
+        if v is None:
             v = 0            # Not there == 0
-        if isinstance(v, str):
-            v = str.lower()
-            if v == "true":
-                v = True
-            elif v == "false":
-                v = False
-            else:
-                v = int(v)
         return v
 
 
 
     @classmethod
-    def setLevel(cls, trace_name, level=1):
+    def setLevel(cls, trace_name, level=True):
         trace_name = trace_name.lower()
         cls.recordTraceFlag(trace_name, level=level)
         flag_key = cls.getTraceFlagKey(trace_name)
         cls.setProperty(flag_key, level)
         if isinstance(level, str):
-            level = level.lower()
-            if level == "true":
-                level = True
-            elif level == "false":
-                level = False
-            else:
-                level = int(level)
+            try:
+                level = str2bool(level)
+            except:
+                try:
+                    level = str2val(level, 0)
+                except:
+                    pass            # Leave unchanged
         if trace_name == "all":
             cls.traceAll = level
         else:
@@ -840,20 +840,67 @@ class SlTrace:
 
     """
     Trace if at or above this level
+    if level is present, flag is of type level
     """
     @classmethod
-    def trace(cls, flag=None, level=None):
+    def trace(cls, flag=None, level=None, default=None):
+        """ trace flag
+        :flag: string identifying interest
+            default: pass (return True)
+        :level: test level, type used as flag type
+                boolean: check for ==, None => ck for True
+                int, float, str: for >=
+                default: boolean True
+        :default: if present and flag is new set to this value
+        :initialize: set to level immediately
+                    default: set False or zero or ""
+        :returns: True if passing, level if default
+        """
         if flag is None:
             return True
+
+        if default is not None and flag in cls.traceFlags:
+            default_type = type(default)
+            flag_val = cls.getLevel(flag)
+            flag_type = type(flag_val)
+            if default_type != flag_type:
+                cls.lg(f"default({default} type:{default_type}"
+                           f" != flag_type: {flag_type} - changing flag")
+                cls.setLevel(flag, default)
+                return
+            
+        if flag not in cls.traceFlags:
+            if default is not None:
+                v = default
+                return v
+
+            if level is None:
+                v = False
+            elif type(level) == bool:
+                v = False
+            else:
+                if type(level) == int:
+                    v = 0
+                elif type(level) == float:
+                    v = 0.0
+                elif type(level) == str:
+                    v = ""
+                else:
+                    v = level
+            cls.traceFlags[flag] = v
         
-        if level is None:
-            level = 1
-        if level < 1:
-            return False # Don't even look
+        fv = cls.traceLevel(flag)
+        if type(fv) == bool:
+            if level is None:
+                level = True
+            return  fv == level
 
-        return cls.traceLevel(flag) >= level
+        if level is not None: 
+            return  fv >= level
 
-
+        return fv
+    
+    
     """
     Return trace level
     """

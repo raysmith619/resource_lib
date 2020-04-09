@@ -181,8 +181,9 @@ class JavaProperties:
 
     def setProperty(self, key, value):
         """ Set property(key) value
+        Converts value to string before storing
         """
-        self.props[key] = value
+        self.props[key] = str(value)
 
 
     def store(self, fp, title, list_props=True):
