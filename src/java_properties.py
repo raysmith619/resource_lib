@@ -186,16 +186,20 @@ class JavaProperties:
         self.props[key] = str(value)
 
 
-    def store(self, fp, title, list_props=True):
+    def store(self, fp, title=None, keys=None, list_props=True):
         """ Store properties file
         :fp: Output file
         :title: Optional comment line
+        :keys: list of property keys to store
+                default: self.props
         :list_props: List properties on stdout
         """
+        if keys is None:
+            keys = self.props.keys()
         try:
             if title is not None:
                 print("# %s" % title, file=fp)
-            for key in dot_sorted(self.props):
+            for key in dot_sorted(keys):
                 prop_str = f"{key}={self.props[key]}"
                 print(prop_str, file=fp)
                 if list_props:

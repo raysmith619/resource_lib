@@ -13,9 +13,11 @@ from datetime import datetime
 import sys
 import traceback
 import difflib
+from tkinter import *
 
 from crs_funs import str2bool, str2val
 from select_error import SelectError
+from select_report import SelectReport
 from java_properties import JavaProperties
 
 """
@@ -57,7 +59,8 @@ class SlTrace:
     mem_used_change = 0 # Memory change as of last getMemory call   
     runningJob = True
     properties_diff_sn = None       # Most recently used snapshot
-
+    mw = None                       # Master window widget, if one
+    mw_standalone = False           # Set True if we're responsible for cleanup
     @classmethod
     def getDefaultProps(cls):
         """ Return properties access
@@ -266,6 +269,12 @@ class SlTrace:
 
         return fw
 
+    @classmethod
+    def set_mw(cls, mw):
+        """ Set tk to support gui
+        :tk:  master widget
+        """
+        cls.mw = mw
 
     @classmethod
     def select_all(cls, level=1):
@@ -550,6 +559,8 @@ class SlTrace:
                     % (abs_logName, tbstr), str(e))
         cls.closed = True
         cls.runningJob = False
+        if cls.mw is not None and cls.mw_standalone:
+            cls.mw.destroy()
 
     @classmethod
     def getTs(cls, dp=0):
@@ -756,7 +767,14 @@ class SlTrace:
         flag_key = cls.getTraceFlagKey(flag)
         cls.setProperty(flag_key, level, onlyifnew=True)
 
-
+    @classmethod
+    def report(cls, msg):
+        if cls.mw is None:
+            cls.mw_standalone_mw = True
+            cls.mw = Tk()       # create one
+        
+        SelectReport(master=cls.mw, message=msg)
+                 
     @classmethod
     def getTraceValueFromProp(cls, name):
         """
@@ -792,6 +810,9 @@ class SlTrace:
                     name = mn[1]
                     value = mn[2]
                     break
+                if re.match(r'<function.*>$',value):
+                    SlTrace.lg(f"Skipping trace flag {key} = {value} because functions need re-setup")
+                    continue
                 cls.setLevel(name, value)
         all_flags = cls.getAllTraceFlags()
         all_flags_str = ",".join(all_flags)
@@ -863,6 +884,9 @@ class SlTrace:
             default_type = type(default)
             flag_val = cls.getLevel(flag)
             flag_type = type(flag_val)
+            if callable(default) and callable(flag_val):
+                return              # No change required
+            
             if default_type != flag_type:
                 cls.lg(f"default({default} type:{default_type}"
                            f" != flag_type: {flag_type} - changing flag")
@@ -871,8 +895,8 @@ class SlTrace:
             
         if flag not in cls.traceFlags:
             if default is not None:
-                v = default
-                return v
+                cls.traceFlags[flag] = default
+                return default
 
             if level is None:
                 v = False
@@ -899,7 +923,17 @@ class SlTrace:
             return  fv >= level
 
         return fv
-    
+
+    @classmethod
+    def traceButton(cls, flag, command):
+        """ Setup method to be called when button works
+        Display and call is done in another module,
+        e.g. trace_control_window(TraceControlWindow)
+        :flag: identifying flag string
+        :command: command function to be called with flag as an argument
+        """
+        cls.trace(flag, default=command)
+
     
     """
     Return trace level

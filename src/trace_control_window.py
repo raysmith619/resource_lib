@@ -5,7 +5,6 @@ import atexit
 
 import time
 
-from select_error import SelectError
 from select_trace import SlTrace
 from crs_funs import str2val
 
@@ -40,17 +39,17 @@ class TraceControlWindow(Toplevel):
         top_frame.pack(side="top", fill="both", expand=False)
         self.top_frame = top_frame
         tc_all_button = Button(master=self.top_frame, text="SET ALL", command=self.select_all)
-        tc_all_button.pack(side="left", fill="both", expand=True)
+        tc_all_button.pack(side="left", fill="both", expand=False)
         tc_none_button = Button(master=self.top_frame, text="NONE", command=self.select_none)
-        tc_none_button.pack(side="left", fill="both", expand=True)
+        tc_none_button.pack(side="left", fill="both", expand=False)
         tc_bpt_button = Button(master=self.top_frame, text="BPT", command=self.breakpoint)
-        tc_bpt_button.pack(side="left", fill="both", expand=True)
+        tc_bpt_button.pack(side="left", fill="both", expand=False)
         self.show_list_which = "ALL"
         self.show_list_variable = StringVar()
         self.show_list_variable.set("Show SET")
         tc_show_button = Button(master=self.top_frame, textvariable=self.show_list_variable,
                                 command=self.show_list)
-        tc_show_button.pack(side="bottom", fill="none", expand=False)
+        tc_show_button.pack(side="left", fill="none", expand=False)
         self.tc_show_button = tc_show_button
         tc_frame = Frame(self.tc_mw)
         tc_frame.pack(side="top", fill="both", expand=True)
@@ -84,7 +83,12 @@ class TraceControlWindow(Toplevel):
         for flag in flags:
             val = SlTrace.getLevel(flag)
             width = len(flag)
-            val_len = len(str(val))
+            if callable(val):
+                val_len = 5
+            elif type(val) == bool:
+                val_len = 2
+            else:
+                val_len = len(str(val))
             width += val_len
             if width > max_width:
                 max_width = width
@@ -109,7 +113,8 @@ class TraceControlWindow(Toplevel):
             if type(level) == bool:
                 var = BooleanVar()
                 var.set(level)
-                fmt_text = "%-*s" % (max_width, flag)
+                ####fmt_text = "%-*s" % (max_width, flag)
+                fmt_text = flag
                 cb = Checkbutton(text, text=fmt_text, padx=0, pady=0, bd=0, variable = var, bg="white")
                 self.flag_by_cb[cb] = flag
                 self.data_by_flag[flag] = (cb, flag, var)
@@ -129,7 +134,8 @@ class TraceControlWindow(Toplevel):
                 var_width = len(str(level)) + 2
                 text_var = StringVar()
                 text_var.set(f"{level:{var_width}}")
-                fmt_text = "%-*s" % (max_width, flag)
+                ####fmt_text = "%-*s" % (max_width, flag)
+                fmt_text = flag
                 ent = Entry(text, width=var_width, textvariable=text_var)
                 self.flag_by_cb[ent] = flag
                 self.data_by_flag[flag] = (ent, flag, text_var)     # field is what we need
@@ -139,6 +145,14 @@ class TraceControlWindow(Toplevel):
                 text.insert("end", "\n")
                 text.config(state=DISABLED)
                 ent.bind("<Return>", self.enter_entry)
+            elif callable(level):
+                fmt_text = "%-*s" % (max_width, flag)
+                btn = Button(text, text=flag, command=level)
+                self.flag_by_cb[btn] = flag
+                self.data_by_flag[flag] = (btn, flag, None)     # field is what we need
+                text.config(state=NORMAL)
+                text.window_create("end", window=btn)
+                text.insert("end", "\n")
                 
             ###cb.pack()
         self.update()                           # Show progress
@@ -295,8 +309,8 @@ if __name__ == '__main__':
         if cklist is not None:
             cklist.list_ckbuttons()
     
-    ###root = Tk()
-
+    root = Tk()
+    SlTrace.set_mw(root)
     ###frame = Frame(root)
     ###frame.pack()
     SlTrace.setProps()
@@ -304,15 +318,31 @@ if __name__ == '__main__':
     threshold = 5
     SlTrace.setLevel("tint1", 5)
     end_level = 100
+    quit_set = False
+    def our_quit(flag=None):
+        """ Test for traceButton
+        :flag: flag arg
+        """
+        global quit_set
+        if flag is None:
+            flag = "TBD"
+        SlTrace.lg(f"our_quit({flag})")
+        SlTrace.report("Quitting Program")
+        root.destroy
+        quit_set = True
+        sys.exit()
+
+        
     def test_int(flag, level=threshold, default=None):
         SlTrace.lg(f"Set {flag} to over {end_level} to quit")
         if SlTrace.trace(flag, threshold):
             SlTrace.lg(f"{flag} = {SlTrace.trace(flag)} >= {level}")
         else:
             SlTrace.lg(f"{flag} = {SlTrace.trace(flag)} < {level}")
-        if SlTrace.trace("tint1") > end_level:
+        if quit_set or SlTrace.trace("tint1") > end_level:
             SlTrace.lg("Manual quit")
             sys.exit()
+        SlTrace.traceButton("quit", our_quit)
                     
     app = TraceControlWindow(change_call=report_change)
     
