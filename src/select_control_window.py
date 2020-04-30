@@ -1,7 +1,7 @@
-# command_file.py
+# select_control_window.py
 """
 Base for independent control window
-Provides a singleton which is universally accessible
+NOTE: for Singleton version see select_control_window_singleton.py
 Facilitates
     setting and display of game controls
     persistent storage of values
@@ -9,23 +9,50 @@ Facilitates
     Undo / Re-do of value setting
 """
 from tkinter import *
-import re
-import os
+import time
 
+from crs_funs import str2bool, str2val
 from select_error import SelectError
 from select_trace import SlTrace
-
+from select_input import SelectInput
 
     
 
-def str2bool(v):
-    if v.lower() in ('yes', 'true', 't', 'y', '1'):
-        return True
-    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
-        return False
+def content_var_type(val):
+    """ Convert content_variable instance
+    into variable type
+    :var:   variable type
+    """
+    if isinstance(val, StringVar):
+        val_type = str
+    elif isinstance(val, IntVar):
+        val_type = int
+    elif isinstance(val, DoubleVar):
+        val_type = float
+    elif isinstance(val, BooleanVar):
+        val_type = bool
     else:
-        raise SelectError('Not a recognized Boolean value %s' % v)
+        raise SelectError(f"Unsupported content var type {val}")
+    return val_type
     
+
+def content_var(val):
+    """ create content variable of the type of val
+    :val:   value to initialize content
+    """
+    val_type = type(val)
+    if val_type == str:
+        var = StringVar()
+    elif val_type == int:
+        var = IntVar()
+    elif val_type == float:
+        var = DoubleVar()
+    elif val_type == bool:
+        var = BooleanVar()
+    else:
+        raise SelectError(f"Unsupported content var val_type {val_type}")
+    var.set(val)
+    return var
     
     
 class SelectControlWindow(Toplevel):
@@ -34,27 +61,50 @@ class SelectControlWindow(Toplevel):
     DEF_WIN_Y = 300
     _instance = None         # Instance
     instance_no = 0         # Count instances
+
+    @classmethod
+    def reset_class(cls):
+        """ Reset to gone
+        Facilitate regeneration of window
+        """
+        cls._instance = None
     
-    def __init__(self, *args, **kwargs):
-        SlTrace.lg("SelectControlWindow.__init__ %d" % SelectControlWindow.instance_no)
-        
-            
-    def _init(self, play_control=None,
+    def __init__(self, mw=None,
+                play_control=None,
                 control_prefix=None,
                 title=None,
                 display=True,
-                new = False
+                set_cmd=None,
+                win_x=None,
+                win_y=None,
+                win_width=None,
+                win_height=None,
+                use_grid=False,
                  ):
         """ Control attributes
+        :play_control:        special for game play
+        :control_prefix: prefix for properties file entries
         :title: window title
+        :set_cmd: function, if present, to call on button press
+        :win_x:  New window x position default: use properties entry
+        :win_y:  New window y position default: use properties entry
+        :win_width: New window width default: use properties entry
+        :win_height: New window height default: use properties entry
+        :use_grid: use grid geometry packing
+                This is an experiment to facilitate switching to grid or pack.
+                I'm not sure how well this hack will work
+                default: False - use pack
         """
         SelectControlWindow.instance_no += 1
         self.play_control = play_control
         if control_prefix is None:
             control_prefix = self.CONTROL_NAME_PREFIX
         self.control_prefix = control_prefix
-        self.mw = Toplevel()
-        self.mw.protocol("WM_DELETE_WINDOW", self.delete_window)
+        if mw is None:
+            mw = Toplevel()
+        self.mw = mw
+        self.update()           # TFD debugging display
+        self.mw.protocol("WM_DELETE_WINDOW", self.delete_window)    
         if title is None:
             title = "Game Control"
         self.title = title
@@ -62,19 +112,31 @@ class SelectControlWindow(Toplevel):
         self.ctls = {}          # Dictionary of field control widgets
         self.ctls_vars = {}     # Dictionary of field control widget variables
         self.display = display   # Done in instance, if at all
+        self.set_cmd = set_cmd
+        ndim_spec = 0
+        if win_x is not None:
+            self.set_prop_val("win_x", win_x)
+            ndim_spec += 1
+        if win_y is not None:
+            self.set_prop_val("win_y", win_y)
+            ndim_spec += 1
+        if win_width is not None:
+            self.set_prop_val("win_width", win_width)
+            ndim_spec += 1
+        if win_height is not None:
+            self.set_prop_val("win_height", win_height)
+            ndim_spec += 1
+        if ndim_spec > 0:
+            self.arrange_windows()
         self._is_displayed = False
-
-
-    def __new__(cls, *args, **kwargs):
-        """ Make a singleton
+        self.use_grid = use_grid
+        
+    def report(self, msg):
+        """ Report, via popup window
+        :msg:
         """
-        if cls._instance is None:
-            cls._instance = super(SelectControlWindow, cls).__new__(cls)
-            ###cls._instance._init(*args, **kwargs)
-            cls._instance._init(**kwargs)
-        return cls._instance
-    
-    
+        SlTrace.report(f"{self.control_prefix}: {msg}")
+            
     def set_play_control(self, play_control):
         """ Link ourselves to the display
         """
@@ -85,23 +147,29 @@ class SelectControlWindow(Toplevel):
         """ display /redisplay controls to enable
         entry / modification
         """
-        if self._is_displayed:
-            return
-        
         top_frame = Frame(self.mw)
-        top_frame.pack(side="top", fill="x", expand=True)
+        if self.use_grid:
+            top_frame.grid()
+        else:
+            top_frame.pack(side="top", fill="x", expand=True)
         self.top_frame = top_frame
         
         self.base_frame = top_frame     # Changed on use
         self.base_field = "game_control"
         self.mw.title(self.title)
         top_frame = Frame(self.mw)
-        top_frame.pack(side="top", fill="x", expand=True)
+        if self.use_grid:
+            top_frame.grid()
+        else:
+            top_frame.pack(side="top", fill="x", expand=True)
         self.top_frame = top_frame
         
         
         bottom_frame = Frame(self.mw, borderwidth=2, relief=SUNKEN)
-        bottom_frame.pack(side="bottom", expand=True)
+        if self.use_grid:
+            bottom_frame.grid()
+        else:
+            bottom_frame.pack(side="bottom", expand=True)
         self.bottom_frame = bottom_frame
         
         self.set_fields(bottom_frame, "base", title="")
@@ -119,9 +187,10 @@ class SelectControlWindow(Toplevel):
 
     """ Control functions for game control
     """
+    
     def set(self):
         self.set_vals()
-
+        
     
     def reset(self):
         self.set_vals()
@@ -130,10 +199,26 @@ class SelectControlWindow(Toplevel):
     def undo(self):
         self.set_vals()
 
+    def sleep(self, sec):
+        """ "sleep" for a number of sec
+        without stoping tkinter stuff
+        :sec: number of milliseconds to delay before returning
+        """
+        now = time.time()
+        end_time = now + sec
+        while time.time() < end_time:
+            self.update()
+        return
     
     def redo(self):
         self.set_vals()
 
+    def update(self):
+        """ Do update to see display process
+        """
+        if self.mw is not None:
+            self.mw.update()
+            
     def get_val_from_ctl(self, field_name):
         """ Get value from field
         Does not set value
@@ -162,8 +247,25 @@ class SelectControlWindow(Toplevel):
         ctl_var = self.ctls_vars[field_name]
         if ctl_var is None:
             raise SelectError("No variable for %s" % field_name)
-        
-        value = ctl_var.get()
+        while True:
+            try:
+                value = ctl_var.get()
+                break
+            except:
+                ctl = self.ctls[field_name]
+                ctl_str = ctl.get()
+                ctl_var_type = content_var_type(ctl_var)
+                default_val_str = self.get_prop_val(field_name, None)
+                default_val = str2val(default_val_str, ctl_var_type)
+                
+                sr = SelectInput(master=self, title="GameControl",
+                                  message=f"Bad format:'{ctl_str}' for {field_name}: ",
+                                  default=default_val)
+                value = sr.result
+                if value is not None:
+                    break
+                    
+        self.set_ctl_val(field_name, value)        
         self.set_prop_val(field_name, value)
 
 
@@ -172,14 +274,20 @@ class SelectControlWindow(Toplevel):
         :frame: current frame into which controls go
         :base_field: base for variables/widgets are stored
         """
-        base_frame.pack()
+        if self.use_grid:
+            base_frame.grid()
+        else:
+            base_frame.pack()
         self.base_frame = base_frame
         self.base_field = base_field
         if title is None:
             title = base_field
         if title != "":
             wlabel = Label(base_frame, text=title, anchor=W)
-            wlabel.pack(side="left", anchor=W)
+            if self.use_grid:
+                wlabel.grid()
+            else:
+                wlabel.pack(side="left", anchor=W)
             self.set_text("   ")
         
 
@@ -191,7 +299,10 @@ class SelectControlWindow(Toplevel):
         if frame is None:
             frame = self.base_frame
         wlabel = Label(frame, text=text, anchor=W)
-        wlabel.pack(side="left", anchor=W)
+        if self.use_grid:
+            wlabel.grid()
+        else:
+            wlabel.pack(side="left", anchor=W)
 
 
     def set_sep(self, text=None, frame=None):
@@ -213,7 +324,10 @@ class SelectControlWindow(Toplevel):
         if frame is None:
             frame = self.base_frame
         sep_frame = Frame(frame)
-        sep_frame.pack(side="top", anchor=N)
+        if self.use_grid:
+            sep_frame.grid()
+        else:
+            sep_frame.pack(side="top", anchor=N)
         self.set_text("  ", frame=sep_frame)
 
 
@@ -235,7 +349,10 @@ class SelectControlWindow(Toplevel):
             
         if label is not None:
             wlabel = Label(frame, text=label)
-            wlabel.pack(side="left")
+            if self.use_grid:
+                wlabel.grid()
+            else:
+                wlabel.pack(side="left")
         content = BooleanVar()
         full_field = self.field_name(field)
         value = self.get_prop_val(full_field, value)
@@ -246,7 +363,10 @@ class SelectControlWindow(Toplevel):
             self.check_box_change_callback = command
             cmd = self.check_box_change 
         widget =  Checkbutton(frame, variable=content, command=cmd)
-        widget.pack(side="left", fill="none", expand=True)
+        if self.use_grid:
+            widget.grid()
+        else:
+            widget.pack(side="left", fill="none", expand=True)
         self.ctls[full_field] = widget
         self.ctls_vars[full_field] = content
         self.set_prop_val(full_field, value)
@@ -273,10 +393,16 @@ class SelectControlWindow(Toplevel):
         content.set(value)
         if label is not None:
             wlabel = Label(frame, text=label)
-            wlabel.pack(side="left")
+            if self.use_grid:
+                wlabel.grid()
+            else:
+                wlabel.pack(side="left")
             
         widget =  Entry(frame, textvariable=content, width=width)
-        widget.pack(side="left", fill="none", expand=True)
+        if self.use_grid:
+            widget.grid()
+        else:
+            widget.pack(side="left", fill="none", expand=True)
         self.ctls[full_field] = widget
         self.ctls_vars[full_field] = content
         self.set_prop_val(full_field, value)
@@ -295,7 +421,10 @@ class SelectControlWindow(Toplevel):
         if label is None:
             label = field
         widget =  Button(frame, text=label, command=command)
-        widget.pack(side="left", fill="none", expand=True)
+        if self.use_grid:
+            widget.grid()
+        else:
+            widget.pack(side="left", fill="none", expand=True)
         full_field = self.field_name(field)
         self.ctls[field] = widget
         # No variable
@@ -329,12 +458,12 @@ class SelectControlWindow(Toplevel):
         self.set_prop_val("win_y", y)
         self.set_prop_val("win_width", width)
         self.set_prop_val("win_height", height)
-        if SlTrace.trace("set_window_size("):
+        if SlTrace.trace("set_window_size"):
             if ( not hasattr(self, "prev_x") or self.prev_x != x
                  or not hasattr(self, "prev_y") or self.prev_y != y
                  or not hasattr(self, "prev_width") or self.prev_width != width
                  or not hasattr(self, "prev_height") or self.prev_height != height):
-                SlTrace.lg("set_window_size( change=%d x=%d y=%d width=%d height=%d" % (change, x,y,width,height))
+                SlTrace.lg("set_window_size: change=%d x=%d y=%d width=%d height=%d" % (change, x,y,width,height))
             self.prev_x = x 
             self.prev_y = y
             self.prev_width = width
@@ -355,9 +484,13 @@ class SelectControlWindow(Toplevel):
             win_y = 50
         
         win_width = self.get_prop_val("win_width", self.mw.winfo_width())
+        if win_width < 100:
+            win_width = 100
         win_height = self.get_prop_val("win_height", self.mw.winfo_height())
+        if win_height < 100:
+            win_height = 100
         self.set_window_size(win_x, win_y, win_width, win_height, change=True)
-        self.mw.protocol("WM_DELETE_WINDOW", self.delete_window)
+        self.mw.protocol("WM_DELETE_WINDOW", self.hide_window)  # Still need info
         self.mw.bind('<Configure>', self.win_size_event)
        
     
@@ -483,6 +616,7 @@ class SelectControlWindow(Toplevel):
     def destroy(self):
         """ Destroy window resources
         """
+        SlTrace.lg("SelectControlWindow destroy")
         if self.mw is not None:
             self.mw.destroy()
         self.mw = None
@@ -491,6 +625,7 @@ class SelectControlWindow(Toplevel):
     def delete_window(self):
         """ Handle window deletion
         """
+        SlTrace.lg("SelectControlWindow delete_window")
         if self.play_control is not None and hasattr(self.play_control, "close_score_window"):
             self.play_control.close_score_window()
         else:
@@ -501,8 +636,18 @@ class SelectControlWindow(Toplevel):
             sys.exit(0)
 
         self.play_control = None
+        
+    def hide_window(self):
+        """ Hide window as we said...
+        """
+        self.mw.withdraw()              # Just hide, for we can't easily delete/restore a singleton
 
-    
+
+    def show_window(self):
+        """ Restore to view
+        """
+        self.mw.deiconify()
+        
 if __name__ == '__main__':
         
     root = Tk()

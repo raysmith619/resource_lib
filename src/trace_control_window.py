@@ -244,6 +244,9 @@ class TraceControlWindow(Toplevel):
             if type(self.getLevel(flag)) == bool:
                 self.set_trace_level(flag, False)
 
+    def getLevel(self, flag):
+        return SlTrace.getLevel(flag)
+    
     def breakpoint(self):
         """ Force immediate breakpoint - enter debugger
         """
