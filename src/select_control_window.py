@@ -79,7 +79,6 @@ class SelectControlWindow(Toplevel):
                 win_y=None,
                 win_width=None,
                 win_height=None,
-                use_grid=False,
                  ):
         """ Control attributes
         :play_control:        special for game play
@@ -90,10 +89,6 @@ class SelectControlWindow(Toplevel):
         :win_y:  New window y position default: use properties entry
         :win_width: New window width default: use properties entry
         :win_height: New window height default: use properties entry
-        :use_grid: use grid geometry packing
-                This is an experiment to facilitate switching to grid or pack.
-                I'm not sure how well this hack will work
-                default: False - use pack
         """
         SelectControlWindow.instance_no += 1
         self.play_control = play_control
@@ -109,6 +104,7 @@ class SelectControlWindow(Toplevel):
             title = "Game Control"
         self.title = title
         self.vals = {}          # Current values if any
+        self.ctls_labels = {}   # ctl labels (if one) by field
         self.ctls = {}          # Dictionary of field control widgets
         self.ctls_vars = {}     # Dictionary of field control widget variables
         self.display = display   # Done in instance, if at all
@@ -129,7 +125,6 @@ class SelectControlWindow(Toplevel):
         if ndim_spec > 0:
             self.arrange_windows()
         self._is_displayed = False
-        self.use_grid = use_grid
         
     def report(self, msg):
         """ Report, via popup window
@@ -148,28 +143,19 @@ class SelectControlWindow(Toplevel):
         entry / modification
         """
         top_frame = Frame(self.mw)
-        if self.use_grid:
-            top_frame.grid()
-        else:
-            top_frame.pack(side="top", fill="x", expand=True)
+        top_frame.pack(side="top", fill="x", expand=True)
         self.top_frame = top_frame
         
         self.base_frame = top_frame     # Changed on use
         self.base_field = "game_control"
         self.mw.title(self.title)
         top_frame = Frame(self.mw)
-        if self.use_grid:
-            top_frame.grid()
-        else:
-            top_frame.pack(side="top", fill="x", expand=True)
+        top_frame.pack(side="top", fill="x", expand=True)
         self.top_frame = top_frame
         
         
         bottom_frame = Frame(self.mw, borderwidth=2, relief=SUNKEN)
-        if self.use_grid:
-            bottom_frame.grid()
-        else:
-            bottom_frame.pack(side="bottom", expand=True)
+        bottom_frame.pack(side="bottom", expand=True)
         self.bottom_frame = bottom_frame
         
         self.set_fields(bottom_frame, "base", title="")
@@ -274,20 +260,14 @@ class SelectControlWindow(Toplevel):
         :frame: current frame into which controls go
         :base_field: base for variables/widgets are stored
         """
-        if self.use_grid:
-            base_frame.grid()
-        else:
-            base_frame.pack()
+        base_frame.pack()
         self.base_frame = base_frame
         self.base_field = base_field
         if title is None:
             title = base_field
         if title != "":
             wlabel = Label(base_frame, text=title, anchor=W)
-            if self.use_grid:
-                wlabel.grid()
-            else:
-                wlabel.pack(side="left", anchor=W)
+            wlabel.pack(side="left", anchor=W)
             self.set_text("   ")
         
 
@@ -299,10 +279,7 @@ class SelectControlWindow(Toplevel):
         if frame is None:
             frame = self.base_frame
         wlabel = Label(frame, text=text, anchor=W)
-        if self.use_grid:
-            wlabel.grid()
-        else:
-            wlabel.pack(side="left", anchor=W)
+        wlabel.pack(side="left", anchor=W)
 
 
     def set_sep(self, text=None, frame=None):
@@ -324,10 +301,7 @@ class SelectControlWindow(Toplevel):
         if frame is None:
             frame = self.base_frame
         sep_frame = Frame(frame)
-        if self.use_grid:
-            sep_frame.grid()
-        else:
-            sep_frame.pack(side="top", anchor=N)
+        sep_frame.pack(side="top", anchor=N)
         self.set_text("  ", frame=sep_frame)
 
 
@@ -338,7 +312,7 @@ class SelectControlWindow(Toplevel):
         """ Set up check box for field
         :field: local field name
         :label: button label - default final section of field name
-        :value: value to set
+        :value: value to set "string"
         :command: function to call with new value when box changes
                     default: no call
         """
@@ -349,10 +323,7 @@ class SelectControlWindow(Toplevel):
             
         if label is not None:
             wlabel = Label(frame, text=label)
-            if self.use_grid:
-                wlabel.grid()
-            else:
-                wlabel.pack(side="left")
+            wlabel.pack(side="left")
         content = BooleanVar()
         full_field = self.field_name(field)
         value = self.get_prop_val(full_field, value)
@@ -363,10 +334,7 @@ class SelectControlWindow(Toplevel):
             self.check_box_change_callback = command
             cmd = self.check_box_change 
         widget =  Checkbutton(frame, variable=content, command=cmd)
-        if self.use_grid:
-            widget.grid()
-        else:
-            widget.pack(side="left", fill="none", expand=True)
+        widget.pack(side="left", fill="none", expand=True)
         self.ctls[full_field] = widget
         self.ctls_vars[full_field] = content
         self.set_prop_val(full_field, value)
@@ -374,6 +342,61 @@ class SelectControlWindow(Toplevel):
     def check_box_change(self):
         value = self.check_box_change_content.get()
         self.check_box_change_callback(value)
+
+
+    def null_radio_call(self, val):
+        SlTrace.lg(f"null_radio_call({val})")
+        
+    def set_radio_button(self, frame=None, field=None,
+                        label=None, value=None, set_value=None,
+                        command=None):
+        """ Set up one radio button for field
+        :field: local field name (for all buttons in this group)
+        :label: button label - must be unique in this group
+        :value: value associated with this button
+                    default: label string
+        :set_value: set group value if present
+                    default: leave group_value alone
+                    Anyone of the set_radio_button calls
+                    can set/change the value
+                    if present, value is overridden
+                    by property value
+        :command: function called with button group value when button selected
+        
+        """
+        if frame is None:
+            frame = self.base_frame
+        if field is None:
+            SelectError("set_radio_button: field is missing")
+        if label is None:
+            SelectError("set_radio_button - label is missing")
+        if value is None:
+            value = label
+        if command is None:
+            cmd = None
+        else:
+            cmd=lambda cmd=command : cmd(value)
+            
+            
+        full_field = self.field_name(field)
+        if full_field not in self.ctls_vars:
+            content = StringVar()          # Create new one for group
+            self.ctls_vars[full_field] = content
+            ctls_ctl = self.ctls[full_field] = {}  # dictionary of Radiobutton button widgets
+        else:
+            content = self.ctls_vars[full_field]
+            ctls_ctl = self.ctls[full_field]
+        if set_value is not None:
+            prop_value = self.get_prop_val(full_field, None)
+            if prop_value is None:
+                content.set(set_value)
+                self.set_prop_val(full_field, set_value)
+            else:
+                content.set(prop_value)
+        widget =  Radiobutton(frame, variable=content, text=label, value=value,
+                               command=cmd)
+        widget.pack(side="left", fill="none", expand=True)
+        ctls_ctl[full_field + "." + label] = widget           # Store each button in hash
 
     def set_entry(self, frame=None, field=None,
                         label=None, value=None,
@@ -393,16 +416,10 @@ class SelectControlWindow(Toplevel):
         content.set(value)
         if label is not None:
             wlabel = Label(frame, text=label)
-            if self.use_grid:
-                wlabel.grid()
-            else:
-                wlabel.pack(side="left")
+            wlabel.pack(side="left")
             
         widget =  Entry(frame, textvariable=content, width=width)
-        if self.use_grid:
-            widget.grid()
-        else:
-            widget.pack(side="left", fill="none", expand=True)
+        widget.pack(side="left", fill="none", expand=True)
         self.ctls[full_field] = widget
         self.ctls_vars[full_field] = content
         self.set_prop_val(full_field, value)
@@ -410,7 +427,7 @@ class SelectControlWindow(Toplevel):
 
     def set_button(self, frame=None, field=None,
                         label=None, command=None):
-        """ Set up check box for field
+        """ Set up button for field
         :frame: containing frame, default self.base_frame
         :field: field name
         :label: button label - default: field
@@ -420,11 +437,9 @@ class SelectControlWindow(Toplevel):
             frame = self.base_frame
         if label is None:
             label = field
+            
         widget =  Button(frame, text=label, command=command)
-        if self.use_grid:
-            widget.grid()
-        else:
-            widget.pack(side="left", fill="none", expand=True)
+        widget.pack(side="left", fill="none", expand=True)
         full_field = self.field_name(field)
         self.ctls[field] = widget
         # No variable
@@ -602,6 +617,13 @@ class SelectControlWindow(Toplevel):
         self.set_val(name, value)
         prop_key = self.get_prop_key(name)
         SlTrace.setProperty(prop_key, str(value))
+        
+    def set_ctl_label(self, field, label):
+        """ Set field's associated label, if one
+        """
+        if field in self.ctls_labels:
+            ctl_label = self.ctls_labels[field]
+            ctl_label.config(text=label)
 
     
     def set_val(self, name, value):
@@ -650,12 +672,37 @@ class SelectControlWindow(Toplevel):
         
 if __name__ == '__main__':
         
-    root = Tk()
-    root.withdraw()       # Hide main window
-
     SlTrace.setProps()
-    cF = SelectControlWindow(title="SelectControlWindow Testing", display=False)
-    cf2 = SelectControlWindow()
-    cf2.control_display()
+    root = Tk()
+    ###root.withdraw()       # Hide main window
+    test_general = False
+    test_radio_button = True
+    if test_radio_button:
+        scw = SelectControlWindow(title="SelectControlWindow Testing", display=True)
+        mf = Frame(root)
+        mf.pack()
+    
+        def call_unit(unit):    
+            SlTrace.lg(f"call_unit({unit})")
         
-    root.mainloop()
+        scw.set_fields(mf, "base_field", title="distance units")
+        scw.set_radio_button(frame=mf, field="second", label="meter", set_value="foot", command=call_unit)
+        scw.set_radio_button(frame=mf, field="second", label="yard", command=call_unit)
+        scw.set_radio_button(frame=mf, field="second", label="foot", command=call_unit)
+        fname = "base_field.second"
+        fval = "yard"
+        SlTrace.lg(f"Settng field:{fname} to {fval}")
+        scw.set_ctl_val(fname, fval)
+        sf = Frame(root)
+        sf.pack()
+        scw.set_fields(sf, "new_field", title="RadioButton Testing")
+        scw.set_radio_button(frame=sf, field="a", label="a", set_value="b")
+        scw.set_radio_button(frame=sf, field="a", label="b", command=call_unit) # Only a,b calls
+        scw.set_radio_button(frame=sf, field="a", label="c")
+        mainloop()
+    elif test_general:    
+        cF = SelectControlWindow(title="SelectControlWindow Testing", display=False)
+        cf2 = SelectControlWindow()
+        cf2.control_display()
+            
+        root.mainloop()
