@@ -140,7 +140,7 @@ class SelectList(Toplevel):
                 image = self.get_image(self.image_name(item), width=max_width)
                 self.add_image_button(text_region, image=image, text_field=item)
             else:
-                self.add_text_entry(text_region, item, width=max_width, text=self.text)                
+                self.add_text_entry(text_region, item, width=max_width)                
         self.update()                           # Show progress
         if self.standalone:
             atexit.register(self.on_exit)
@@ -300,13 +300,18 @@ if __name__ == '__main__':
     SlTrace.setProps()
     image_hash = ImageHash(image_dir="../../crs_dots/images")
     image_files = image_hash.get_image_files()
+    text_items = ["ONE","TWO", "3", "FOUR"]
     x0 = 300
     y0 = 400
     width = 200
     height = 400
     SlTrace.lg(f"x0={x0}, y0={y0}, width={width}, height={height}", "select_list")                    
+    app = SelectList(items=text_items, position=(x0, y0), size=(width, height))
+    selected_field = app.get_selected()
+    SlTrace.lg(f"text_items: selected_field:{selected_field}")    
+
     app = SelectList(items=image_files, image_hash=image_hash, default_to_files=True,
                      position=(x0, y0), size=(width, height))
     selected_field = app.get_selected()
-    SlTrace.lg(f"selected_field:{selected_field}")    
+    SlTrace.lg(f"image_image: selected_field:{selected_field}")    
     SlTrace.lg("End of test")

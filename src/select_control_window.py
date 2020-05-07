@@ -212,7 +212,10 @@ class SelectControlWindow(Toplevel):
         """
         field = field_name.lower()
         if field not in self.ctls_vars:
-            raise SelectError("Command has no attribute %s" % field)
+            fields_str = ", ".join(self.ctls_vars.keys())
+            SlTrace.lg(f"ctl_vars fields: {fields_str}")
+            raise SelectError(f"get_val_from_ctl: {self.control_prefix} has no field {field}")
+            
         value = self.ctls_vars[field].get()
         return value
 
@@ -294,15 +297,16 @@ class SelectControlWindow(Toplevel):
         self.set_text(text, frame=frame)
 
 
-    def set_vert_sep(self, frame=None):
+    def set_vert_sep(self, frame=None, text="  "):
         """ Add default vertical separator
         :frame:  destination frame
+        :text: text to place in separator
         """
         if frame is None:
             frame = self.base_frame
         sep_frame = Frame(frame)
         sep_frame.pack(side="top", anchor=N)
-        self.set_text("  ", frame=sep_frame)
+        self.set_text(text, frame=sep_frame)
 
 
 
@@ -590,8 +594,7 @@ class SelectControlWindow(Toplevel):
         elif type == bool:
             var = BooleanVar()
         else:
-            raise SelectError("Unsupported content var type %s"
-                              % type)
+            raise SelectError(f"Unsupported content var type {type}")
         
         return var
 
