@@ -614,6 +614,7 @@ class SelectControlWindow(Toplevel):
 
     def set_prop_val(self, name, value):
         """ Set property value as (string)
+        and internal val as value
         :name: field name
         :value: default value, if not found
         """
@@ -634,7 +635,7 @@ class SelectControlWindow(Toplevel):
         :name: field name
         :value: value to set
         """
-        self.vals[name] = value           # Update properties
+        self.vals[name] = value
         
 
 

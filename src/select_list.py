@@ -9,12 +9,11 @@ import atexit
 import time
 
 from select_trace import SlTrace
-from crs_funs import str2val
 from image_hash import ImageHash
 
 class SelectList(Toplevel):
     def __init__(self, tcbase=None, title=None, items=None,
-                 text=None,
+                 entry_text=None,
                  position=None,
                  size=None,
                  image_size=None, image_hash=None, default_to_files=False, cancel_value=None):
@@ -25,7 +24,8 @@ class SelectList(Toplevel):
             files are displayed as images
         :position: (x,y) in pixels on screen
         :size: (width, hight) in in pixels of window
-        :text: text, if any, for text entry field
+        :entry_text: If present, include entry at top of list
+                    Place text as initial entry contents
         :image_size: (width, height) of image in pixels
         :image_hash: access to image files
         :default_to_files: True = default to file names else assume text entry fields
@@ -59,8 +59,8 @@ class SelectList(Toplevel):
         self.tc_mw.geometry(tc_geo)
         if title is None:
             title = "Testing"
-        self.text = text
-        self.text_var = None      # Text Entry
+        self.entry_text = entry_text
+        self.entry_text_var = None      # Text Entry
         self.tc_mw.title(title)
         top_frame = Frame(self.tc_mw)
         top_frame.pack(side="top", fill="both", expand=False)
@@ -132,15 +132,15 @@ class SelectList(Toplevel):
         text_region.pack(side="top", fill="both", expand=True)
         self.update()                           # Show progress
         self.data_by_widget = {}      # Dictionary by widget to  (btn, text_field, image)
-        if n_text == 0:
-            ent_width = int(self.image_size[0]/6)
-            self.add_text_entry(text_region, text=self.text, width=max(max_width, ent_width))                
+        if self.entry_text is not None:
+            max_width = max(int(self.image_size[0]/6), max_width)
+            self.add_text_entry(text_region, text=self.entry_text, width=max_width)                
         for item in items:
             if self.is_image(item):
                 image = self.get_image(self.image_name(item), width=max_width)
                 self.add_image_button(text_region, image=image, text_field=item)
             else:
-                self.add_text_entry(text_region, item, width=max_width)                
+                self.add_text_button(text_region, item, width=max_width+3)                
         self.update()                           # Show progress
         if self.standalone:
             atexit.register(self.on_exit)
@@ -154,27 +154,37 @@ class SelectList(Toplevel):
         text_region.window_create("end", window=btn)
         text_region.insert("end", "\n")
 
+    def add_text_button(self, text_region, text=None, width=None):
+        if text is None:
+            text = ""
+        if width is None:
+            width = len(text) + 3
+        btn = Button(text_region, text=text, command=lambda : self.do_text_button(text))
+        self.data_by_widget[btn] = (btn, text)     # field is what we need
+        text_region.config(state=NORMAL)
+        text_region.window_create("end", window=btn)
+        text_region.insert("end", "\n")
+
     def add_text_entry(self, text_region, text=None, width=None):
         """ Add text entry, records last entry added"""
         if text is None:
             text = ""
-        text_var = StringVar()
-        text_var.set(text)
-        ent = Entry(text_region, width=width, textvariable=text_var, bd=5, relief=RAISED)
-        self.data_by_widget[ent] = (ent, text_var, text)
+        entry_text_var = StringVar()
+        entry_text_var.set(text)
+        ent = Entry(text_region, width=width, textvariable=entry_text_var, bd=5, relief=RIDGE)
+        self.data_by_widget[ent] = (ent, entry_text_var, text)
         text_region.config(state=NORMAL)
         text_region.window_create("end", window=ent)
-        text_region.insert("end", text)
         text_region.insert("end", "\n")
         text_region.config(state=DISABLED)
         ent.bind("<Return>", self.enter_entry)
-        self.text_var = text_var       # Save for use on OK
+        self.entry_text_var = entry_text_var       # Save for use on OK
 
     def ok(self):
         """ OK button pressed
         """
-        if self.text_var is not None:
-            text = self.text_var.get()
+        if self.entry_text_var is not None:
+            text = self.entry_text_var.get()
             self.ok_text(text)
         else:
             self.cancel()
@@ -192,6 +202,9 @@ class SelectList(Toplevel):
         
     def do_image_button(self, text_field):
         self.selected_text_field = text_field
+        
+    def do_text_button(self, text):
+        self.selected_text_field = text
         
     def image_name(self, item_text):
         """ Convert item_text to image name
@@ -275,8 +288,8 @@ class SelectList(Toplevel):
                 
     def enter_entry(self, event):
         widget = event.widget
-        _, text_var, _ = self.data_by_widget[widget]
-        text = text_var.get()
+        _, entry_text_var, _ = self.data_by_widget[widget]
+        text = entry_text_var.get()
         self.ok_text(text)
 
     
@@ -305,13 +318,34 @@ if __name__ == '__main__':
     y0 = 400
     width = 200
     height = 400
-    SlTrace.lg(f"x0={x0}, y0={y0}, width={width}, height={height}", "select_list")                    
-    app = SelectList(items=text_items, position=(x0, y0), size=(width, height))
+    SlTrace.lg(f"x0={x0}, y0={y0}, width={width}, height={height}", "select_list")
+    
+    SlTrace.lg("Text Buttons")                    
+    app = SelectList(items=text_items, position=(x0, y0), size=(width, height),
+                     title="Text Buttons")
     selected_field = app.get_selected()
     SlTrace.lg(f"text_items: selected_field:{selected_field}")    
 
+    SlTrace.lg("Text Buttons + entry")
+    app = SelectList(items=text_items, position=(x0, y0), size=(width, height),
+                     entry_text="Add your own",
+                     title="Text Buttons - with entry")
+    selected_field = app.get_selected()
+    SlTrace.lg(f"text_items + entry: selected_field:{selected_field}")    
+
+    SlTrace.lg("Image Buttons")
     app = SelectList(items=image_files, image_hash=image_hash, default_to_files=True,
+                     title="Image Buttons",
                      position=(x0, y0), size=(width, height))
     selected_field = app.get_selected()
-    SlTrace.lg(f"image_image: selected_field:{selected_field}")    
+    SlTrace.lg(f"image_image: selected_field:{selected_field}")
+
+    SlTrace.lg("Image Buttons + entry")
+    app = SelectList(items=image_files, image_hash=image_hash, default_to_files=True,
+                     title="Image Buttons",
+                     entry_text="Add your own",
+                     position=(x0, y0), size=(width, height))
+    selected_field = app.get_selected()
+    SlTrace.lg(f"image_image: selected_field:{selected_field}")
+        
     SlTrace.lg("End of test")
