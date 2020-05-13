@@ -81,8 +81,9 @@ class SlTrace:
     def clearFlags(cls):
         """ Clear all trace flags
         """
-        cls.traceFlags = {}        # <String, Integer>
-        cls.traceAll = 0        # For "all" trace
+        cls.setupLogging()          # Insure setup
+        cls.traceFlags = {}         # <String, Integer>
+        cls.traceAll = 0            # For "all" trace
 
     
     @classmethod

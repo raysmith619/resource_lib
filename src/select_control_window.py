@@ -153,6 +153,13 @@ class SelectControlWindow(Toplevel):
         top_frame.pack(side="top", fill="x", expand=True)
         self.top_frame = top_frame
         
+        self.title_frame = None     # So can check if title
+        if self.title is not None:
+            self.title_frame = Frame(top_frame)
+            self.title_frame.pack(side="top", fill="x", expand=True)
+            title_label = Label(master=self.title_frame, text=self.title, font="bold")
+            title_label.pack()
+            
         
         bottom_frame = Frame(self.mw, borderwidth=2, relief=SUNKEN)
         bottom_frame.pack(side="bottom", expand=True)
@@ -445,7 +452,7 @@ class SelectControlWindow(Toplevel):
         widget =  Button(frame, text=label, command=command)
         widget.pack(side="left", fill="none", expand=True)
         full_field = self.field_name(field)
-        self.ctls[field] = widget
+        self.ctls[full_field] = widget
         # No variable
 
     def field_name(self, *fields):
