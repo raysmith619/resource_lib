@@ -129,6 +129,9 @@ class ImageHash:
                 default: base: self.default_to_files
         :returns: True if file
         """
+        if text is None or text == "":
+            return False
+
         if default_to_files is None:
             default_to_files = self.default_to_files
             

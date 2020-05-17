@@ -12,18 +12,49 @@ class GPXPoint:
         
     def __str__(self):
         return f"GPXPoint: lat:{self.lat} Long:{self.long}"
-       
+
     def latLong(self):
         return self.lat, self.long
+        
+class GPXTrackSegment:
+    def __init__(self):
+        self.points = []
+        
+    def __str__(self):
+        npts = len(self.points)
+        t_str = f"GPXTrackSegment: ({npts} points"
+        if npts > 0:
+            t_str += f" starting with {self.points[0]}"
+        return t_str
+    
+    def add_points(self, pts):
+        """ Add point(s) to segment
+        :pts: point or list of points (GPXPoint) to add
+        """
+        if not isinstance(pts, list):
+            pts = [pts]         # Make list of one
+        self.points.extend(pts)
+            
+    def get_points(self):
+        return self.points
+       
         
 class GPXFile:
     """ simple point loading 
     """
     def __init__(self, file_name=None):
         self.file_name = file_name
-        self.lon_lat_pts = []
+        self.track_segments = []
         if file_name is not None:
             self.load_file(file_name)
+            
+    def add_segments(self, segments):
+        """ Add zero or more segments to file
+        :segments: 0 or more track segments (GPSTrackSegment)
+        """
+        if not isinstance(segments, list):
+            segments = [segments]       # Make list of one
+        self.track_segments.extend(segments)
     
     def load_file(self, file_name):
         """ load .GPX file (actually a XML file)
@@ -40,7 +71,7 @@ class GPXFile:
                         # since namespace={} doesn't appear to work
         SlTrace.lg(f"bns: base namespace name:{bns}", "gpx_trace")
         
-        self.lon_lat_pts = []           # Initialize / re-initialize
+        self.track_segments = []           # Initialize / re-initialize
         tree = ET.parse(file_name)
         root = tree.getroot()
         SlTrace.lg(f"root:{root} root.tag:{root.tag}", "gpx_trace")
@@ -53,6 +84,8 @@ class GPXFile:
             trksegs = trk.findall(f"{bns}trkseg", ns) # DOESN'T WORK
             for trkseg in trksegs:
                 SlTrace.lg(f"    trkseg: {trkseg}")
+                tseg = GPXTrackSegment()
+                self.add_segments(tseg)
                 trkpts = trkseg.findall(f"{bns}trkpt")
                 if SlTrace.trace("gpx_trace"):
                     npts = len(trkpts)
@@ -61,19 +94,29 @@ class GPXFile:
                         trkpt = trkpts[0]
                         SlTrace.lg(f"        lat: {trkpt.attrib['lat']}"
                                    f" lon: {trkpt.attrib['lon']}", "gpx_trace")
-                    
+                points = []    
                 for trkpt in trkpts:
                     SlTrace.lg(f"        lat: {trkpt.attrib['lat']}"
                                f" lon: {trkpt.attrib['lon']}", "gpx_trace_pts")
                     pt = GPXPoint(lat=float(trkpt.attrib['lat']),
                                   long=float(trkpt.attrib['lon']))
-                    self.lon_lat_pts.append(pt)
-        return self.lon_lat_pts        
-        
+                    points.append(pt)
+                tseg.add_points(points)
+        return self        
+
+    def get_segments(self):
+        """  Get track segments
+        :returns: list of GPXTrackSegment
+        """
+        return self.track_segments
+    
     def get_points(self):
         """ Return list of points
         """
-        return self.lon_lat_pts
+        points = []
+        for seg in self.get_segments():
+            points.extend(seg.get_points())
+        return points
     
 if __name__ == "__main__":
     from tkinter import filedialog
@@ -93,7 +136,9 @@ if __name__ == "__main__":
     
     gpx = GPXFile(gpx_file)
     pts = gpx.get_points()
-    SlTrace.lg(f"{len(pts)} Points")
-    for pt in pts:
-        SlTrace.lg(f"lat: {pt.lat} lon: {pt.long}")
+    segs = gpx.get_segments()
+    nseg = len(segs)
+    SlTrace.lg(f"{nseg} track segments {len(pts)} Points")
+    for i, tseg in enumerate(segs):
+        SlTrace.lg(f"Segment {i+1}: {tseg}")
                     
