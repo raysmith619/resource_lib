@@ -1,6 +1,5 @@
-# select_list_ckbox.py 14Apr2020    crs
+# select_list.py 14Apr2020    crs
 """
-TEMPORARY - to replace select_list with ckbox option
 Select list choose from a list of strings - returning selected
 Adapted from traceControlWindow
 """
@@ -9,12 +8,11 @@ import atexit
 
 import time
 
-from select_trace import SlTrace, SelectError
+from select_trace import SlTrace
 from image_hash import ImageHash
+
 class SelectList(Toplevel):
     def __init__(self, tcbase=None, title=None, items=None,
-                 item_sep=None,
-                 ckbox=False,
                  entry_text=None,
                  position=None,
                  size=None,
@@ -24,10 +22,6 @@ class SelectList(Toplevel):
         :title: Window title
         :items: list of strings / or file names if (<file:....>
             files are displayed as images
-        :item_sep: if present, add in separator line where items list contains
-                matching this matching text
-        :ckbox: True - provide check boxes for all entries
-                returns: list of checked
         :position: (x,y) in pixels on screen
         :size: (width, hight) in in pixels of window
         :entry_text: If present, include entry at top of list
@@ -37,27 +31,22 @@ class SelectList(Toplevel):
         :default_to_files: True = default to file names else assume text entry fields
                         default: false
         """
-        self.done = False           # Set True if done (OK, Cancel)
-        self.ok = False             # Set if OK
-        self.canceled = False
         self.standalone = False      # Set True if standalone operation
-        self.ckbox = ckbox
-        if ckbox:
-            self.ckbox_vars_by_item = {}    # corresponds 1-to-1 self.items
         self.items = items
-        self.item_sep = item_sep
         if image_size is None:
             image_size = (125, 125)
         self.image_size = image_size
         self.default_to_files = default_to_files
         if tcbase is None:
             SlTrace.lg("Standalone SelectList")
-            tcbase = Toplevel()
-            frame = Frame(tcbase)
+            root = Tk()
+            frame = Frame(root)
             frame.pack()
             self.standalone = True
-            ###tcbase.withdraw()
-        self.tc_mw = self.tcbase = tcbase
+            root.withdraw()
+        self.tcbase = tcbase
+        
+        self.tc_mw = Toplevel()
         if position is None:
             position = (800, 100)
         if size is None:
@@ -79,9 +68,9 @@ class SelectList(Toplevel):
         if title is not None:
             title_label = Label(master=self.top_frame, text=title, font="bold")
             title_label.pack(side="top", fill="both", expand=False)
-        ok_button = Button(master=self.top_frame, text="OK", command=self.on_ok)
+        ok_button = Button(master=self.top_frame, text="OK", command=self.ok)
         ok_button.pack(side="left", fill="both", expand=False)
-        cancel_button = Button(master=self.top_frame, text="CANCEL", command=self.on_cancel)
+        cancel_button = Button(master=self.top_frame, text="CANCEL", command=self.cancel)
         cancel_button.pack(side="right", fill="both", expand=False)
         self.tc_mw.protocol("WM_DELETE_WINDOW", self.delete)
         top_frame.pack(side="top", fill="both", expand=False)
@@ -95,6 +84,7 @@ class SelectList(Toplevel):
             image_hash = ImageHash()
         self.image_hash = image_hash
         self.selected_text_field = None
+        self.canceled = False               # Set True if canceled
         self.cancel_value = cancel_value
             
         self.create_items_region(items=items)
@@ -120,8 +110,6 @@ class SelectList(Toplevel):
         nfound = 0
         n_text = 0
         for item in items:
-            if self.item_sep is not None and item == self.item_sep:
-                continue
             if self.is_image(item):
                 width = 10
             else:
@@ -148,21 +136,11 @@ class SelectList(Toplevel):
             max_width = max(int(self.image_size[0]/6), max_width)
             self.add_text_entry(text_region, text=self.entry_text, width=max_width)                
         for item in items:
-            if self.item_sep is not None and item == self.item_sep:
-                self.add_separator(text_region)
-                continue
-            if self.ckbox:
-                if self.is_image(item):
-                    image = self.get_image(self.image_name(item), width=max_width)
-                    self.add_image_ckbox(text_region, image=image, text_field=item)
-                else:
-                    self.add_text_ckbox(text_region, item, width=max_width+3)                
+            if self.is_image(item):
+                image = self.get_image(self.image_name(item), width=max_width)
+                self.add_image_button(text_region, image=image, text_field=item)
             else:
-                if self.is_image(item):
-                    image = self.get_image(self.image_name(item), width=max_width)
-                    self.add_image_button(text_region, image=image, text_field=item)
-                else:
-                    self.add_text_button(text_region, item, width=max_width+3)                
+                self.add_text_button(text_region, item, width=max_width+3)                
         self.update()                           # Show progress
         if self.standalone:
             atexit.register(self.on_exit)
@@ -176,13 +154,6 @@ class SelectList(Toplevel):
         text_region.window_create("end", window=btn)
         text_region.insert("end", "\n")
 
-    def add_separator(self, text_region):
-        """ Add check box entry
-        """
-        text_region.config(state=NORMAL)
-        text_region.insert("end", "\n")
-        text_region.config(state=DISABLED)
-
     def add_text_button(self, text_region, text=None, width=None):
         if text is None:
             text = ""
@@ -194,25 +165,6 @@ class SelectList(Toplevel):
         text_region.window_create("end", window=btn)
         text_region.insert("end", "\n")
 
-    def add_text_ckbox(self, text_region, text=None, width=None):
-        """ Add check box entry
-        """
-        if text is None:
-            text = ""
-        if width is None:
-            width = len(text) + 3
-        ckbox_var = BooleanVar()
-        ckbox = Checkbutton(text_region, text=text, variable=ckbox_var)
-        self.data_by_widget[ckbox] = (ckbox, ckbox_var, text)     # field is what we need
-        self.ckbox_vars_by_item[text] = ckbox_var
-        text_region.config(state=NORMAL)
-        text_region.window_create("end", window=ckbox)
-        text_region.insert("end", "\n")
-        text_region.config(state=DISABLED)
-
-    def add_image_ckbox(self, text_region, image=None, text_field=None):
-        SlTrace.lg("add_image_ckbox - TBD")
-        
     def add_text_entry(self, text_region, text=None, width=None):
         """ Add text entry, records last entry added"""
         if text is None:
@@ -228,23 +180,16 @@ class SelectList(Toplevel):
         ent.bind("<Return>", self.enter_entry)
         self.entry_text_var = entry_text_var       # Save for use on OK
 
-    def on_ok(self):
+    def ok(self):
         """ OK button pressed
         """
-        SlTrace.lg("OK button pressed")
-        if self.ckbox:
-            self.ok = True
-            self.done = True
-            return
-        
         if self.entry_text_var is not None:
             text = self.entry_text_var.get()
             self.ok_text(text)
-            self.ok = True
         else:
-            self.on_cancel()
+            self.cancel()
         
-    def on_cancel(self):
+    def cancel(self):
         """ Cancel button pressed
         """
         self.delete()
@@ -253,18 +198,13 @@ class SelectList(Toplevel):
         """ Called to delete window, e.g. when x was clicked
         """
         self.canceled = True
-        self.done = True
         
         
     def do_image_button(self, text_field):
         self.selected_text_field = text_field
-        self.ok = True
-        self.done = True
         
     def do_text_button(self, text):
         self.selected_text_field = text
-        self.ok = True
-        self.done = True
         
     def image_name(self, item_text):
         """ Convert item_text to image name
@@ -284,43 +224,18 @@ class SelectList(Toplevel):
     def get_selected(self):
         """ Return selected field: <file:....> for selected image file, else text entry
         """
-        if self.ckbox:
-            raise SelectError("Use get_checked, NOT get_selected for ckbox")
-        
-        while not self.done:                
+        while self.selected_text_field is None:
+            if self.canceled:
+                self.delete_tc_window()
+                return self.cancel_value    
+                
             self.sleep(.1)
         self.delete_tc_window()
-        if self.canceled:
-            text_field = self.cancel_value
-        else:
-            text_field = self.selected_text_field
+        text_field = self.selected_text_field
         if self.is_image(text_field):
             text_field = self.image_hash.name2image_string(text_field)
         return text_field
         
-    def get_checked(self):
-        """ Return list of checked: <file:....> for selected image file, else text entry
-        """
-        if not self.ckbox:
-            raise SelectError("Don't use get_checked unless ckbox==True")
-        while not self.done:
-            self.sleep(.1)
-        self.delete_tc_window()
-        if self.canceled:
-            return []    
-                
-        if self.ok:
-            checked_items = []
-            for item in self.items:
-                if self.item_sep is not None and item == self.item_sep:
-                    continue        # Skip separator
-                ckbox_var = self.ckbox_vars_by_item[item]
-                cked = ckbox_var.get()
-                if cked:
-                    checked_items.append(item)
-            return checked_items
-        
-        return []
         
     def on_exit(self):
         """ Close down window on program exit
@@ -382,9 +297,7 @@ class SelectList(Toplevel):
     def ok_text(self, text):
         self.default_to_files = False       # Assuming text (no modification)
         self.selected_text_field = text
-        self.ok = True
-        self.done = True
-        
+
 if __name__ == '__main__':
     def report_change(item, val, cklist=None):
         SlTrace.lg("changed: %s = %d" % (item, val))
@@ -400,21 +313,12 @@ if __name__ == '__main__':
     SlTrace.setProps()
     image_hash = ImageHash(image_dir="../../crs_dots/images")
     image_files = image_hash.get_image_files()
-    item_sep = "====="
-    text_items = ["ONE","TWO", item_sep, "3", "FOUR", item_sep, "5", "6"]
+    text_items = ["ONE","TWO", "3", "FOUR"]
     x0 = 300
     y0 = 400
     width = 200
     height = 400
     SlTrace.lg(f"x0={x0}, y0={y0}, width={width}, height={height}", "select_list")
-    
-    SlTrace.lg("Text ckbox with item_sep=")                    
-    app = SelectList(ckbox=True,
-                     items=text_items, position=(x0, y0), size=(width, height),
-                     item_sep=item_sep,
-                     title="Text Ckbox")
-    selected_field = app.get_checked()
-    SlTrace.lg(f"text_items: selected_field:{selected_field}")    
     
     SlTrace.lg("Text Buttons")                    
     app = SelectList(items=text_items, position=(x0, y0), size=(width, height),
