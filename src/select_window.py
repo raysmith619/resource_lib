@@ -205,6 +205,19 @@ class SelectWindow(Frame):
     def File_Save_tbd(self):
         print("File_Save_menu to be determined")
 
+    def add_menu(self):
+        """ Add pull-down menu to top menu bar
+        :label: pull-down label
+        :returns: menubar, filemenu to which one can
+            filemenu.add_command(label="Log", command=self.LogFile)
+            filemenu.add_separator()
+            ...
+            menubar.add_cascade(label="menu-title", menu=filemenu)
+           
+        """
+        filemenu = Menu(self.menubar, tearoff=0)
+        return self.menubar, filemenu
+ 
     def add_menu_command(self, label=None, call_back=None):
         """ Add simple menu command to top menu
         :label: command label
