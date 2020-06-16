@@ -6,6 +6,7 @@ import re
 from functools import cmp_to_key
 
 from select_error import SelectError, SelectErrorInput
+import select_trace
 
 def anumcmp(a,b):
     """ Alphanumeric comaprison
@@ -69,6 +70,9 @@ def str2bool(v):
     if v.lower() in ('yes', 'true', 't', 'y', '1'):
         return True
     elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    elif v == "0.0":
+        select_trace.SlTrace.lg(f"Treat {v} as False")
         return False
     else:
         raise SelectError('Not a recognized Boolean value %s' % v)

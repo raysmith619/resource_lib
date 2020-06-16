@@ -411,6 +411,7 @@ class SelectControlWindow(Toplevel):
 
     def set_entry(self, frame=None, field=None,
                         label=None, value=None,
+                        enter_command=None,
                         width=None):
         """ Set up entry
         :frame: containing frame
@@ -418,6 +419,8 @@ class SelectControlWindow(Toplevel):
         :label: field label default: no label
         :value: value to set, iff not in properties
                 value's variable type is used as the entry content's type
+        :enter_command:    Command to call if ENTER is keyed when
+                field is in focus
         """
         if frame is None:
             frame = self.base_frame
@@ -434,6 +437,8 @@ class SelectControlWindow(Toplevel):
         self.ctls[full_field] = widget
         self.ctls_vars[full_field] = content
         self.set_prop_val(full_field, value)
+        if enter_command is not None:
+            widget.bind ("<Return>", enter_command)
 
 
     def set_button(self, frame=None, field=None,
