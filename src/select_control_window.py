@@ -212,6 +212,19 @@ class SelectControlWindow(Toplevel):
         if self.mw is not None:
             self.mw.update()
             
+    def get_ctl(self, field_name):
+        """ Get field ctl
+        :field_name: field name
+        """
+        field = field_name.lower()
+        if field not in self.ctls_vars:
+            fields_str = ", ".join(self.ctls_vars.keys())
+            SlTrace.lg(f"ctl_vars fields: {fields_str}")
+            raise SelectError(f"get_ctl: {self.control_prefix} has no field {field}")
+            
+        ctl = self.ctls[field]
+        return ctl
+            
     def get_val_from_ctl(self, field_name):
         """ Get value from field
         Does not set value
@@ -421,6 +434,7 @@ class SelectControlWindow(Toplevel):
                 value's variable type is used as the entry content's type
         :enter_command:    Command to call if ENTER is keyed when
                 field is in focus
+        :returns: entry widget
         """
         if frame is None:
             frame = self.base_frame
@@ -439,7 +453,7 @@ class SelectControlWindow(Toplevel):
         self.set_prop_val(full_field, value)
         if enter_command is not None:
             widget.bind ("<Return>", enter_command)
-
+        return widget
 
     def set_button(self, frame=None, field=None,
                         label=None, command=None):

@@ -7,6 +7,8 @@ from functools import cmp_to_key
 
 from select_error import SelectError, SelectErrorInput
 import select_trace
+from numpy import ALLOW_THREADS
+from pip._vendor.cachecontrol.cache import BaseCache
 
 def anumcmp(a,b):
     """ Alphanumeric comaprison
@@ -32,26 +34,58 @@ def dotcmp(a,b):
         e.g.  a.123.b is greater than a.33.b
     :a: first string
     :b: second string
+        To facilitate comparing a123, a33,... a23b34c and a23c,...
+        After spliting on ANY non word char, we find all alpha, digit strings
+        We use re.findall because re.split does not support zero length
+        re
     :returns: 1,0,-1 if a>b, a==b, a<b
     """
-    a_dots = a.split(".")
-    b_dots = b.split(".")
+    a_ds = re.split(r'\W', a)
+    b_ds = re.split(r'\W', b)
+    a_dots = []
+    for ad in a_ds:
+        ads = re.findall(r'[^\W\d_]+|\d+', ad)
+        if len(ads) > 0:
+            a_dots.append(ads)
+        else:
+            a_dots.append(ad)   # No change
+
+    b_dots = []
+    for bd in b_ds:
+        bds = re.findall(r'[^\W\d_]+|\d+', bd)
+        if len(bds) > 0:
+            b_dots.append(bds)
+        else:
+            b_dots.append(bd)   # No change
+        
     for i in range(len(a_dots)):
         asec = a_dots[i]
         if i >= len(b_dots):
             return 1        # a longer
         bsec = b_dots[i]
-        cmp = anumcmp(asec, bsec)
-        if cmp > 0:
-            return 1
-        
-        if cmp < 0:
+        if not isinstance(asec, list):
+            asec = [asec]
+        if not isinstance(bsec, list):
+            bsec = [bsec]
+        for i in range(len(asec)):
+            if i >= len(bsec):
+                return 1
+            
+            ase = asec[i]
+            bse = bsec[i]
+            cmp = anumcmp(ase, bse)
+            if cmp > 0:
+                return 1
+            
+            if cmp < 0:
+                return -1
+        if len(asec) < len(bsec):
             return -1
+            
     if len(b_dots) > len(a_dots):
         return -1
     
     return 1
-
 
 def dotcmp_keyfunc():
     """ Return dotcmp as a key function for sorted
@@ -114,6 +148,16 @@ if __name__ == "__main__":
         SlTrace.lg(f"Sorted list: {srt_list}")
         SlTrace.lg()
 
+    SlTrace.lg("Testing dotcmp - extended")
+    dot_list = ["a10.b.c", "a2.b.c", "a3.b2.c", "a2.b1.c", "a2.b1.c2"]
+    test_it(dot_list)
+    dot_list = ["a10_b_c", "a2+b+c", "a3-b2-c", "a2=b1+c", "a2#b1#c2"]
+    test_it(dot_list)
+    dot_list = ["p1", "p10", "p3"]
+    test_it(dot_list)
+    dot_list = ["12a", "12b", "1a", "2", "10b", "11"]
+    test_it(dot_list)
+    
     SlTrace.lg("Testing dotcmp")
     dot_list = ["a.b.c", "1.2.3", "4.5.6", "7.8.9", "10.11.12", "13.14", "10.11", "4.5", "1", "2"]
     test_it(dot_list)
@@ -122,5 +166,6 @@ if __name__ == "__main__":
     test_it(dot2)
     dot2 = ["a1.b1.c1", "a.10", "a.10.1", "a.10.10", "a.9.10", "a.9", "a.2", "a.3", "a.21.c", "b.23.c", "b.100.c.d", "a.100.1"]
     test_it(dot2)
+    
     SlTrace.lg("End of test")
     
