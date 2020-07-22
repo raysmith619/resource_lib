@@ -225,6 +225,11 @@ class SelectWindow(Frame):
         """
         self.menubar.add_command(label=label, command=call_back)
 
+    def add_menu_separator(self):
+        """ Add simple menu separator to top menu
+        """
+        self.menubar.add_separator()
+
 
     def command_proc(self):
         """ Setup command processing options / action

@@ -79,6 +79,7 @@ class SelectControlWindow(Toplevel):
                 win_y=None,
                 win_width=None,
                 win_height=None,
+                enter_command=None,
                  ):
         """ Control attributes
         :play_control:        special for game play
@@ -89,6 +90,7 @@ class SelectControlWindow(Toplevel):
         :win_y:  New window y position default: use properties entry
         :win_width: New window width default: use properties entry
         :win_height: New window height default: use properties entry
+        :enter_command: if present, the common entry element keyboard ENTER command
         """
         SelectControlWindow.instance_no += 1
         self.play_control = play_control
@@ -109,6 +111,7 @@ class SelectControlWindow(Toplevel):
         self.ctls_vars = {}     # Dictionary of field control widget variables
         self.display = display   # Done in instance, if at all
         self.set_cmd = set_cmd
+        self.enter_command = enter_command
         ndim_spec = 0
         if win_x is not None:
             self.set_prop_val("win_x", win_x)
@@ -233,12 +236,22 @@ class SelectControlWindow(Toplevel):
         field = field_name.lower()
         if field not in self.ctls_vars:
             fields_str = ", ".join(self.ctls_vars.keys())
-            SlTrace.lg(f"ctl_vars fields: {fields_str}")
-            raise SelectError(f"get_val_from_ctl: {self.control_prefix} has no field {field}")
+            raise SelectError(f"get_val_from_ctl: '{self.control_prefix}'"
+                              f" has no field '{field}'"
+                              f"\n\nctl_vars fields: {fields_str}\n")
             
         value = self.ctls_vars[field].get()
         return value
 
+    def update_from_ctl(self, field_name):
+        """ Get value from field, and update properties
+        :field_name: field name
+        :returns: value from field
+        """
+        val = self.get_val_from_ctl(field_name)
+        self.set_prop_val(field_name, val)
+        return val
+        
     
     def set_vals(self):
         """ Read form, if displayed, and update internal values
@@ -361,6 +374,7 @@ class SelectControlWindow(Toplevel):
         widget.pack(side="left", fill="none", expand=True)
         self.ctls[full_field] = widget
         self.ctls_vars[full_field] = content
+        SlTrace.lg(f"set_check_box adding field:{full_field}")
         self.set_prop_val(full_field, value)
 
     def check_box_change(self):
@@ -434,6 +448,7 @@ class SelectControlWindow(Toplevel):
                 value's variable type is used as the entry content's type
         :enter_command:    Command to call if ENTER is keyed when
                 field is in focus
+                default: use self.enter_command, if present
         :returns: entry widget
         """
         if frame is None:
@@ -453,6 +468,9 @@ class SelectControlWindow(Toplevel):
         self.set_prop_val(full_field, value)
         if enter_command is not None:
             widget.bind ("<Return>", enter_command)
+        elif self.enter_command is not None:
+            widget.bind ("<Return>", self.enter_command)
+            
         return widget
 
     def set_button(self, frame=None, field=None,
@@ -483,7 +501,7 @@ class SelectControlWindow(Toplevel):
             if field_name != "":
                 field_name += "."
             field_name += field
-        return field_name
+        return field_name.lower()
             
     def win_size_event(self, event):
         """ Window sizing event
@@ -628,9 +646,10 @@ class SelectControlWindow(Toplevel):
     def set_ctl_val(self, field_name, val):
         """ Set control field
         Creates field variable if not already present
-        :field_name: field name
+        :field_name: field name, case insensitive name
         :val: value to display
         """
+        field_name = field_name.lower()
         if field_name not in self.ctls_vars:
             content_var = self.content_var(type(val))
             self.ctls_vars[field_name] = content_var

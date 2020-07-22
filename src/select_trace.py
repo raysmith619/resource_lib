@@ -65,6 +65,9 @@ class SlTrace:
     def getDefaultProps(cls):
         """ Return properties access
         """
+        if cls.defaultProps is None:
+            cls.setupLogging()
+            cls.setProps()
         return cls.defaultProps
     
     @classmethod
@@ -435,7 +438,7 @@ class SlTrace:
                   JavaProperties (only in sn2)) tuple
         """
         if sn is None:
-            sn = cls.defaultProps
+            sn = cls.getDefaultProps()
         return sn.snapshot_properties(sn=sn, req=req, req_not=req_not,
                                       req_match=req_match, req_match_not=req_match_not)
 
@@ -665,7 +668,7 @@ class SlTrace:
                 default: All keys
         """
         if snapshot is None:
-            snapshot = cls.defaultProps
+            snapshot = cls.getDefaultProps()
         props = snapshot.getPropKeys(startswith=startswith)
         return props
 
@@ -698,7 +701,8 @@ class SlTrace:
     def getPropPath(cls):
         """ Returns absolute Properties file path name
         """
-        abs_propName = cls.defaultProps.get_path()
+        defaultProps = cls.getDefaultProps()
+        abs_propName = defaultProps.get_path()
         return abs_propName
 
 
@@ -793,9 +797,10 @@ class SlTrace:
         """
         load trace flags from properties
         """
-        propfile = cls.defaultProps.get_path()
+        defaultProps = cls.getDefaultProps()
+        propfile = defaultProps.get_path()
         SlTrace.lg(f"Trace levels from properties file {propfile}")
-        props = cls.defaultProps.get_properties()
+        props = defaultProps.get_properties()
         pattern = r"^\s*" + cls.traceFlagPrefix + r"\.(.*)"
         r = re.compile(pattern)
         ### TBD I need to think about what is going on here
@@ -949,11 +954,9 @@ class SlTrace:
     def deleteProperty(cls, key):
         """ Delete property from properties file
         """
-        if cls.defaultProps is None:
-            cls.setupLogging()
-            cls.setProps()
+        defaultProps = cls.getDefaultProps()
         if cls.hasProp(key):
-            cls.defaultProps.deleteProperty(key)
+            defaultProps.deleteProperty(key)
 
 
     @classmethod
@@ -963,19 +966,15 @@ class SlTrace:
         :default: return if Not found default: ""
         ###@return property value, "" if none
         """
-        if cls.defaultProps is None:
-            cls.setupLogging()
-            cls.setProps()
-        return cls.defaultProps.getProperty(key, default)
+        defaultProps = cls.getDefaultProps()
+        return defaultProps.getProperty(key, default)
 
 
     @classmethod
     def setProperty(cls, key, value, onlyifnew=False):
-        if cls.defaultProps is None:
-            cls.setupLogging()
-            cls.setProps()
+        defaultProps = cls.getDefaultProps()
         if not cls.hasProp(key) or not onlyifnew:
-            cls.defaultProps.setProperty(key, value)
+            defaultProps.setProperty(key, value)
 
     @classmethod
     def getLogFile(cls):
@@ -1105,7 +1104,8 @@ class SlTrace:
         :key: property key
         :returns: True iff property is present
         """
-        return cls.defaultProps.hasProp(key)
+        defaultProps = cls.getDefaultProps()
+        return defaultProps.hasProp(key)
             
     
 if __name__ == "__main__":
