@@ -31,32 +31,35 @@ class ImageHash:
         """ Get base image path
         """
                 
-    def get_image(self, key, size=None):
+    def get_image(self, key, size=None, photoimage=True):
         """ Get image if one stored
-        :key: key to image
+        :key: key to image e.g. file name
         :size: (x,y) scale in pixels
                 if present, image file will be loaded and scaled and stored
-                default: if image not present
-                        None will be returned
+                default: no resizing is done
+        :photoimage: True - return ImageTk.PhotoImage
+                    False: return loaded image
+                    default: photoimage
+        If image not present None will be returned
+        :returns: saved image if image present else None
         
         NOTE: image must be independently stored till no longer needed
         Refer to http://effbot.org/pyfaq/why-do-my-tkinter-images-not-appear.htm
 
-        :key: unique key e.g. file name
-        :returns: saved image if image present else None
         """
         if key in self.images_by_key:
             return self.images_by_key[key]
-
-        if size is None:        
-            return None
-
+        
         load_image = self.get_load_image(key)
         if load_image is None:
             return None
         
-        width,height = size
-        load_image = load_image.resize((int(width), int(height)), Image.ANTIALIAS)
+        if size is not None:
+            width,height = size
+            load_image = load_image.resize((int(width), int(height)), Image.ANTIALIAS)
+        if not photoimage:
+            return load_image
+        
         image = ImageTk.PhotoImage(load_image)
         self.add_image(key, image)
         load_image.close()      # Release resources
@@ -173,7 +176,7 @@ class ImageHash:
         self.images_by_key = {}
 
     def set_image_destroy(self, destroy_function):
-        """ Set custome image resource releasing function
+        """ Set custom image resource releasing function
         :destroy_function: will be called with image (destroy_function(image)
         Default operation no special releasing action
         """

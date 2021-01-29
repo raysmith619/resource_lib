@@ -34,14 +34,14 @@ class SelectWindow(Frame):
                  cmd_proc=False,
                  cmd_file=None,
                  arrange=None,
-                 arrange_selection=True,
+                 arrange_selection=False,
                  game_control=None,
                  games=[],          # text, proc pairs
                  actions=[],
                  ):
         """ Setup window controls
         :arrange_selection: - incude arrangement controls
-                        default: True
+                        default: False
         """
         # parameters that you want to send through the Frame class. 
         Frame.__init__(self, master)   
@@ -153,6 +153,10 @@ class SelectWindow(Frame):
         geo_str = "%dx%d+%d+%d" % (win_width, win_height, win_x, win_y)
         self.master.geometry(geo_str)
         
+    def geometry(self, geo):
+        """ Adjust parent window size/location
+        """
+        self.master.geometry(geo)
     
     def get_prop_key(self, name):
         """ Translate full  control name into full Properties file key
@@ -442,6 +446,7 @@ if __name__ == "__main__":
                     )
 
     show_trace = True
+    show_trace = False
     if show_trace:
         app.trace_control()
 

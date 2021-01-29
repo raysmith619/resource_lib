@@ -281,8 +281,10 @@ class SelectList(Toplevel):
         image = self.image_hash.get_image(item_text, size=image_size)
         return image
         
-    def get_selected(self):
+    def get_selected(self, return_text=False):
         """ Return selected field: <file:....> for selected image file, else text entry
+        :give_text: return text value
+                default: return image string, if image
         """
         if self.ckbox:
             raise SelectError("Use get_checked, NOT get_selected for ckbox")
@@ -294,6 +296,9 @@ class SelectList(Toplevel):
             text_field = self.cancel_value
         else:
             text_field = self.selected_text_field
+        if return_text:
+            return text_field
+        
         if self.is_image(text_field):
             text_field = self.image_hash.name2image_string(text_field)
         return text_field
