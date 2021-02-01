@@ -403,7 +403,7 @@ if __name__ == '__main__':
     ###frame = Frame(root)
     ###frame.pack()
     SlTrace.setProps()
-    image_hash = ImageHash(image_dir="../../crs_dots/images")
+    image_hash = ImageHash(image_dir="../images/miscellaneous")
     image_files = image_hash.get_image_files()
     item_sep = "====="
     text_items = ["ONE","TWO", item_sep, "3", "FOUR", item_sep, "5", "6"]

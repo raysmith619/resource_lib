@@ -65,25 +65,30 @@ class ImageHash:
         load_image.close()      # Release resources
         return image
 
-    def get_image_files(self, name=None):
+    def get_image_files(self, file_dir=None, name=None):
         """ Get list of image files given name
+        :file_dir: file directory
+                default: self.image_path
         :name: selection name
             default: all images
         :returns: list of absolute paths to image files
         """
-        file_dir = self.image_path
+        if file_dir is None:
+            file_dir = self.image_path
         if name is not None:
-            file_dir += os.path.join(file_dir, name)
+            file_dir = os.path.join(file_dir, name)
         names = os.listdir(file_dir)
         image_files = []
-        for name in names:
+        for name in sorted(names):
             path = os.path.join(file_dir, name)
-            try:
-                im=Image.open(path)
-                image_files.append(path)
-                im.close() 
-            except IOError:
-                SlTrace.lg(f"Not an image file: {path}")
+            if (os.path.exists(path)
+                 and not os.path.isdir(path)):
+                try:
+                    im=Image.open(path)
+                    image_files.append(path)
+                    im.close() 
+                except IOError:
+                    SlTrace.lg(f"Not an image file: {path}")
         return image_files   
 
     def width2size(self, width=None):

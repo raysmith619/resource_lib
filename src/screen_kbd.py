@@ -107,12 +107,16 @@ class ScreenKbd:
             '1' : "arrow_225.png", '2' : "arrow_270.png",       '3' : "arrow_315.png",
             '0' : "rotate_right.png",
 
+            '[' : "princesses.png",
+            ']' : "other_stuff.png",
+
             'a' : "size_decrease.png",
             'd' : "shapes_one.png",
             'f' : "lines_one.png",
             'h' : "drawing_help_me.png",
             'j' : "drawing_lion2.png",
             'k' : "images_next.png",
+            'l' : "family.png",
             'q' : "size_increase.png",
             's' : "shapes_next3.png",
             't' : "width_increase.png",
