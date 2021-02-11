@@ -41,15 +41,24 @@ class ScreenKbd:
                  title="On-screen Keyboard",
                  on_kbd=None, image_dir=None,
                  key_tran = None,
+                 key_btn_size_x = 50,
+                 key_btn_size_y = 40,
+
                  text_rows=3):
         """ Setup Screen Keyboard
         :master: master element
         :on_kbd: function of one argument, to be called
                 when key button is clicked/pressed
                 default: no call
+        :key_btn_size_x:  keyboard key x size in pixels
+                default: 50
+        :key_btn_size_y:  keyboard key y size in pixels
+                default: 40
         :text_rows: Number of rows in text display
                 default = 3
         """
+        SlTrace.lg("Setup Screen Keyboard")
+        SlTrace.lg(f"Initial image_dir: {image_dir}")
         self.kbd_frame = Frame(master)
         self.on_kbd = on_kbd
         if key_tran is None:
@@ -141,18 +150,21 @@ class ScreenKbd:
             src_dir = os.path.dirname(os.path.abspath(__file__))
             SlTrace.lg(f'src_dir:{src_dir}')
             prj_dir = os.path.dirname(src_dir)
-            SlTrace.lg(f'prj_dir:{prj_dir}')
-            image_dir = os.path.join(prj_dir, "images", "keys")
+            SlTrace.lg("Using src_dir for dist")
+            image_dir = os.path.join(src_dir, "images", "keys")
+            SlTrace.lg(f"Try keys dir: {image_dir}")
             if not os.path.exists(image_dir):
-                image_dir = src_dir     # assume images with src
+                SlTrace.lg(f"Not here - try development dir")
+                image_dir = os.path.join(prj_dir, "images", "keys")
+                SlTrace.lg(f"Try src dir: {image_dir}")
                 
         image_dir = os.path.abspath(image_dir)
         SlTrace.lg(f"image_dir:{image_dir}")
         self.image_dir = image_dir
         
         self.alt_key_faces = {}
-        btn_size_x = 50
-        btn_size_y = 40
+        btn_size_x = key_btn_size_x
+        btn_size_y = key_btn_size_y
         for alt_key in self.alt_key_files:
             alt_key_file = self.alt_key_files[alt_key]
             if alt_key_file is not None:
@@ -326,10 +338,14 @@ class ScreenKbd:
         
 
 if __name__ == "__main__":
+    key_btn_size_x = 30
+    key_btn_size_y = 20 
     keyboardApp = tk.Tk()   # initialise the tkinter app
     keyboardApp.config(bg='powder blue')    # background
     #keyboardApp.resizable(0, 0)     # disable resizeable property
-    sk = ScreenKbd(keyboardApp, title="Testing ScreenKbd")
+    sk = ScreenKbd(keyboardApp, title="Testing ScreenKbd",
+                   key_btn_size_x = key_btn_size_x,
+                   key_btn_size_y = key_btn_size_y)
     
     # run the main loop of the app
     keyboardApp.mainloop()

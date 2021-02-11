@@ -773,7 +773,14 @@ class SlTrace:
         cls.setProperty(flag_key, level, onlyifnew=True)
 
     @classmethod
-    def report(cls, msg):
+    def report(cls, msg, log_it=True):
+        """ report message in dialog box
+        :msg: message to report
+        :log_it: also print msg to log
+                default: log message
+        """
+        if log_it:
+            cls.lg(msg)
         if cls.mw is None:
             cls.mw_standalone_mw = True
             cls.mw = Tk()       # create one
