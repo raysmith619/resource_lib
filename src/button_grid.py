@@ -12,12 +12,15 @@ from select_trace import SlTrace
 class ButtonInfo:
     """ Button infos btn, btn base image
     """
-    def __init__(self, btn, row=None, col=None,
-                 base_image=None, file_key=None):
+    def __init__(self, btn, text=None,
+                 row=None, col=None,
+                 base_image=None, btn_image=None, file_key=None):
+        self.text = text
         self.btn = btn
         self.row = row
-        self_col = col
+        self.col = col
         self.base_image = base_image
+        self.btn_image = btn_image      # Scaled/PhotoImaged
         self.file_key = file_key
 '''
 def key_attr(type=None, text=None, image=None, column=None,
@@ -47,8 +50,8 @@ class ButtonGrid:
                  im_fract_x = 1.0, im_fract_y=.8,
                  nrows=4, ncols=8,
                  win_width=1000, win_height=600,
-                 chg_fract=.05,
-                 btn_padx=0, btn_pady=0, btn_bd=3,
+                 chg_fract=.01,
+                 btn_padx=2, btn_pady=2, btn_bd=3,
                  btn_font=('arial', 12, 'bold'),
                  ):
         """ Setup Button Grid
@@ -100,8 +103,15 @@ class ButtonGrid:
         :win_width: grid window width default: 1000
         :win_height: grid window height default: 600
         """
-        self.update_button_images_count = 0     # set update flag
-        self.btn_image_store = []
+        self.ims = []       # TFD
+
+        small = 2
+        small_image = Image.new("RGB", (small, small), (255,255,255))
+        small_btn_image = ImageTk.PhotoImage(small_image)
+        self.blank_image = small_btn_image
+
+        self.show_images = True         # False disables image showing
+        self.enable_image_update(False)   # Set True to enable image size update
         self.btn_infos = []          # button info in order of creation
         self.master = master
         if image_dir is None:
@@ -150,6 +160,11 @@ class ButtonGrid:
         self.win_y = 0
         self.win_width_orig = self.win_width = win_width
         self.win_height_orig = self.win_height = win_height
+                                # Setup for next sizing test
+        btn_size_x, btn_size_y = self.get_btn_image_size()
+        self.btn_image_size_x_prev = btn_size_x # Save for new size
+        self.btn_image_size_y_prev = btn_size_y
+        
         btn_size_x, btn_size_y = self.get_btn_image_size()
         self.btn_image_size_x_prev = btn_size_x
         self.btn_image_size_y_prev = btn_size_y
@@ -179,6 +194,7 @@ class ButtonGrid:
                 btn_foreground = "black"
                 btn_compound = BOTTOM
                 btn_width = btn_size_x
+                base_image = None
                 if len(specs) == 0:
                     SlTrace.lg("Unexpected end to specifications"
                                f" row_current:{row_current} col_current: {col_current}"
@@ -213,14 +229,13 @@ class ButtonGrid:
                         SlTrace.lg(f"We Can't find image file for {btn_text}"
                                            f"\n looking in: {spec_image_file}")
                         continue
-                    SlTrace.lg(f"spec_image_file: {spec_image_file}")
+                    SlTrace.lg(f"spec_image_file: {spec_image_file}", "btn")
                     base_image = Image.open(spec_image_file)
                     scaled_image = base_image.resize((int(btn_size_x),
                                                       int(btn_size_y)))
                     btn_image = ImageTk.PhotoImage(scaled_image)
-                    self.btn_image_store.append(btn_image)  # save ref to 
                                                             # avoid loss
-                SlTrace.lg(f"btn: btn_text:{btn_text} btn_image: {btn_image}")
+                SlTrace.lg(f"btn: btn_text:{btn_text} btn_image: {btn_image}", "btn")
                 if "column" not in spec:
                     col_current += 1
                 else:
@@ -255,14 +270,18 @@ class ButtonGrid:
                 if btn_image is None:
                     bti_image = btn_image
                 else:
-                    bti_image = base_image
-                # Store to be updated, if bti_image is not None
-                self.btn_infos.append(ButtonInfo(btn=btn,
+                    bti_image = btn_image
+                btn_info = ButtonInfo(btn=btn,
+                                    text=btn_text,
                                     row=row_current,
                                     col=col_current,
-                                    base_image=bti_image,
-                                    file_key=spec_image_file))
+                                    base_image=base_image,
+                                    btn_image=bti_image,
+                                    file_key=spec_image_file,
+                                    )
+                self.ims.append(bti_image)       # TFD
                 btn.grid(sticky=N+S+E+W)  
+                self.btn_infos.append(btn_info)
                 btn.rowconfigure(0, weight=1)
                 btn.columnconfigure(0, weight=1)
 
@@ -272,6 +291,25 @@ class ButtonGrid:
         if self.on_kbd is not None:
             self.on_kbd(input)
 
+    def do_shift(self, shift_on=True):
+        """ Shift letters
+        :shift_on: Put shift on, adjust letters
+                    default: True
+        """
+        self.shift_on = shift_on
+        for btn_info in self.btn_infos:
+            if btn_info.text is not None and len(btn_info.text) == 1:
+                text = btn_info.text
+                text = text.upper() if self.shift_on else text.lower()
+                btn_info.btn.configure(text=text)
+            
+        
+        
+    def enable_image_update(self, enable=True):
+        """ Enable/Disable image size update
+        :enable: True - enable default: True
+        """
+        self.image_update_enabled = enable
 
     def get_btn_image_size(self):
         """ Calculate button's image size based on
@@ -295,7 +333,8 @@ class ButtonGrid:
         win_width = self.master.winfo_width()
         win_height = self.master.winfo_height()
         SlTrace.lg(f"win_x:{win_x} win_y:{win_y}"
-                   f" win_width: {win_width} win_height: {win_height}")
+                   f" win_width: {win_width} win_height: {win_height}",
+                   "win_size_event")
 
         '''
         self.set_prop_val("win_x", win_x)
@@ -306,25 +345,172 @@ class ButtonGrid:
         self.win_x = win_x
         self.win_y = win_y
         self.win_width = win_width
-        self.win_heigh = win_height
+        self.win_height = win_height
+        
         btn_image_size_x_new, btn_image_size_y_new = self.get_btn_image_size()
-        xfchg = abs((btn_image_size_x_new-self.btn_image_size_x_prev)/self.btn_image_size_x_prev) 
-        yfchg = abs((btn_image_size_y_new-self.btn_image_size_y_prev)/self.btn_image_size_y_prev) 
+        xfchg = self.get_chg_fract(btn_image_size_x_new, self.btn_image_size_x_prev) 
+        yfchg = self.get_chg_fract(btn_image_size_y_new, self.btn_image_size_y_prev) 
         if xfchg > self.chg_fract or yfchg > self.chg_fract:
-            self.update_button_images()
+            self.start_update_button_images()
+        self.master.update_idletasks()  # Allow size change to restart
+
+
+    def get_chg_fract(self, new_val, old_val):
+        """ maximum chg
+        :new_val: new value
+        :old_val: old value
+        :returns: largest fraction change
+        """
+        new_ratio = new_val/old_val
+        old_ratio = 1/new_ratio
+        chg_ratio = min(new_ratio, old_ratio)
+        chg_fract = 1-chg_ratio
+        return chg_fract
+
+
+    def set_images(self, show=False):
+        self.show_images = show
+        for btn_info in self.btn_infos:
+            self.reimage(btn_info)            
+
+    def set_btn_image(self, btn_infos=None, image=None):
+        """ Set button (btn_infos) image displayed
+        :btn_infos: ButtonInfo, or list of ButtonInfos
+        :image" text - image file
+                Image - image
+        """
+        btn_size_x, btn_size_y = self.get_btn_image_size()
+        if not isinstance(btn_infos, list):
+            btn_infos = [btn_infos]
+        if isinstance(image, str):
+            spec_image_file = image
+            if not os.path.isabs(spec_image_file):
+                spec_image_file = os.path.join(self.image_dir, spec_image_file)
+                if not os.path.isabs(spec_image_file):
+                    SlTrace.lg(f"key path:{spec_image_file}", "trace_keys")       
+                spec_image_file = os.path.abspath(spec_image_file)
+            SlTrace.lg(f"key path:{spec_image_file}", "trace_keys")
+            if not os.path.exists(spec_image_file):
+                SlTrace.lg(f"We Can't find image file for {btn_infos}"
+                                   f"\n looking in: {spec_image_file}")
             
+            SlTrace.lg(f"spec_image_file: {spec_image_file}", "btn")
+            base_image = Image.open(spec_image_file)
+            scaled_image = base_image.resize((int(btn_size_x),
+                                              int(btn_size_y)))
+            btn_image = ImageTk.PhotoImage(scaled_image)
+        elif image is None:
+            btn_image = self.blank_image
+        else:
+            btn_image = image
+        for btn_info in btn_infos:
+            btn = btn_info.btn
+            if btn_image is None:
+                btn_image = self.small_image
+            btn_info.btn_image = btn_image      # Change so resizing retains view
+            btn.config(image=btn_image, compound=BOTTOM)    
+
+    def get_btn_infos(self, key=None, row=None, col=None):
+        """ Get buttons
+        :key: if not None, must match
+        :row: if not None, must match
+        :col: if not None, must match
+        """
+        bis = []
+        for btn_info in self.btn_infos:
+            if key is not None and btn_info.text != key:
+                continue
+            if row is not None and btn_info.row != row:
+                continue
+            if col is not None and btn_info.col != col:
+                continue
+            bis.append(btn_info)
+        return bis            
+    
+    def start_update_button_images(self):
+        """ Start phased button image size updating which updates
+        the button sizes one at a time till all images fit the newest size
+        """
+                                # Setup for next test
+        btn_size_x, btn_size_y = self.get_btn_image_size()
+        self.btn_image_size_x_prev = btn_size_x # Save for new size
+        self.btn_image_size_y_prev = btn_size_y
+        SlTrace.lg(f"start update_button_images: x: {btn_size_x} y: {btn_size_y}")
+        self.update_image_index = 0
+        if self.image_update_enabled and SlTrace.trace("enable_image_update"):
+            SlTrace.lg(f"delayed update_button_image")
+            self.master.after(0, self.update_button_image)
+        
+    def update_button_image(self):
+        """ Update next button image size
+        If more images to go, set next call
+        """
+        SlTrace.lg(f"update_button_image index: {self.update_image_index}",
+                   "image_update")
+        if self.update_image_index >= len(self.btn_infos):
+            SlTrace.lg(f"update_buton_image complete")
+            return              # Update complete - no more
+        
+        btn_info = self.btn_infos[self.update_image_index]
+        self.reimage(btn_info=btn_info)
+        self.update_image_index += 1
+        self.master.after(0, self.update_button_image)
+
+    def reimage(self, btn_info=None, base_image=None):
+        """ Change button image
+        :btn_info: ButtonInfo
+        :base_image: alternate button image
+                default: use btn_info.base_mage
+        """
+        btn = btn_info.btn
+        if base_image is None:
+            base_image = btn_info.base_image
+        if base_image is None:
+            return
+    
+        btn_size_x, btn_size_y = self.get_btn_image_size()
+        if self.show_images:
+            btn_size_x, btn_size_y = self.get_btn_image_size()
+            btn = btn_info.btn
+            base_image = btn_info.base_image
+            
+            scaled_image = base_image.resize((int(btn_size_x),
+                                              int(btn_size_y)))
+        else:    
+            small = 2
+            scaled_image = Image.new("RGB", (small, small), (255,255,255))
+        btn_image = ImageTk.PhotoImage(scaled_image)
+        self.btn_image_store(btn_image, btn_info=btn_info)  # save ref to 
+        btn.config(image=btn_image) # store new image
+        SlTrace.lg(f"update_button_image:[{self.update_image_index}]"
+                   f" btn_size_x: {btn_size_x}"
+                   f" btn_size_y: {btn_size_y}",
+                   "image_update")
+
+    def btn_image_store(self, btn_image, btn_info):
+        """ Store new button image, deleating old one if present
+        Note: storage is required to avoid probable early deletion
+        :btn_image: new button image
+        :btn_info: current button info
+        """
+        if btn_info.btn_image is not None:
+            del(btn_info.btn_image)
+        btn_info.btn_image = btn_image
+    
     def update_button_images(self):
+        self.btn_image_store = []       # Delete stored images
         btn_size_x, btn_size_y = self.get_btn_image_size()
         self.btn_image_size_x_prev = btn_size_x # Save for new size
         self.btn_image_size_y_prev = btn_size_y
         self.update_button_images_count += 1    # Signal update
-        current_count = self.update_button_images_count
-            
+        SlTrace.lg(f"update_button_images: count:{self.update_button_images_count}")    
         """ Update displayed images in hopes to appropriately
         scale them to window size change
         """
         ##self.btn_image_store = [] # Free up storage
         for btn_info in self.btn_infos:
+            self.master.update_idletasks()    # Allow for changes
+            current_count = self.update_button_images_count
             if current_count > self.update_button_images_count:
                 SlTrace.lg(f"update_count change: {self.update_button_images_count}")
                 return
@@ -340,13 +526,11 @@ class ButtonGrid:
             self.btn_image_store.append(btn_image)  # save ref to 
                                                         # avoid loss
             btn.config(image=btn_image) # store new image
-            self.master.update()    # Allow for changes
         SlTrace.lg(f"update_button_image: btn_size_x: {btn_size_x} btn_size_y: {btn_size_y}")    
 
 if __name__ == "__main__":
     #Create & Configure root 
     root = Tk()
-    SlTrace.clearFlags()
     prj_dir = ".."
     image_dir = os.path.join(prj_dir, "images", "keys")
     SlTrace.lg(f"Try src dir: {image_dir}")
@@ -383,6 +567,7 @@ if __name__ == "__main__":
         'Space' : key_attr(text="Space", column=5, columnspan=6),
         'a' : "size_decrease.png",
         'd' : "shapes_one.png",
+        'e' : "drawing_abc.png",
         'f' : "lines_one.png",
         'h' : "drawing_help_me.png",
         'j' : "drawing_lion2.png",
@@ -407,8 +592,9 @@ if __name__ == "__main__":
         }
 
 
-
-
+    
+    from trace_control_window import TraceControlWindow
+    
     bg = ButtonGrid(root, image_dir=image_dir,
                     on_kbd=on_kbd,
                     keys=buttons,
@@ -418,6 +604,11 @@ if __name__ == "__main__":
                     im_fract_x=.9, im_fract_y=.7,
                     btn_padx=2, btn_pady=2, btn_bd=3,
                     btn_font=('arial', 12, 'bold'),
-                    nrows=5, ncols=16)            
+                    nrows=5, ncols=16)
+    tc = TraceControlWindow(bg)
+    bg.enable_image_update()
+    end_btn_infos = bg.get_btn_infos(key="END")
+    bg.set_btn_image(end_btn_infos, "drawing_abc_end.png")
+            
     root.mainloop()
     

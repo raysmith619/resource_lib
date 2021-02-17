@@ -138,9 +138,11 @@ class ScreenKbdFlex:
             ' 0 ' : key_attr(text="0", image="rotate_right.png", column=14),
             '[' : "princesses.png",
             ']' : "other_stuff.png",
+            '/' : "drawing_rotate_2.png",
             'Space' : key_attr(text="Space", column=5, columnspan=6),
             'a' : "size_decrease.png",
             'd' : "shapes_one.png",
+            'e' : "drawing_abc.png",
             'f' : "lines_one.png",
             'h' : "drawing_help_me.png",
             'j' : "drawing_lion2.png",
@@ -165,7 +167,7 @@ class ScreenKbdFlex:
             }
         
         
-        button_grid = ButtonGrid(keys_frame,
+        self.button_grid = ButtonGrid(keys_frame,
                             nrows=5, ncols=16,
                             keys=buttons,
                             key_attrs=key_attrs,
@@ -174,7 +176,21 @@ class ScreenKbdFlex:
                             win_height=win_height*(5/7),
                              **kwargs)
                         
-    
+    def do_shift(self, shift_on=True):
+        """ Shift letters
+        :shift_on: Put shift on, adjust letters
+                    default: True
+        """
+        self.shift_on = shift_on
+        self.button_grid.do_shift(shift_on=shift_on)
+        
+    def enable_image_update(self, enable=True):
+        """ Enable/Disable kbd image update
+        :enable: enable update default: True
+        """
+        self.button_grid.enable_image_update(enable)
+        
+        
     # check if the button corresponds to a letter
     def is_letter(self, s):
         return len(s) == 1 and 'a' <= s <= 'z'
@@ -185,10 +201,7 @@ class ScreenKbdFlex:
         if input == 'Shift':
             # toggle shift status
             self.shift_on = not self.shift_on
-            # update text of letter buttons according to status of shift btn
-            for btn in self.letter_buttons:
-                text = btn['text']
-                btn['text'] = text.upper() if self.shift_on else text.lower()
+            self.do_shift(self.shift_on)
         else:
             if input == ' Space ':
                 self.text_box.insert(INSERT,' ')
@@ -214,6 +227,29 @@ class ScreenKbdFlex:
         :input: key/char from another source
         """
         self.text_box.insert(INSERT, input)
+
+    def set_images(self, show=False):
+        """ Set key images to show or not show
+        :show: True - show images on keys
+                default: hide
+        """
+        self.button_grid.set_images(show=show)
+
+    def get_btn_infos(self, key=None, row=None, col=None):
+        """ Get buttons
+        :key: if not None, must match
+        :row: if not None, must match
+        :col: if not None, must match
+        """
+        return self.button_grid.get_btn_infos(key=key, row=row, col=col)
+
+    def set_btn_image(self, btn_infos=None, image=None):
+        """ Set button (btn_infos) image displayed
+        :btn_infos: ButtonInfo, or list of ButtonInfos
+        :image" text - image file
+                Image - image
+        """
+        self.button_grid.set_btn_image(btn_infos=btn_infos, image=image)
 
     def to_top(self):
         """ Bring screen keyboard to top and focus

@@ -14,6 +14,8 @@ class TraceControlWindow(Toplevel):
         :tcbase: - parent - call basis must have tc_destroy to be called if we close
         :change_call: - call with change flag, value, if present
         """
+        self.flag_by_cb = {}             # Dictionary hashed on cb widget
+        self.data_by_flag = {}
         self.standalone = False      # Set True if standalone operation
         if tcbase is None:
             SlTrace.lg("Standalone TraceControlWindow")
