@@ -578,7 +578,7 @@ if __name__ == "__main__":
         't' : "width_increase.png",
         'x' : "width_decrease.png",
         'u' : "undo_drawing.png",
-        'z' : "clear_all.png",
+        'z' : "clear_all_2.png",
         '-' : "drawing_clear.png",
         '+' : "drawing_show.png",
         'r' : "drawing_red.png",
