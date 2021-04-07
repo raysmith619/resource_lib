@@ -1,0 +1,54 @@
+#hello_family.txt
+            # Beginning screen pattern
+            # Add in Family
+            minus
+            line(100,20)        # Set side, width
+            moveto(-650,400)
+            plus
+            e;F;a;m;i;l;y;END
+            newline();a;l;e;x;END;image_file(family,alex);q
+            newline();d;e;c;l;a;n;END;image_file(family,declan);q
+            newline();a;v;e;r;y;END;image_file(family,avery);q
+            newline();c;h;a;r;l;i;e;END;image_file(family,charlie);q
+            newline();;END
+            minus
+            
+        ###    # Add in animals
+        ###    k
+        ###    plus
+        ###    k;Right;a;a
+        ###    k;Right;a:a
+        ###    k;Right;a;a
+        ###    k;Right;a;a
+        ###    k;Right;a;a
+            
+            # A bit of other stuff
+            minus;moveto(-550,-200);plus
+            image_file(princesses,princess);q
+            minus; moveto(-350,-300);plus
+            image_file(other_stuff,batman);q 
+            minus; moveto(-150,-400);plus
+            image_file(other_stuff,baseball);q 
+
+            
+            minus
+            # HI in middle of screen
+            shape(line)
+            marker(line)
+            shape(line)
+            line(20.0,20)        # Set side, width
+            moveto(-50,-100)
+            w
+            plus
+            check
+            Down;Down;Down;Down;Down;Down;Down;Down
+            Up;Up;Up;Up; Right;Right; Up;Up;Up;Up
+            Down;Down;Down;Down;Down;Down;Down;Down
+            minus;Right;Right
+            
+            plus
+            Up;Up;Up;Up;Up;Up;Up;Up
+            minus
+            
+            line(100,20)        # Set side, width
+            Down;Down;Right;plus
