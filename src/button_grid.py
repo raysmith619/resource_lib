@@ -60,13 +60,16 @@ class ButtonGrid:
                 default: ../images/keys
         :on_kbd: function to call with each key-click
         :keys: list of keys to display on buttons as text
+                'RowEnd' entries terminate rows
                 default: use btn_specs
         :key_attrs: key attributes
                 dictionary on key text
                 key_text : image_file
                             OR
                           {dictionary:}
-                            "text" : button text
+                            "input" : char(s) to pass
+                                         else text (key),
+                            "text" : button text displayed
                             "image" : image file
                             "column" : button column (starting with 1)
                             "columnspan" : button column span
@@ -130,16 +133,30 @@ class ButtonGrid:
             if btn_specs is not None:
                 SlTrace.report(f"Can't have both keys and btn_specs")
                 exit()
+            nrow = 0
+            ncol = 0
+            max_col = ncol
             btn_specs = []
+            row_begin = True
             for key in keys:
-                spec = {"type" : "key", "text" : key}
-                if key_attrs and key in key_attrs:
+                spec = {"type" : "key",
+                        "input" : key,      # passed through
+                        "text" : key}       # displayed on button
+                if key == 'RowEnd':
+                    nrow += 1
+                    if ncol > max_col:
+                        max_col = ncol
+                    ncol = 0
+                    spec["type"] = "RowEnd"
+                elif key_attrs and key in key_attrs:
                     if isinstance(key_attrs[key],dict):
                         spec.update(key_attrs[key])
                     else:
-                        spec["image"] = key_attrs[key]    
+                        spec["image"] = key_attrs[key]
+                ncol += 1    
                 btn_specs.append(spec)
-            SlTrace.lg(f"keys: {len(keys)} generated specs {len(btn_specs)}")    
+            SlTrace.lg(f"keys: {len(keys)} rows: {nrow} cols: {max_col}"
+                       f" generated specs {len(btn_specs)}")    
         if btn_specs is None:
             btn_specs = ButtonGrid.btn_specs
         self.btn_specs = btn_specs
@@ -148,8 +165,8 @@ class ButtonGrid:
         self.btn_padx = btn_padx
         self.btn_pady = btn_pady
         self.btn_bd = btn_bd
-        self.nrows = nrows
-        self.ncols = ncols
+        self.nrows = nrow
+        self.ncols = max_col
         self.chg_fract = chg_fract
         self.btn_padx = btn_padx          # Button attributes
         self.btn_pady = btn_pady 
@@ -175,115 +192,132 @@ class ButtonGrid:
         keybd_frame.rowconfigure(0, weight=1)
         keybd_frame.columnconfigure(0, weight=1)
         keybd_frame.grid(sticky=N+S+E+W)
+        self.keybd_frame = keybd_frame
         keybd_frame.bind('<Configure>', self.win_size_event)
+        self.master.bind('<Key>', self.on_key_press)
+
         specs = self.btn_specs.copy()
         row_start = 0
         row_current = row_start
-        col_start = 0
+        col_start = 0           # Bumped to 1 at first
         col_current = col_start
-        for _ in range(self.nrows):
-            row_current += 1
-            col_current = col_start
-            keybd_frame.rowconfigure(row_current, weight=1)
-            for _ in range(ncols):
-                keybd_frame.columnconfigure(col_current, weight=1)
-                key_frame = Frame(keybd_frame)
-                key_frame.rowconfigure(0, weight=1)
-                key_frame.columnconfigure(0, weight=1)
-                btn_background = "white"
-                btn_foreground = "black"
-                btn_compound = BOTTOM
-                btn_width = btn_size_x
-                base_image = None
-                if len(specs) == 0:
-                    SlTrace.lg("Unexpected end to specifications"
-                               f" row_current:{row_current} col_current: {col_current}"
-                               f"\n list:{self.btn_specs}")
-                    break
-                spec = specs.pop(0)
-                spec_type = spec["type"]
-                if spec_type == "REPEAT":
-                    specs = self.btn_specs.copy()
-                    continue
-                elif spec_type == "ROWCOL":
-                    btn_text = f"{row_current},{col_current}"
-                else:
-                    btn_text = spec["text"]
-                if "image" not in spec or spec["image"] is None:
-                    btn_width = 7       # Best guess text chars
-                    btn_compound = None
-                    btn_image = None
-                    spec_image_file = None
-                else:
-                    btn_width = 7*12       # Best guess text pixels
-                    spec_image_file = spec["image"]
-                    if spec_image_file == "SAMPLE":
-                        spec_image_file = ButtonGrid.sample_file
+        row_begin = True
+        col_inc = 1             # Default column increment
+                                # Changed columnspan
+        for spec in specs:
+            spec_type = spec["type"]
+            if spec_type == 'RowEnd':
+                row_begin = True
+                if col_current > max_col:
+                    max_col = col_current
+                continue
+            
+            if row_begin:
+                row_current += 1
+                keybd_frame.rowconfigure(row_current, weight=1)
+                row_begin = False 
+                col_current = col_start     # Bumped by col_inc or spec["column"]
+            if "column" in spec:
+                col_current = spec["column"]
+            else:
+                col_current += col_inc
+            keybd_frame.columnconfigure(col_current, weight=1)
+            key_frame = Frame(keybd_frame)
+            key_frame.rowconfigure(0, weight=1)
+            key_frame.columnconfigure(0, weight=1)
+                        
+            if "columnspan" in spec and spec["columnspan"] is not None:
+                btn_columnspan = spec["columnspan"]
+                col_inc = btn_columnspan-1
+            else:
+                btn_columnspan = None
+                col_inc = 1
+            key_frame.grid(row=row_current, column=col_current,
+                           columnspan=btn_columnspan,
+                            sticky=N+S+E+W)
+
+            btn_background = "white"
+            btn_foreground = "black"
+            btn_compound = BOTTOM
+            btn_width = btn_size_x
+            base_image = None
+            if spec_type == "REPEAT":
+                specs = self.btn_specs.copy()
+                continue
+            elif spec_type == "ROWCOL":
+                btn_text = f"{row_current},{col_current}"
+            else:
+                btn_text = spec["text"]
+            if "image" not in spec or spec["image"] is None:
+                btn_width = 7       # Best guess text chars
+                btn_compound = None
+                btn_image = None
+                spec_image_file = None
+            else:
+                btn_width = 7*12       # Best guess text pixels
+                spec_image_file = spec["image"]
+                if spec_image_file == "SAMPLE":
+                    spec_image_file = ButtonGrid.sample_file
+                if not os.path.isabs(spec_image_file):
+                    spec_image_file = os.path.join(image_dir, spec_image_file)
                     if not os.path.isabs(spec_image_file):
-                        spec_image_file = os.path.join(image_dir, spec_image_file)
-                        if not os.path.isabs(spec_image_file):
-                            SlTrace.lg(f"key path:{spec_image_file}", "trace_keys")       
-                        spec_image_file = os.path.abspath(spec_image_file)
-                    SlTrace.lg(f"key path:{spec_image_file}", "trace_keys")
-                    if not os.path.exists(spec_image_file):
-                        SlTrace.lg(f"We Can't find image file for {btn_text}"
-                                           f"\n looking in: {spec_image_file}")
-                        continue
-                    SlTrace.lg(f"spec_image_file: {spec_image_file}", "btn")
-                    base_image = Image.open(spec_image_file)
-                    scaled_image = base_image.resize((int(btn_size_x),
-                                                      int(btn_size_y)))
-                    btn_image = ImageTk.PhotoImage(scaled_image)
-                                                            # avoid loss
-                SlTrace.lg(f"btn: btn_text:{btn_text} btn_image: {btn_image}", "btn")
-                if "column" not in spec:
-                    col_current += 1
-                else:
-                    col_current = spec["column"]
-                cmd = lambda x = btn_text: self.buttonClick(x)
+                        SlTrace.lg(f"key path:{spec_image_file}", "trace_keys")       
+                    spec_image_file = os.path.abspath(spec_image_file)
+                SlTrace.lg(f"key path:{spec_image_file}", "trace_keys")
+                if not os.path.exists(spec_image_file):
+                    SlTrace.lg(f"We Can't find image file for {btn_text}"
+                                       f"\n looking in: {spec_image_file}")
+                    continue
+                SlTrace.lg(f"spec_image_file: {spec_image_file}", "btn")
+                base_image = Image.open(spec_image_file)
+                scaled_image = base_image.resize((int(btn_size_x),
+                                                  int(btn_size_y)))
+                btn_image = ImageTk.PhotoImage(scaled_image)
+                                                        # avoid loss
+            SlTrace.lg(f"btn: btn_text:{btn_text} btn_image: {btn_image}", "btn")
+            inp = spec["input"]
+            cmd = lambda x = inp: self.buttonClick(x)
                 
-                if "columnspan" in spec and spec["columnspan"] is not None:
-                    btn_columnspan = spec["columnspan"]
-                else:
-                    btn_columnspan = None
-                key_frame.grid(row=row_current, column=col_current,
-                               columnspan=btn_columnspan,
-                                sticky=N+S+E+W)  
-                if "columnspan" in spec and spec["columnspan"] is not None:
-                    col_current += btn_columnspan-1
-                    
-                btn = Button(key_frame,
-                    text = btn_text,
-                    image = btn_image,
-                    compound = btn_compound,                    
-                    width = btn_width,
-                    bg = btn_background,
-                    fg = btn_foreground,
-                    activebackground = 'white',
-                    activeforeground = 'black',
-                    relief = 'raised',
-                    padx = self.btn_padx,
-                    pady = self.btn_pady, 
-                    bd = self.btn_bd,
-                    font=self.btn_font,
-                    command = cmd)
-                if btn_image is None:
-                    bti_image = btn_image
-                else:
-                    bti_image = btn_image
-                btn_info = ButtonInfo(btn=btn,
-                                    text=btn_text,
-                                    row=row_current,
-                                    col=col_current,
-                                    base_image=base_image,
-                                    btn_image=bti_image,
-                                    file_key=spec_image_file,
-                                    )
-                self.ims.append(bti_image)       # TFD
-                btn.grid(sticky=N+S+E+W)  
-                self.btn_infos.append(btn_info)
-                btn.rowconfigure(0, weight=1)
-                btn.columnconfigure(0, weight=1)
+            btn = Button(key_frame,
+                text = btn_text,
+                image = btn_image,
+                compound = btn_compound,                    
+                width = btn_width,
+                bg = btn_background,
+                fg = btn_foreground,
+                activebackground = 'white',
+                activeforeground = 'black',
+                relief = 'raised',
+                padx = self.btn_padx,
+                pady = self.btn_pady, 
+                bd = self.btn_bd,
+                font=self.btn_font,
+                command = cmd)
+            if btn_image is None:
+                bti_image = btn_image
+            else:
+                bti_image = btn_image
+            btn_info = ButtonInfo(btn=btn,
+                                text=btn_text,
+                                row=row_current,
+                                col=col_current,
+                                base_image=base_image,
+                                btn_image=bti_image,
+                                file_key=spec_image_file,
+                                )
+            self.ims.append(bti_image)       # TFD
+            btn.grid(sticky=N+S+E+W)  
+            self.btn_infos.append(btn_info)
+            btn.rowconfigure(0, weight=1)
+            btn.columnconfigure(0, weight=1)
+
+    """
+    Capture std keyboard key presses
+    and redirect they to input
+    """
+    def on_key_press(self, event):
+        keysym = event.keysym
+        self.buttonClick(input=keysym)
 
 
     # function for button click
@@ -435,7 +469,8 @@ class ButtonGrid:
         btn_size_x, btn_size_y = self.get_btn_image_size()
         self.btn_image_size_x_prev = btn_size_x # Save for new size
         self.btn_image_size_y_prev = btn_size_y
-        SlTrace.lg(f"start update_button_images: x: {btn_size_x} y: {btn_size_y}")
+        SlTrace.lg(f"start update_button_images: x: {btn_size_x} y: {btn_size_y}",
+                   "button_grid")
         self.update_image_index = 0
         if self.image_update_enabled and SlTrace.trace("enable_image_update"):
             SlTrace.lg(f"delayed update_button_image")
@@ -545,11 +580,11 @@ if __name__ == "__main__":
     
     # buttons list
     buttons = [
-        '`', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-'  , '=','BKSP', 'HOME', 'END',
-        '!', 'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p','BKSP', '7', '8'  , '9'   , '-',
-        'Tab', 'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', '[', ']', '4', '5', '6', '+',
-        'Shift', 'z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/', '?', '1', '2', '3', '*',
-        'Space',       ' 0 ', 'DEL',  'ENTER' 
+            '`', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-'  , '=', '+', 'BKSP', 'HOME', 'END',                  'RowEnd',
+            '!', 'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p','BKSP',      'DEL',          '7', '8'  , '9'   , '-',      'RowEnd',
+            'Tab', 'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', '[', ']',       'ENTER',      '4', '5', '6', '+',           'RowEnd',
+            'Shift', 'z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/', '?',     'Up',         '1', '2', '3', '*',           'RowEnd',
+            'Space',                                                    'Left', "Down", "Right",   ' 0 ', 'DEL',  'ENTER', 'RowEnd'
         ]
     
     SlTrace.lg(f"Number buttons:{len(buttons)}")
@@ -557,37 +592,39 @@ if __name__ == "__main__":
     # Alternative key faces
     alt_key_files = {
         '=' : "color_stripes.png",
+        '/' : "drawing_rotate.png",
         '7' : "arrow_135.png", '8' : "arrow_90.png",        '9' : "arrow_45.png",
         '4' : "arrow_180.png", '5' : "rotate_left.png",     '6' : "arrow_0.png",
         '1' : "arrow_225.png", '2' : "arrow_270.png",       '3' : "arrow_315.png",
         '0' : "rotate_right.png",
-        ' 0 ' : key_attr(text="0", image="rotate_right.png", column=14),
+        ' 0 ' : key_attr(text="0", image="rotate_right.png"),
         '[' : "princesses.png",
         ']' : "other_stuff.png",
         'Space' : key_attr(text="Space", column=5, columnspan=6),
+        'Left' : key_attr(text=chr(0x140a), column=12),
+        'Right' : key_attr(text=chr(0x1405)),
+        'Up' : key_attr(text=chr(0x25b2)),
+        'Down' : key_attr(text=chr(0x25bc)),
         'a' : "size_decrease.png",
-        'd' : "shapes_one.png",
         'e' : "drawing_abc.png",
         'f' : "lines_one.png",
         'h' : "drawing_help_me.png",
+        'i' : "copy_to.png",
         'j' : "drawing_lion2.png",
         'k' : "images_next.png",
         'l' : "family.png",
+        'o' : "move_to.png",
         'q' : "size_increase.png",
+        'r' : "width_decrease.png",
         's' : "shapes_next3.png",
         't' : "width_increase.png",
-        'x' : "width_decrease.png",
         'u' : "undo_drawing.png",
+        'v' : "color_change.png",
+        'x' : "restore_all.png",
+        'y' : "redo_drawing.png",
         'z' : "clear_all_2.png",
         '-' : "drawing_clear.png",
         '+' : "drawing_show.png",
-        'r' : "drawing_red.png",
-        'o' : "drawing_orange.png",
-        'y' : "drawing_yellow.png",
-        'g' : "drawing_green.png",
-        'b' : "drawing_blue.png",
-        'i' : "drawing_indigo.png",
-        'v' : "drawing_violet.png",
         'w' : "drawing_rainbow.png",
         }
 

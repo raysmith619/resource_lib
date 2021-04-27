@@ -1,4 +1,5 @@
-# screen_kbd_flex.py    09Feb2021  crs, adapt/extend/steal
+# screen_kbd_flex.py    03Apr21  crs, Add Right,... arrows
+#                       09Feb2021  crs, adapt/extend/steal
 # Adapt screen_kbd.py to use button_grid.py(ButtonGrid)
 # screen_kbd.py based on GitHub/Saujanya0910/On-Screen-Keyboard
 # on-screen-keyboard.py
@@ -10,6 +11,9 @@ pictures that correspond to game actions,
 We are hoping to develop a package which will facilitate
 providing youthful users better keyboard access to computer
 games.
+
+Note standard keyboard keypresses are forwarded
+to bttonClick as keysym and then via on_kbd, if present.
 
 """
 # import tkinter library with an alias
@@ -81,6 +85,7 @@ class ScreenKbdFlex:
         self.kbd_frame.columnconfigure(0, weight=1)
         self.kbd_frame.config(bg='powder blue')    # background
         
+        
         # heading for the app
         label1 = Label(self.kbd_frame, text = title,
                        font=('arial', 20, 'bold'),
@@ -112,6 +117,7 @@ class ScreenKbdFlex:
         keys_frame.grid(sticky=N+S+E+W)  
         keys_frame.rowconfigure(0, weight=1)
         keys_frame.columnconfigure(0, weight=1)
+        self.master.bind('<KeyPress>', self.on_key_press)
 
         """ Setup for QWERTY keyboard
             with key face images for keyboard_draw
@@ -119,11 +125,11 @@ class ScreenKbdFlex:
 
         # key buttons list
         buttons = [
-            '`', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-'  , '=','BKSP', 'HOME', 'END',
-            '!', 'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p','BKSP', '7', '8'  , '9'   , '-',
-            'Tab', 'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', '[', ']', '4', '5', '6', '+',
-            'Shift', 'z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/', '?', '1', '2', '3', '*',
-            'Space',       ' 0 ', 'DEL',  'ENTER' 
+            '`', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-'  , '=', '+', 'BKSP', 'HOME', 'END',                  'RowEnd',
+            '!', 'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p','BKSP',      'DEL',          '7', '8'  , '9'   , '-',      'RowEnd',
+            'Tab', 'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', '[', ']',       'ENTER',      '4', '5', '6', '+',           'RowEnd',
+            'Shift', 'z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/', '?',     'Up',         '1', '2', '3', '*',           'RowEnd',
+            'Space',                                                    'Left', "Down", "Right",   ' 0 ', 'DEL',  'ENTER', 'RowEnd'
             ]
         
         SlTrace.lg(f"Number buttons:{len(buttons)}")
@@ -131,44 +137,48 @@ class ScreenKbdFlex:
         # Alternative key faces - key attributes
         key_attrs = {
             '=' : "color_stripes.png",
+            '/' : "drawing_rotate.png",
             '7' : "arrow_135.png", '8' : "arrow_90.png",        '9' : "arrow_45.png",
             '4' : "arrow_180.png", '5' : "rotate_left.png",     '6' : "arrow_0.png",
             '1' : "arrow_225.png", '2' : "arrow_270.png",       '3' : "arrow_315.png",
             '0' : "rotate_right.png",
-            ' 0 ' : key_attr(text="0", image="rotate_right.png", column=14),
+            ' 0 ' : key_attr(text="0",
+                    image="rotate_right.png"),
             '[' : "princesses.png",
             ']' : "other_stuff.png",
-            '/' : "drawing_rotate_2.png",
-            'Space' : key_attr(text="Space", column=5, columnspan=6),
+            'Space' : key_attr(text="Space", image="repeat.png",
+                    column=5, columnspan=6),
+            'Left' : key_attr(text=chr(0x140a), column=12),
+            'Right' : key_attr(text=chr(0x1405)),
+            'Up' : key_attr(text=chr(0x25b2)),
+            'Down' : key_attr(text=chr(0x25bc)),
             'a' : "size_decrease.png",
-            'd' : "shapes_one.png",
             'e' : "drawing_abc.png",
             'f' : "lines_one.png",
             'h' : "drawing_help_me.png",
+            'i' : "copy_to.png",
             'j' : "drawing_lion2.png",
             'k' : "images_next.png",
             'l' : "family.png",
+            'o' : "move_to.png",
+            'p' : "go_to.png",
             'q' : "size_increase.png",
+            'r' : "width_decrease.png",
             's' : "shapes_next3.png",
             't' : "width_increase.png",
-            'x' : "width_decrease.png",
             'u' : "undo_drawing.png",
+            'v' : "color_change.png",
+            'x' : "restore_all.png",
             'z' : "clear_all_2.png",
             '-' : "drawing_clear.png",
             '+' : "drawing_show.png",
-            'r' : "drawing_red.png",
-            'o' : "drawing_orange.png",
-            'y' : "drawing_yellow.png",
-            'g' : "drawing_green.png",
-            'b' : "drawing_blue.png",
-            'i' : "drawing_indigo.png",
-            'v' : "drawing_violet.png",
+            'y' : "redo_drawing.png",
             'w' : "drawing_rainbow.png",
             }
         
         
         self.button_grid = ButtonGrid(keys_frame,
-                            nrows=5, ncols=16,
+                            nrows=5, ncols=17,
                             keys=buttons,
                             key_attrs=key_attrs,
                             on_kbd=self.buttonClick,
@@ -194,6 +204,14 @@ class ScreenKbdFlex:
     # check if the button corresponds to a letter
     def is_letter(self, s):
         return len(s) == 1 and 'a' <= s <= 'z'
+
+    """
+    Capture std keyboard key presses
+    and redirect they to input
+    """
+    def on_key_press(self, event):
+        keysym = event.keysym
+        self.buttonClick(input=keysym)
 
     # function for button click
     def buttonClick(self, input):

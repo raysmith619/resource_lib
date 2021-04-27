@@ -5,7 +5,8 @@ Useful to us
 import re 
 from functools import cmp_to_key
 
-from select_error import SelectError, SelectErrorInput
+from select_error import SelectError
+from select_error_input import SelectErrorInput
 ###import select_trace
 
 def anumcmp(a,b):

@@ -18,7 +18,7 @@ class SelectWindow(Frame):
         """ provide deep copy by just passing shallow copy of self,
         avoiding tkparts inside sel_area
         """
-        SlTrace.lg("SelectArea __deepcopy__", "copy")
+        SlTrace.lg("SelectWindow __deepcopy__", "copy")
         return self
             
         
@@ -80,7 +80,7 @@ class SelectWindow(Frame):
             self.master.title(self.title)
 
         # allowing the widget to take the full space of the root window
-        self.pack(fill=BOTH, expand=1)
+        self.pack(fill=BOTH, expand=False)
 
         # creating a menu instance
         menubar = Menu(self.master)

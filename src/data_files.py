@@ -55,13 +55,22 @@ class DataFileGroup:
             self.file_index = len(self.image_files)-1 
         return self.file_index
 
-    def get_file(self, inc=0):
+    def get_file(self, file=None, inc=0):
         """ Get next file
+        :file: name wanted (any part of file name, first found)
         :inc: increment index
                 default: 0 - no chage
+        :returns: file name if found, else None
         """
-        index = self.inc_file_index(inc)
-        return self.image_files[index] 
+        if file is None:
+            index = self.inc_file_index(inc)
+            return self.image_files[index]
+        
+        for ifile in self.image_files:
+            if ifile.find(file) >= 0:
+                return ifile
+        
+        return None 
 
     def get_image_files(self):
         """ Get image files

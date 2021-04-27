@@ -34,7 +34,7 @@ class ImageInfo:
         from database If existing scale or photoimage is not present,
         the opperation is done and the result is stored before
         returning
-        :size: (x,y) scaled dimensions None no scaling and no photo
+        :size: (x,y) scaled dimensions None no scaling
         :photoimage: True converted to PhotoImage
         :returns: processed image
         """
@@ -42,15 +42,17 @@ class ImageInfo:
         if ik in self.scaled_images:
             return self.scaled_images[ik]
         
-        if size is not None:
-            i_width,i_height = size
-            image = self.base_image.resize((int(i_width),
-                             int(i_height)), Image.ANTIALIAS)
-        else:
-            image = self.base_image     # Unscaled
-        if photoimage:
-            image = ImageTk.PhotoImage(image)
-        self.scaled_images[ik] = image      # Save scaled/photo
+        if size is None:
+            return self.base_image      # No scaling
+        
+        width,height = size
+        image = load_image.resize((int(width), int(height)), Image.ANTIALIAS)
+        if not photoimage:
+            self.scaled_images[ik] = image
+            return image
+        
+        image = ImageTk.PhotoImage(image)
+        self.scaled_images[ik] = image
         return image
         
         
@@ -105,19 +107,19 @@ class ImageHash:
             if load_image is None:
                 return None     # No image to be found
             else:
-                self.add_image(key, image=load_image)
+                self.add_image(key, base_image=load_image)
         
         image = self.get_scaled_image(key, size=size,
                                        photoimage=photoimage)
         return image
 
-    def add_image(self, key, image):
+    def add_image(self, key, base_image):
         """ Add base image to database
         Replaces previous image, if any
         :key: image key, e.g. file name
-        :image: base image loaded from file
+        :base_image: base image loaded from file
         """
-        self.image_infos_by_key[key] = ImageInfo(key, base_image=image)
+        self.image_infos_by_key[key] = ImageInfo(key, base_image)
 
     def get_image_info(self, key):
         if key in self.image_infos_by_key:
@@ -125,12 +127,13 @@ class ImageHash:
         
         return None
 
-    def get_scaled_image(self, key, size=None, photoimage=True):
+    def get_scaled_image(self, key, base_image, size=None, photoimage=True):
         """ retrieve image, possibly scaled, possibly converted to photoimage
         from database If existing scale or photoimage is not present,
         the opperation is done and the result is stored before
         returning
         :key: image key, e.g. file name
+        :base_image: base image loaded from file
         :size: (x,y) scaled dimensions None no scaling
         :photoimage: True converted to PhotoImage
         :returns: processed image
@@ -231,6 +234,11 @@ class ImageHash:
 
     def is_text(self, text):
         return not self.is_file(text)   # If we add more types, we'll modify
+                
+    def add_image(self, key, image):
+        self.images_by_key[key] = image
+        SlTrace.lg(f"image {len(self.images_by_key)}: {key}", "image_add")
+        return image
 
     def name2image_string(self, text_field):
         """ Convert file name to image file string
@@ -258,6 +266,7 @@ class ImageHash:
         Default operation no special releasing action
         """
         self.destroy_function = destroy_function
+        
         
         
 if __name__ == "__main__":

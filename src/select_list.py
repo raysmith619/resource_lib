@@ -9,8 +9,10 @@ import atexit
 
 import time
 
-from select_trace import SlTrace, SelectError
+from select_trace import SlTrace
+from select_error import SelectError
 from image_hash import ImageHash
+
 class SelectList(Toplevel):
     def __init__(self, tcbase=None, title=None, items=None,
                  item_sep=None,

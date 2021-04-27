@@ -1,11 +1,13 @@
-# select_input.py    13Mar2020  crs from http://effbot.org/tkinterbook/tkinter-dialog-windows.htm
+# select_input.py    13Mar2020  crs
+# from http://effbot.org/tkinterbook/tkinter-dialog-windows.htm
 
 """
 Facilitate input / re-input with a modeless message
 """
 from tkinter import Tk, Entry, Label, messagebox
 
-from select_error import SelectError, SelectErrorInput
+from select_error import SelectError
+from select_error_input import SelectErrorInput
 from select_trace import SlTrace
 from crs_funs import str2val
 
