@@ -235,6 +235,8 @@ class ScreenKbdFlex:
         if self.on_kbd is not None:
             if input in self.key_to_on_kbd:
                 input = self.key_to_on_kbd[input]
+            if input == " 0 ":
+                input = "0"
             self.on_kbd(input)
     # function for backspace
     def backspace(self):
@@ -275,16 +277,28 @@ class ScreenKbdFlex:
         self.master.deiconify()
 
 if __name__ == "__main__":
+    SlTrace.lg("(END) key toggles image display")
     keyboardApp = tk.Tk()   # initialise the tkinter app
     keyboardApp.config(bg='powder blue')    # background
     #keyboardApp.resizable(0, 0)     # disable resizeable property
+    
+    show_images = True
+    
+    sk = None       # Keyboard, if not None
     
     def on_kbd(input):
         """ Test keyboard button click
         :input: key text
         """
+        global show_images
+        
         SlTrace.lg(f"key: '{input}'")
-
+        if input == "END":
+            show_images = not show_images
+            if sk is not None:
+                SlTrace.lg("show" if show_images else "hide"
+                           + "images")
+                sk.set_images(show_images)
     
     
     sk = ScreenKbdFlex(keyboardApp, title="Testing ScreenKbdFlex",

@@ -738,11 +738,20 @@ class KeyboardDraw(SelectWindow):
                 default: return current self.image_group
         """
         if name is None:
-            ifg = self.image_group
-        else:
-            ifg = self.ifh.get_group(name)
+            name = self.image_group_names[0]
+        ifg = self.ifh.get_group(name)
         return ifg
-                
+
+    def get_image_file_groups(self):
+        """ Get all image file groups (DataFileGroup)
+        :returns: data groups (list of DataFileGroup)
+        """
+        names = self.image_group_names
+        groups = []
+        for name in names:
+            groups.append(self.ifh.get_group(name))
+        return groups
+            
     def get_canvas(self):
         """ Get our working canvas
         """

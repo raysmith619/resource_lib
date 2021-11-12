@@ -3,6 +3,7 @@
 Program Level Menu control
  From PoolWindow
 """
+import sys
 import os
 from tkinter import *
 from select_trace import SlTrace
