@@ -137,6 +137,7 @@ class ScreenKbdFlex:
         # Alternative key faces - key attributes
         key_attrs = {
             '=' : "color_stripes.png",
+            '.' : "drawing_rotate_right.png",
             '/' : "drawing_rotate.png",
             '7' : "arrow_135.png", '8' : "arrow_90.png",        '9' : "arrow_45.png",
             '4' : "arrow_180.png", '5' : "rotate_left.png",     '6' : "arrow_0.png",
