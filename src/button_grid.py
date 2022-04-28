@@ -109,8 +109,8 @@ class ButtonGrid:
         self.ims = []       # TFD
 
         small = 2
-        small_image = Image.new("RGB", (small, small), (255,255,255))
-        small_btn_image = ImageTk.PhotoImage(small_image)
+        self.small_image = Image.new("RGB", (small, small), (255,255,255))
+        small_btn_image = ImageTk.PhotoImage(self.small_image)
         self.blank_image = small_btn_image
 
         self.show_images = True         # False disables image showing
