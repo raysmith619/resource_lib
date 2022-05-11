@@ -5,7 +5,22 @@ approach is to accept these turtle commands, passing them on to turtle, and addi
 * A text printout which, if directed to a brailler will produce a physical display similar to the braille window.  
 
 ## A set of screen shots for a simple program
+# User program in IDLE
 ![IDLE program window](Docs/braille_turtle_spokes_pgm.PNG)
+# turtle display window
+![turtle screen shot](Docs/braille_turtle_spokes_td.PNG)
+# Braille Window - implementation aid to view likely braille view
+Note that the color of the braille dots is for the implementer's view to empasize the color.
+Also the rectangles surrounding the dots are to further help the visual image.
+![braille window](Docs/braille_turtle_spokes_bw.PNG)
+# Program text printout - destined for bailler machine
+Our implementation has some harsh compromises:
+- Our graphics resolution is currently 40 wide by 25 down for a 800 by 800 screen.
+- Colors are represented by braille for the color's first letter(English)
+- No motion - yet
+
+![Program printout](Docs/braille_turtle_spokes_to.PNG)
+
 ## Supported turtle commands
 Note that we do not handle all turtle commands - mostly those which support simple static low resolution graphics.
 def backward(length):
