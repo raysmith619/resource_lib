@@ -1,7 +1,40 @@
+# Turtle Braille
+We attempt to provide simple support for the blind who which to do simple graphics programming using a subset of the turtle command set.  Our
+approach is to accept these turtle commands, passing them on to turtle, and additionally producing the following:
+* A braille window which displays the expected braille - lower resolution(e.g. 40 x 25 braille cell) rendition of the turtle display
+* A text printout which, if directed to a brailler will produce a physical display similar to the braille window.  
+## Supported turtle commands
+Note that we do not handle all turtle commands - mostly those which support simple static low resolution graphics.
+def backward(length):
+def color(*args):
+def dot(size=None, *color):
+def filling():
+def begin_fill():
+def end_fill():
+def forward(length):
+def goto(x, y=None):
+def setpos(x, y=None): 
+def setposition(x, y=None): 
+def left(angle):
+def pendown():
+def penup():
+def right(angle):
+def speed(speed):
+def mainloop():
+def done():
+def pensize(width=None):
+def width(width=None):
+
+## Support Files
+- turtle_braille.py - direct outer interface to global turtle commands, and turtle object level commands
+- braille_display.py - implements turtle commands in the braille setting and the creation of display braille window and text printout
+- turtle_braille_link.py - simple link to support user level replacement of "from turtle import *" with "from turtle_braille_link import *" lines
+- 
 # resource_lib
 ## Common files / support for other projects
 Contains files used to support other projects.
 Provides logging, tracing, properties support.
+
 
 ## Brief listing of document files (Docs directory)
 - Program_Logging_Tracing.pptx PowerPoint presentation about Logging/Tracing demonstrating the classes SlTrace and TraceControlWindow
