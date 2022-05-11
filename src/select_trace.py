@@ -61,6 +61,7 @@ class SlTrace:
     properties_diff_sn = None       # Most recently used snapshot
     mw = None                       # Master window widget, if one
     mw_standalone = False           # Set True if we're responsible for cleanup
+    all_quiet = False               # Eliminate all trace flagged output
     @classmethod
     def getDefaultProps(cls):
         """ Return properties access
@@ -85,9 +86,20 @@ class SlTrace:
         """ Clear all trace flags
         """
         cls.setupLogging()          # Insure setup
-        cls.traceFlags = {}         # <String, Integer>
+        for flag in cls.traceFlags:
+            val = cls.traceFlags[flag] 
+            if isinstance(val, bool):
+                cls.traceFlags[flag] = False
+            elif isinstance(val,int):
+                cls.traceFlags[flag] = 0
+            else:
+                cls.traceFlags[flag] = 0
         cls.traceAll = 0            # For "all" trace
 
+    @classmethod
+    def setAllQuiet(cls, value=True):
+        cls.all_quiet = value
+        print(f"Setting all_quiet={cls.all_quiet}")
     
     @classmethod
     def diff(cls, file1, file2, req=None, req_match=None):
@@ -318,6 +330,9 @@ class SlTrace:
        
         @throws IOException
         """
+        if cls.all_quiet and trace_flag is not None:
+            return
+        
         if not SlTrace.trace(trace_flag, level):
             return
 
@@ -417,7 +432,7 @@ class SlTrace:
         except IOError as e:
             tbstr = traceback.extract_stack()
             cls.lg("Save propName %s store failed %s - %s"
-                    % (abs_propName, tbstr), str(e))
+                    % (abs_propName, tbstr, str(e)))
 
     @classmethod
     def snapshot_properties(cls, sn=None,
@@ -839,7 +854,14 @@ class SlTrace:
     @classmethod
     def getAllTraceFlags(cls):
         return cls.recTraceFlags.keys()
-    
+
+    @classmethod
+    def listTraceFlagValues(cls, flags=None):
+        if flags is None:
+            flags = cls.getAllTraceFlags()
+        for flag in flags:
+            level = cls.getLevel(flag)
+            cls.lg(f"{flag} = {level}")
     
     @classmethod
     def getTraceFlagKey(cls, name):
@@ -890,6 +912,7 @@ class SlTrace:
                     default: set False or zero or ""
         :returns: True if passing, level if default
         """
+        
         if flag is None:
             return True
 

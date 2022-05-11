@@ -7,87 +7,79 @@ on grid_width by grid_height grid
 Supports writing out braille stream
 """
 from math import sin, cos, pi, atan, sqrt
-
+import turtle as tur
 from tkinter import *
+
 from select_trace import SlTrace
+from test.test_iterlen import NoneLengthHint
+
+def pl(point_list):
+    """ display routine for point list
+    Convert points to integer, or .2f
+    :point_list: list of points
+    :returns s string of (x,y) ...
+    """
+    if not isinstance(point_list, list):
+        point_list = [point_list]
+    st = ""
+    for point in point_list:
+        st += "("
+        for i in range(len(point)):
+            p = point[i]
+            if i > 0:
+                st += ","
+            if isinstance(p, float):
+                st += f"{int(p)}"
+            else:
+                st += f"{p}"
+        st += ")"
+    return st 
+
 
 class BrailleCell:
     """ braille cell info augmented for analysis
     """
-    def __init__(self, dots=None, colors=None,
-                 ix=0, iy=0):
+    def __init__(self, dots=None,
+                 color=None, color_bg=None,
+                 ix=0, iy=0,
+                 points=None):
         """ setup braille cell
         :dots: list of set dots default: none - blank
-        :colors: colors str or tuple
+        :color: color str or tuple
         :ix: cell index(from 0) from left side
         :iy: cell index from bottom
+        :points: initial set of points, if any
+            default: empty
         """
         self.ix = ix    # Include to make self sufficient
         self.iy = iy
         self.dots = dots
-        self.colors = colors 
-        
-class DisplayCmd:
-    """ Display command - create part of the display
-        Supports rerunning display command list
-        Records most recent values, to be used as defaults
-    """
-    cmd = None 
-    p1 = None 
-    x = None 
-    y = None 
-    p2 = None 
-    pts = None 
-    colos = "black" 
-    width = 1
-    size = 5
-     
-    def __init__(self, cmd=None, p1=None, x=None, y=None,
-                    p2=None, pts=None,
-                    size=None,
-                    colors=None, width=None):
-        self.cmd = cmd
-        if p1 is None:
-            if (x is not None or y is not None):
-                if x is None:
-                    x = DisplayCmd.x
-                if y is None:
-                    y = DisplayCmd.y
-                p1 = (x,y)
+        if color is None:
+            color = "black"
+        if color_bg is None: 
+            color_bg = "white"
+        self._color = color
+        self._color_bg = color_bg
+        if points is None:
+            points = set()
+        self.points = points 
+
+    def color_str(self, color=None):
+        """ Return color string
+        :color: color specification str or tuple
+        """
+        color_str = color
+        if (color_str is None
+             or (isinstance(color_str, tuple)
+                  and len(color_str) == 0)
+             ):
+            color_str = self._color
+        if isinstance(color_str,tuple):
+            if len(color_str) == 1:
+                color_str = color_str[0]
             else:
-                p1 = DisplayCmd.p2
-        if p1 is None:
-            p1 = DisplayCmd.p2
-        if p2 is None:
-            p2 = DisplayCmd.p2
-            
-        DisplayCmd.p1 = self.p1 = p1
-        DisplayCmd.p2 = self.p2 = p2
-        
-        DisplayCmd.x = self.x = x 
-        DisplayCmd.y = self.y = y
-        if size is None:
-            size = DisplayCmd.size
-        DisplayCmd.size = size
-        self.pts = pts      # No default
-        if colors is None:
-            colors = DisplayCmd.colors 
-        DisplayCmd.colors = self.colors = colors 
-        DisplayCmd.width = self.width = width
-        self.p12_line_vals = {}    # generic p1,p2 line function
-                            # constants
-        
-    def __str__(self):
-        st = f"DisplayCmd: {self.cmd}"
-        if self.p1 is not None:
-            st += f" pt1: {self.p1}"
-        if self.p2 is not None:
-            st += f" pt2: {self.p2}"
-        if self.colors is not None:
-            st += f" color: {self.colors}"
-        if self.width is not None:
-            st += f" width: {self.width}"
-        return st
+                color_str = "pink"  # TBD - color tuple work
+        return color_str
         
 
 class P12LineVals:
@@ -105,7 +97,7 @@ class P12LineVals:
         self.cx = cx
         
 class BrailleDisplay:
-    """ Create and display graphics on a braille screen
+    """ Create and display graphics using Braille
     """
     dots_for_character = {
         " ": (),    # blank
@@ -139,14 +131,19 @@ class BrailleDisplay:
     
     
     def __init__(self, title="Braille Display",
+                 tu=None,
                  win_width=800, win_height=800,
                  grid_width=40, grid_height=25,
                  use_full_cells= True,
                  x_min=None, y_min=None,
                  line_width=1, color="black",
+                 color_bg = None,
+                 color_fill = None,
                  point_resolution=None):
         """ Setup display
         :title: display screen title
+        :tu: turtle instance
+            default: create one
         :win_width: display window width in pixels
             default: 800
         :win_height: display window height in pixels
@@ -155,6 +152,12 @@ class BrailleDisplay:
             default: 40
         :grid_height: braille width in cells
             default: 25
+        :color: drawing color
+                default: turtle default
+        :color_fill: fill color
+                default: drawing color
+        :color_bg: background color
+                default: turtle default
         :use_full_cells: Use full cells for point/lines
             e.g. place color letter in cell
             default: True - usefull cells
@@ -173,6 +176,13 @@ class BrailleDisplay:
         self.title = title
         self.win_width = win_width
         self.win_height = win_height
+        if tu is None:
+            tu = tur.Turtle()
+            screen = tur.Screen()
+            screen.screensize(win_width,win_height)
+        self.tu = tu          # For turtle screen
+        self.screen = screen
+        
         self.grid_width = grid_width
         self.cell_width = win_width/self.grid_width
         self.grid_height = grid_height
@@ -193,13 +203,26 @@ class BrailleDisplay:
         self.y_min = y_min
         self.y_max = y_min + win_height
         self.line_width = line_width
-        self.color = color
+        self._color = color
+        if self.color is not None:
+            self.tu.color(self._color)
+        self._color_fill = color_fill
+        if self._color_fill is not None:
+            self.tu.fillcolor(self._color_fill)
+        self._color_bg = color_bg
+        if self._color_fill is not None:
+            self.tu.bgcolor(self._color_bg)
         self.cmds = []      # Commands to support redo
         self.cells = {}     # BrailleCell hash by (ix,iy)
         self.set_cell_lims()
         self.lfun_horz = False 
         self.lfun_vert = False 
-        self.p2 = self.p2 = (0,0)
+        self.x = self.y = 0
+        self.angle = 0          # degrees (angle)
+        self.pt = self.p2 = (self.x, self.y)
+
+        self.is_pendown = True 
+        self.is_filling = False
         
     def set_cell_lims(self):
         """ create cell bottom values through top
@@ -218,131 +241,47 @@ class BrailleDisplay:
             y = int(self.y_min + i*self.win_height/self.grid_height)
             self.cell_ys.append(y)
         
-        
-    def add_color(self, colors=None):
-        """ Add color string, or color tuple
-        :color: tuple - color, fill
-                string - color string
-        """
-        dc = DisplayCmd(cmd="add_color", colors=colors)
-        self.add_color_do(dc)
-
-    def add_color_do(self, cmd):
-        """ Execute add_colors action
-        """
-        SlTrace.lg(f"add_colors_do: {cmd}")
-        self.colors = cmd.colors
-        
-        
-    def add_dot(self, size=None, colors=None):
+    def add_dot(self, size=None, *color):
         """ Add new point
         :size: diameter of dot
-        :colors: point colors
+        :color: point color
         """
-        dc = DisplayCmd(cmd="add_dot", size=size,
-                         colors=colors)
-        self.cmds.append(dc)
-        self.add_dot_do(dc)
-
-    def add_dot_do(self, cmd):
-        """ Execute add_dot action
-        """
-        SlTrace.lg(f"add_dot_do: {cmd}", "braille_cmd")
-        pt = cmd.p2
-        if pt is None:
-            pt = cmd.p1
-        if pt is None:
-            pt = self.p2
-        if pt is None:
-            pt = self.p2
+        SlTrace.lg(f"add_dot: ", "braille_cmd")
+        self.tu.dot(size, *color)
+        if size is None:
+            size = self.line_width
+        pt = (self.x,self.y)
+        if len(color)==0:
+            color = self._color
             
-        cells = self.get_dot_cells(pt=pt, size=cmd.size, colors=cmd.colors)
-        self.populate_cells(cells)
+        points = self.get_dot_points(pt=pt, size=size)
+        self.populate_cells_from_points(points, color=color)
         
-        
-    def add_point(self, p1=None, x=None, y=None, colors=None,
-                  width=None):
-        """ Add new point
-        :p1: (x,y) pair for point
-        OR 
-        :x: x-position on win_width/win_height screen
-            default: previous x
-        :y: y-position on win_width/win_height screen
-            default: previous y
-        :colors: point colors
-        :width: width for connecting points
-            default: previous width [1]
-        """
-        dc = DisplayCmd(cmd="add_point", p1=p1, x=x, y=y,
-                        colors=colors, width=width)
-        DisplayCmd.p2 = p1      # Save as destination
-        self.cmds.append(dc)
-        self.add_point_do(dc)
-
-    def add_point_do(self, cmd):
-        """ Execute add_point action
-        """
-        SlTrace.lg(f"add_point_do: {cmd}")
-        cells = self.get_point_cells(pt=cmd.p1, width=cmd.width)
-        self.populate_cells(cells)
-        
-
-    def add_line(self, p1=None, p2=None, colors=None, width=None):
+    def add_line(self, p1=None, p2=None, color=None, width=None):
         """ Add new line
         :p1: xy pair - beginning point
             default: previous point (add_point or add_line)
         :p2: xy pair - ending point
             default: previous point (add_point or add_line)
-        :colors: line colors
+        :color: line color
             default: previous color ["black"]
         :width: line width 
             default: previous width [1]
         """
-        dc = DisplayCmd(cmd="add_line", p1=p1, p2=p2,
-                        colors=colors, width=width)
-        self.cmds.append(dc)
-        self.add_line_do(dc)
-
-    def add_line_do(self, cmd):
-        """ Execute command
-        """
-        self.p1 = cmd.p1
-        self.p2 = cmd.p2
-        cells = self.get_line_cells(cmd.p1, cmd.p2, cmd.width)
-        self.populate_cells(cells)
-        
-    def add_lines(self, pts, colors=None, width=None):
-        """ Add new line
-        :pts: list of points (x,y) pairs
-        :colors: line color
-            default: previous color ["black"]
-        :width: line width 
-            default: previous width [1]
-        """
-        dc = DisplayCmd(cmd="add_lines", pts=pts,
-                        colors=colors, width=width)
-        self.cmds.append(dc)
-        self.add_lines_do(dc)
-
-    def add_lines_do(self, cmd):
-        """ Execute command
-        """
-        
-        
-    def set_color(self, color):
-        """ Set color
-        :color: point color
-        """
-        dc = DisplayCmd(cmd="set_color")
-        self.cmds.append(dc)
-        self.set_color_do(dc)
-
-
-    def set_color_do(self, cmd):
-        """ Execute add_point action
-        """
-        SlTrace.lg(f"set_color_do: {cmd}")
-        self.color = cmd.color
+        if p1 is None:
+            p1 = (self.x,self.y)
+        if p2 is None:
+            raise Exception("p2 is missing")
+        if self.is_filling:
+            self.add_to_fill(p1,p2)
+        if width is None:
+            width = self.line_width
+        if color is None:
+            color = self._color
+        if self.is_pendown:
+            points = self.get_drawn_line_points(p1, p2, width)
+            self.populate_cells_from_points(points, color=color)
+        self.x, self.y = p2
             
             
     def set_p12_line_funs(self, p1, p2):
@@ -384,6 +323,7 @@ class BrailleDisplay:
             mx=mx,cx=cx, my=my, cy=cy)
         
         
+        
     def set_line_funs(self, p1, p2):
         """ Set line functions which provide determine
         x from y,  y from x to place (x,y) on line
@@ -391,38 +331,57 @@ class BrailleDisplay:
         :p1: beginnin point (x,y)
         :p2: ending point (x,y)
         """
-        SlTrace.setFlags("point")
         x1,y1 = p1
         x2,y2 = p2
-        x_diff = x2 - x1
-        y_diff = y2 - y1
+        self.lfun_x_diff = x2 - x1
+        ###if abs(self.lfun_x_diff) < small:
+        ###    self.lfun_x_diff = 0
+        self.lfun_y_diff = y2 - y1
+        ###if abs(self.lfun_y_diff) < small:
+        ###    self.lfun_y_diff = 0
+        self.lfun_dist = sqrt(self.lfun_x_diff**2
+                              +self.lfun_y_diff**2)
+        self.lfun_x_chg_gt = False
+        if abs(self.lfun_x_diff) >= abs(self.lfun_y_diff):
+            self.lfun_x_chg_gt = True
+        if self.lfun_dist != 0: 
+            self.lfun_sin = self.lfun_y_diff/self.lfun_dist
+            self.lfun_cos = self.lfun_x_diff/self.lfun_dist
+        else:
+            self.lfun_sin = self.lfun_cos = 0
+        
         self.lfun_p1 = p1
         self.lfun_p2 = p2
         self.lfun_horz = False 
         self.lfun_vert = False
-        self.lfun_rangle = 0 
-        self.lfun_sin = 1       # to support x = s*sin(0),...
-        self.lfun_cos = 1
-        if x_diff == 0:
+        if self.lfun_x_diff == 0:
             self.lfun_vert = True 
         else:
-            self.lfun_my = y_diff/x_diff
+            self.lfun_my = self.lfun_y_diff/self.lfun_x_diff
             self.lfun_cy = y1 - self.lfun_my*x1 
-        if y_diff == 0:
+        if self.lfun_y_diff == 0:
             self.lfun_horz = True 
         else:
-            self.lfun_mx = x_diff/y_diff 
-            self.lfun_cy = y1 - self.lfun_my*x1 
+            self.lfun_mx = self.lfun_x_diff/self.lfun_y_diff 
             self.lfun_cx = x1 - self.lfun_mx*y1
-        if x_diff == 0:
-            rangle = pi/2
-        elif y_diff == 0:
-            rangle = 0
+        if self.lfun_x_diff == 0:
+            if self.lfun_y_diff >= 0:
+                self.lfun_rangle = pi/2
+            else:
+                self.lfun_rangle = -pi/2
+        elif self.lfun_y_diff == 0:
+            if self.lfun_x_diff >= 0:
+                self.lfun_rangle = 0
+            else:
+                self.lfun_rangle = pi
         else:
-            rangle = atan(1/self.lfun_my)
-        self.rangle = rangle
-        self.lfun_sin = sin(rangle)
-        self.lfun_cos = cos(rangle)
+            self.lfun_rangle = atan(self.lfun_my)
+        #unit_normal (length 1 orthogonal to line)
+        uno_rangle = self.lfun_unorm_rangle = self.lfun_rangle + pi/2
+        self.lfun_unorm_sin = sin(uno_rangle)
+        self.lfun_unorm_cos = cos(uno_rangle)
+        self.lfun_unorm_x = self.lfun_unorm_cos
+        self.lfun_unorm_y = self.lfun_unorm_sin
             
     def line_y(self, x):
         """ calculate pt y, given pt x
@@ -434,7 +393,7 @@ class BrailleDisplay:
             return self.lfun_p1[1]  # constant y
         
         if self.lfun_vert:
-            return None 
+            return self.lfun_p1[1]  # Just pick first 
         
         y = self.lfun_my*x + self.lfun_cy
         return y
@@ -469,7 +428,7 @@ class BrailleDisplay:
         :returns:  x value , None if undetermined
         """
         if self.lfun_horz:
-            return None 
+            return self.lfun_p1[0]  # Just pick first 
         
         if self.lfun_vert:
             return self.lfun_p1[0]  # constant x
@@ -603,13 +562,57 @@ class BrailleDisplay:
         lst = list(cells_set)
         SlTrace.lg(f"get_point_cells: list:{lst}", "cell")
         return list(cells_set) 
+
+    def update_cell(self, ix=None, iy=None, pt=None,
+                    color=None):
+        """ Add / update cell
+            if the cell is already present it is updated:
+                pt, if present is added
+                color is replaced
+        cell grid ix,iy:
+        :ix: cell x grid index 
+        :iy: cell y grid index
+        OR
+        :pt: (x,y) point coordinate of point
+            added to cell
         
-    def get_dot_cells(self, pt, size=None, colors=None):
-        """ Get cells included by dot
+        :color: cell color
+        :returns: new/updated BrailleCell
+        """
+        if color is None:
+            color = self._color
+        if ix is not None and iy is None:
+            raise Exception(f"iy is missing ix={ix}")
+        if iy is not None and ix is None:
+            raise Exception(f"iy is missing ix={iy}")
+        if ix is not None:
+            cell_ixiy = (ix,iy)
+        else:
+            if pt is None:
+                raise Exception(f"pt is missing")
+            cell_ixiy = self.get_point_cell(pt)
+        if cell_ixiy in self.cells:
+            cell = self.cells[cell_ixiy]
+        else:
+            cell = BrailleCell(ix=cell_ixiy[0],
+                        iy=cell_ixiy[1], color=color)
+            self.cells[cell_ixiy] = cell
+        if pt is not None:
+            cell.points.add(pt) 
+        if color is not None:
+            color = color
+            cell.color = color
+            dots = self.braille_for_color(color)
+            cell.dots = dots
+
+        return cell
+                
+    def get_dot_points(self, pt, size=None):
+        """ Get fill points included by dot
         :pt: beginning point (x,y)
         :size: dot thickness in pixels
             default: previous line width
-        :returns: list of cells included by dot
+        :returns: set of fill ponints
         """
         if size is None:
             size = self.line_width
@@ -630,8 +633,8 @@ class BrailleDisplay:
             y = pt_y + dy
             point = (int(x),int(y))
             point_list.append(point)
-        cell_set_filled = self.fill_cells(point_list)    
-        return cell_set_filled 
+        point_set = self.fill_points(point_list)
+        return point_set 
 
     def fill_cells(self, point_list, point_resolution=None):
         """ Convert set of points to cells
@@ -655,6 +658,24 @@ class BrailleDisplay:
             cell = self.get_point_cell(point)
             cells.add(cell)
         return cells
+
+    """ begin_fill, end_fill support
+    """
+    def add_to_fill(self, *points):
+        """ Add points to fill perimiter
+        :points: points to add
+        """
+        for point in points:
+            self._fill_perimiter_points.append(point)
+            
+    def do_fill(self):
+        """ Fill, using fill perimiter points
+        """
+        fill_points = self.fill_points(
+                        self._fill_perimiter_points)
+        self.populate_cells_from_points(
+                        fill_points,
+                        color=self._color_fill)
     
             
     def fill_points(self, point_list, point_resolution=None):
@@ -678,79 +699,224 @@ class BrailleDisplay:
         """
         if point_resolution is None:
             point_resolution = self.point_resolution
+        SlTrace.lg(f"fill_points: {pl(point_list)} res:{point_resolution}", "xpoint")
         fill_point_set = set()
+        if len(point_list) < 3:
+            return set()
+         
         plist = iter(point_list)
-        p1 = next(plist)
-        while True:
-            p2 = next(plist, None)
-            if p2 is None:
-                break 
-            p3 = next(plist, None)
-            if p3 is None:
-                break 
+        p1 = point_list[0]
+        for i in range(2,len(point_list)):
+            p2 = point_list[i]
+            p3 = point_list[i-1]
             points = self.get_points_triangle(p1,p2,p3,
-                                              point_resolution=point_resolution)
+                                    point_resolution=point_resolution)
             fill_point_set.update(points)
         return fill_point_set
 
     def get_points_triangle(self,p1,p2,p3, point_resolution=None):
         """ Get points in triangle
-        Strategy fill from left to right
-        with vertical lines separated by point_resolution
-        Start at x = min_x stopping at x >= max_x
+        The goal is that, when each returned point is used in generating the
+        including cell, the resulting cells completely fill the triangle's
+        region with minimum number of gaps and minimum fill outside the
+        triangle. Strategy fill from left to right with vertical fill lines
+        separated by a pixel distance of point_resolution which will be
+        converted to fill points.
+        
+        Strategy
+
+                                       * pxs[1]
+                                    *   *
+                                  *      *        
+                                *       |*
+                              *         | *
+                            * |         |  *
+                          *   |         |  *
+                        *|    |         |   *
+                      *  |    |  more   |   *
+                    *    |    |   lines |    *
+                 *  |    |    |         |    *
+        pxs[0] *    |    |    |         |    |*  
+                 *  |    |    |         |    |*
+                    *    |    |         |    | *
+                      *  |    |         |    | *
+                         *    |         |    |  *
+                             *          |    |  *
+                                *       |    |  *
+                                   *    |    |   *
+                                      * |    |   *
+                                         *   |    *
+                                           * |    |*
+                                             *    |*
+                                                *  *
+                                                    *  pxs[2]
+
+        Begin by adding points directly included by the
+        triangle's three edges.  Then continue with
+        the following.
+        
+        Construct a series of vertical fill lines separated
+        by point_resolution such that the fill points from
+        these lines will appropriately cover the triangle.
+ 
+        Organize the triangle vertex points by ascending x
+        coordinate value into list pxs:
+                pxs[0]: pxs[0].x <= pxs[1].x minimum x
+                pxs[1]: pxs[1].x <= pxs[2].x
+                pxs[2]: pxs[2].x             maximum x
+        
+        Construct a list of x-coordinate values separated by
+        point_resolution: xs
+            pxs[0].x < xs[i] < pxs[2].x
+        
+        Construct a list of point pairs, each point being
+        the end point of a vertical fill line with x coordinate
+        in xs[i].  The vertical fill line end points will be
+        stored in a coordinated pair of lists:
+            pv_line_02 - end points on psx[0]-pxs[2]
+            pv_line_012 - end points on pxs[0]-pxs[1]-pxs2]
+        Each pair of end points is constructed for an
+        x-coordinate found in xs[i] as such:
+            1. One end point will be on the pxs[0]-pxs[2] line
+               with x-coordinate of xs[i], and stored in
+               list pv_line_02[i].
+            2. The other end point will be, also with
+               x-coordinate xs[i] on
+                A. pxs[0]-pxs[1] line when xs[i] < pxs[1].x
+                B. pxs[1]-pxs[2] line when xs[i] >= pxs[1].x
+                    
+        Each vertical fill line segment constructed from
+        end points pv_line_02[i] and pv_line_012[i] is used
+        to generate fill points at a separation of a distance
+        point_resolution.
         :p1,p2,p3: triangle points (x,y) tupple
         :point_resolution:  maximum pint separation to avoid
             gaps default: self.point_resolution
         :returns: set of fill points
         """
-        min_x_p = p1
-        min_x = p1[0]
+        SlTrace.lg(f"get_points_triangle:{pl(p1)} {pl(p2)} {pl(p3)}", "xpoint")
+        fill_points = set()
+        if point_resolution is None:
+            point_resolution = self.point_resolution
+        por = point_resolution
+        # Include the edge lines
+        lep = self.get_line_points(p1, p2, point_resolution=por)
+        fill_points.update(lep)
+        lep = self.get_line_points(p2, p3, point_resolution=por)
+        fill_points.update(lep)
+        lep = self.get_line_points(p3, p1, point_resolution=por)
+        fill_points.update(lep)
+        x_min_p = p1
+        x_min = p1[0]
         
-        # Find min_x, max_x
+        # Find x_min, max_x
         # Create pxs a list of the points
         # in ascending x order
-        pxs = [min_x_p]    # point to process
+        pxs = [x_min_p]    # point to process
                                 # starting with min
         for p in [p2,p3]:
             x = p[0]
-            if x < min_x:
-                min_x = x 
-                min_x_p = p
+            if x < x_min:
+                x_min = x 
+                x_min_p = p
                 pxs.insert(0,p)
             elif len(pxs) > 1 and x < pxs[1][0]:
                 pxs.insert(1,p)
             else:
                 pxs.append(p)
-        fill_points = set()    
-        # Process traiangle in two steps
-        # with increasing x values
-        #   pxs[0] to pxs[1]        
-        #   psx[1] to pxs[2] 
+        # Generate list of x values separated by point_resolution
+        # starting at x = x_min ending at or after max_x
+        #
+        xs = []
+        x = x_min
+        while x <= pxs[2][0]:
+            xs.append(x)
+            x += point_resolution
+            
+        SlTrace.lg(f"pxs:{pxs}", "xpoint")
         
-        # pxs[0] to pxs[1]   
+        # Start including the three edges as perimiter   
         line_01_points = self.get_line_points(pxs[0], pxs[1],
                                 point_resolution=point_resolution)
         line_02_points = self.get_line_points(pxs[0],pxs[2],
                                 point_resolution=point_resolution)
-        for i in range(len(line_01_points)):
-            p_line_01 = line_01_points[i]
-            p_line_02 = line_02_points[i] 
-            vert_points = self.get_line_points(p_line_01,p_line_02)
-            fill_points.update(vert_points)
-
-        # pxs[1] to pxs[2]
-        end_line_01 = len(line_01_points)
         line_12_points = self.get_line_points(pxs[1], pxs[2],
                                 point_resolution=point_resolution)
-        end_line_02 = len(line_02_points)
-        for i in range(end_line_01, end_line_02):
-            p_line_02 = line_02_points[i]
-            p_line_12 = line_12_points[i-end_line_02] 
-            vert_points = self.get_line_points(p_line_02,p_line_12,
-                              point_resolution=point_resolution)
-            fill_points.update(vert_points)
+        # Place the edge points in the fill area
+        fill_points.update(line_01_points)
+        fill_points.update(line_02_points)
+        fill_points.update(line_12_points)
+        
+        # proceed from left (x_min) to right (max_x)
+        pv_line_02 = []
+        pv_line_012 = []
+        # populate vertical fill line line_02 end points
+        self.set_line_funs(pxs[0],pxs[2])
+        for i in range(len(xs)):
+            x = xs[i]
+            y = self.line_y(x)
+            pv_line_02.append((x,y))
+        
+        # populate vertical fill line_012 end points
+        self.set_line_funs(pxs[0],pxs[1])
+        on_line_12 = False   # on or going to be
+        last_line_01_x = pxs[1][0]
+        for i in range(len(xs)):
+            x = xs[i]
+            if on_line_12 or x >= last_line_01_x:
+                if not on_line_12:
+                    self.set_line_funs(pxs[1], pxs[2])
+                    on_line_12 = True  
+            y = self.line_y(x)
+            p = (x,y)
+            pv_line_012.append(p)
+        
+        # Processing vertical fill lines
+        for i in range(len(xs)):
+            p1 = pv_line_02[i] 
+            p2 = pv_line_012[i] 
+            vline_points = self.get_line_points(p1,p2,
+                                point_resolution=point_resolution)
+            fill_points.update(vline_points)
         return fill_points
 
+    def get_drawn_line_points(self, p1, p2, width=None,
+                              point_resolution=None):
+        """ Get drawn line fill points
+        Find perimeter of surrounding points of a rectangle
+        For  simplicity we consider vertical width
+        :p1: beginning point
+        :p2: end point
+        :width: width of line
+            default: self.line_width
+        :point_resolution: fill point spacing
+            default: self.point_resolution
+        :returns: set of fill points
+        """
+        ###pts = self.get_line_points(p1,p2)
+        ###return set(pts)
+        
+        if width is None:
+            width = self.line_width
+        if point_resolution is None:
+            point_resolution = self.point_resolution
+        pr = point_resolution
+        SlTrace.lg(f"get_drawn_Line_points {p1} {p2}"
+                   f" width: {width} res: {pr}", "xpoint")
+        p1x,p1y = p1
+        p2x,p2y = p2
+        self.set_line_funs(p1, p2)
+        
+        dx = self.lfun_unorm_x*width/2 # draw width offsets
+        dy = self.lfun_unorm_y*width/2
+        pp1 = (p1x+dx,p1y+dy) # upper left corner
+        pp2 = (p2x+dx,p2y+dy) # upper right corner
+        pp3 = (p2x-dx,p2y-dy) # lower right corner
+        pp4 = (p1x-dx,p1y-dy) # lower left corner
+        perim_list = [pp1, pp2, pp3, pp4]
+        filled_points = self.fill_points(perim_list)
+        return filled_points
+    
     def get_line_points(self, p1, p2, point_resolution=None):
         """ Get spaced points on line from p1 to p2
         :p1: p(x,y) start
@@ -759,71 +925,86 @@ class BrailleDisplay:
         :returns: list of points from p1 to p2
                 separated by point_resolution pixels
         """
-        SlTrace.lg(f"\nget_line_points: p1={p1} p2={p2}", "point")
+        SlTrace.lg(f"\nget_line_points: p1={pl(p1)} p2={pl(p2)}", "xpoint")
+        self.set_line_funs(p1=p1, p2=p2)
+        if p1 == p2:
+            return [p1,p2]
+        
         if point_resolution is None:
             point_resolution = self.point_resolution
-        self.set_line_funs(p1=p1, p2=p2)
         x1,y1 = p1
         x2,y2 = p2
-        p_dist_between_12 = sqrt((x2-x1)**2+(y2-y1)**2)
         p_chg = point_resolution
         
         pt = p1
         point_list = [p1]       # Always include end points
+        p_len = 0.               # Travel length
         while True:
             pt_x,pt_y = pt
-            px_chg = p_chg*self.lfun_cos
-            py_chg = p_chg*self.lfun_sin
-            pt_x = pt_x + px_chg
-            pt_y = pt_y + py_chg
-            pt = (pt_x,pt_y)
-            SlTrace.lg(f"pt={pt}")
-            p_dist = sqrt((pt_x-x1)**2+(pt_y-y1)**2)
-            if p_dist >= p_dist_between_12:
-                # at end point, if not already there
-                pt_x,pt_y = int(pt_x),int(pt_y)
-                pt = (pt_x,pt_y)
-                if pt !=point_list[-1]:
-                    point_list.append(pt)
+            p_len += p_chg
+            SlTrace.lg(f"pt={pl(pt)} p_len={p_len:.5}", "xpoint")
+            if p_len > self.lfun_dist:
                 break
-             
+            
+            pt_x = int(x1 + p_len*self.lfun_cos)
+            pt_y = int(y1 + p_len*self.lfun_sin)
+            pt = (pt_x,pt_y)
+            point_list.append(pt)
+        
+        # at end point, if not already there
+        if pt != point_list[-1]:
             point_list.append(pt)
             
-        SlTrace.lg(f"return: {point_list}", "point")
+        SlTrace.lg(f"return: {point_list}", "xpoint")
         return point_list
     
-    def populate_cells(self, cells, colors=None):
-        """ Populate display cells
-        :cells: set/list of ix,iy pairs
-        :colors: cell colors
-                default: self.color
+    def populate_cells_from_points(self, points, color=None):
+        """ Populate display cells, given points, color
+        :points: set/list of points(x,y) tuples
+        :color: cell color
+                default: self._color
         """
-        SlTrace.lg(f"populate_cells: add: {len(cells)} cells before: {len(self.cells)}", "cell")
-        if colors is None:
-            colors = DisplayCmd.colors
+        SlTrace.lg(f"populate_cells_from_points: add: "
+                   f" {len(points)} points before:"
+                   f" {len(self.cells)}", "point")
+        if color is None:
+            color = self._color
         
-        for cell in cells:
-            if SlTrace.trace("cell"):
-                if cell in self.cells:
-                    SlTrace.lg(f"{cell} already in self.cells")
-                else:
-                    SlTrace.lg(f"{cell} is new")
-            self.complete_cell(cell, colors=colors)
-        SlTrace.lg(f"populate_cells: cells after: {len(self.cells)}", "cell")
+        for point in points:
+            SlTrace.lg(f"point:{point}", "point")
+            self.update_cell(pt=point, color=color)
+        SlTrace.lg(f"populate_cells: cells after: {len(self.cells)}", "xpoint")
 
-    def braille_for_color(self, colors):
+    def color_str(self, color):
+        """ convert turtle colors arg(s) to color string
+        :color: turtle color arg
+        """
+        color_str = color
+        if (color_str is None
+             or (isinstance(color_str, tuple)
+                  and len(color_str) == 0)
+             ):
+            color_str = self._color
+        if isinstance(color_str,tuple):
+            if len(color_str) == 1:
+                color_str = color_str[0]
+            else:
+                color_str = "pink"  # TBD - color tuple work
+        return color_str
+    
+    def braille_for_color(self, color):
         """ Return dot list for color
-        :colors: color string or tuple
+        :color: color string or tuple
         :returns: list of dots 1,2,..6 for first
                 letter of color
         """
-        if colors is None:
-            colors = ("black")
-        if isinstance(colors, str):
-            colors = (colors)
-        if len(colors) < 1:
-            colors = ("black")
-        c = colors[0]
+        
+        if color is None:
+            color = self._color
+        if color is None:
+            color = ("black")
+        color = self.color_str(color)
+        c = color[0]
         dots = self.braille_for_letter(c)
         return dots
     
@@ -836,23 +1017,28 @@ class BrailleDisplay:
         dots = BrailleDisplay.dots_for_character[c]
         return dots
         
-    def complete_cell(self, cell, colors=None):
-        """ Fill braille cell
+    def complete_cell(self, cell, color=None):
+        """ create/Fill braille cell
             Currently just fill with color letter (ROYGBIV)
-        :cell: (ix,iy) cell index
-        :color: cell color default:DisplayCmd.color
+        :cell: (ix,iy) cell index or BrailleCell
+        :color: cell color default: current color
         """
-        if colors is None:
-            colors = DisplayCmd.colors
-        dots = self.braille_for_color(colors)
-        bc = BrailleCell(ix=cell[0],iy=cell[1], dots=dots, colors=colors)
+        if color is None:
+            color = self._color
+        dots = self.braille_for_color(color)
+        bc = BrailleCell(ix=cell[0],iy=cell[1], dots=dots, color=color)
         self.cells[cell] = bc
 
-    def braille_display(self):
+    def braille_window(self, title, show_points=False):
         """ Display current braille in a window
+        :title: window title
+        :show_points: Show included points instead of braille dots
+                default: False - show braille dots
         """
         mw = Tk()
-        mw.title(self.title)
+        if title is not None and title.endswith("-"):
+            title += " Braille Window"
+        mw.title(title)
         self.mw = mw
         canvas = Canvas(mw, width=self.win_width, height=self.win_height)
         canvas.pack()
@@ -861,13 +1047,15 @@ class BrailleDisplay:
             for iy in range(self.grid_height):
                 cell_ixy = (ix,iy)
                 if cell_ixy in self.cells:
-                    self.display_cell(self.cells[cell_ixy])
+                    self.display_cell(self.cells[cell_ixy],
+                                      show_points=show_points)
+        mw.update()     # Make visible
 
-
-    def print_cells(self):
+    def print_cells(self, title=None):
         """ Display current braille in a window
         """
-        SlTrace.lg(f"print_cells {len(self.cells)} on")
+        if title is not None:
+            print(title)
         for ix in range(self.grid_width):
             for iy in range(self.grid_height):
                 cell_ixy = (ix,iy)
@@ -877,17 +1065,86 @@ class BrailleDisplay:
                           f"  win rect: {self.get_cell_rect_win(ix,iy)}")
         SlTrace.lg("")
 
+    def display(self, braille_window=True, braille_print=True,
+               print_cells=False, title=None,
+               points_window=False):
+        """ display grid
+        :braille_window: True - make window display of braille
+                        default:True
+        :braille_print: True - print braille
+                        default: True
+        :print_cells: True - print out non-empty cells
+                        default: False
+        :title: text title to display
+                    default:None - no title
+        :points_window: make window showing display points
+                        instead of braille dots
+                    default: False - display dots
+        """
+        if braille_window:
+            tib = title
+            if tib is not None and tib.endswith("-"):
+                tib += " Braille Window"
+            self.braille_window(title=tib)
+        if points_window:
+            tib = title
+            if tib is not None and tib.endswith("-"):
+                tib += " Display Points"
+            self.braille_window(title=tib, show_points=points_window)
+        if braille_print:
+            tib = title
+            if tib is not None and tib.endswith("-"):
+                tib += " Braille Print Output"
+            self.print_braille(title=tib)
+        if print_cells:
+            tib = title
+            if tib is not None and tib.endswith("-"):
+                tib += " Braille Cells"
+            self.print_cells(title=tib)
 
-    def display_cell(self, cell):
+    def clear_display(self):
+        """ Clear display for possible new display
+        """
+        self.cmds = []      # Commands to support redo
+        self.cells = {}     # BrailleCell hash by (ix,iy)
+        
+
+    def snapshot(self, title=None, clear_after=False):
+        """ Take snapshot of current braille_screen
+        :title: title of snapshot
+        :clear_after: clear braille screen after snapshot
+        """
+        
+    
+    
+    def display_cell(self, cell, show_points=False):
         """ Display cell
         :cell: BrailleCell
+        :show_points: show points instead of braille
+                default: False --> show braille dots
         """
         ix = cell.ix
         iy = cell.iy 
         canvas = self.braille_canvas
         cx1,cy1,cx2,cy2 = self.get_cell_rect_win(ix=ix, iy=iy)
         canvas.create_rectangle(cx1,cy1,cx2,cy2)
-        colors = cell.colors
+        color = self.color_str(cell._color)
+        if show_points:
+            dot_size = 1            # Display cell points
+            dot_radius = dot_size//2
+            if dot_radius < 1:
+                dot_radius = 1
+                dot_size = 2
+            for pt in cell.points:
+                dx,dy = self.get_point_win(pt)
+                x0 = dx-dot_radius
+                y0 = dy+dot_size 
+                x1 = dx+dot_radius 
+                y1 = dy
+                canvas.create_oval(x0,y0,x1,y1, fill=color)
+            self.mw.update()    # So we can see it now 
+            return
+            
         dots = cell.dots
         grid_width = cx2-cx1
         grid_height = cy1-cy2       # y increases down
@@ -915,12 +1172,11 @@ class BrailleDisplay:
             y0 = dy+dot_size 
             x1 = dx+dot_radius 
             y1 = dy
-            canvas.create_oval(x0,y0,x1,y1, fill=colors) 
-    def mainloop(self):
-        """ tk.mainloop() link
-        """
-        self.mw.mainloop()
-        
+            canvas.create_oval(x0,y0,x1,y1, fill=color) 
+
+    def update(self):
+        self.mw.update()
+                
     def get_cell_rect_win(self, ix, iy):
         """ Get cell's window rectangle x, y  upper left, x,  y lower right
         :ix: cell x index
@@ -947,6 +1203,17 @@ class BrailleDisplay:
         w_x2 = tu_x2 + self.win_width//2
         w_y2 = self.win_height//2 - tu_y2
         return (w_x1,w_y1,w_x2,w_y2)
+        
+    def get_point_win(self, pt):
+        """ Get point in window coordinates
+        :pt: (x,y) point in turtle coordinates
+        :returns: (x,y)
+        """
+        tu_x,tu_y = pt
+        
+        w_x = tu_x + self.win_width//2
+        w_y = self.win_height//2 - tu_y
+        return (w_x,w_y)
                     
         
     def get_cell_rect_tur(self, ix, iy):
@@ -972,61 +1239,168 @@ class BrailleDisplay:
         y2 = self.cell_ys[iy+1]
         return (x1,y1,x2,y2)
                     
-    def braille_print(self):
+    def print_braille(self, title=None):
         """ Output braille
         """
-        for iy in range(self.grid_height):
+        if title is not None:
+            print(title)
+        for iy in reversed(range(self.grid_height)):
             line = ""
             for ix in range(self.grid_width):
                 cell_ixy = (ix,iy)
                 if cell_ixy in self.cells:
                     cell = self.cells[cell_ixy]
-                    line += cell.colors[0]
+                    color = cell.color_str()
+                    line += color[0]
                 else:
                     line += " "
             line.rstrip()
             print(line)
+
+    """
+    turtle commands
+    These commands:
+        1. call turtle via self.tu, self.screen
+        2. set local drawing state
+        3. create BrailleCell self.cells
+        4. return turtle call return
+    """
+    def backward(self, length):
+        return self.forward(-length)
+    
+    def color(self, *args):
+        rt = self.tu.color(*args)
+        if len(args) == 1:
+            self.pencolor(args[0])
+        elif len(args) == 2:
+            self.pencolor(args[0])
+            self.fillcolor(args[1])
+        elif len(args) == 3:
+            self._color = args
+        return rt
+
+    def pencolor(self, *args):
+        rt = self.tu.pencolor(*args)
+        if len(args) == 1:
+            self._color = args[0]
+        elif len(args) == 3:
+            self._color = args
+        else:
+            raise Exception(f"pencolor illegal args:{args}")
+        
+        return rt
+        
+    def fillcolor(self, *args):
+        rt = self.tu.fillcolor(*args)
+        if len(args) == 1:
+            self._color_fill = args[0]
+        elif len(args) == 3:
+            self._color_fill = args
+        else:
+            raise Exception(f"pencolor illegal args:{args}")
+        
+        return rt
+        
+    def dot(self, size=None, *color):
+        rt = self.tu.dot(size, *color)
+        self.add_dot(size, *color)
+        return rt
+    
+    def filling(self):
+        return self.tu.filling()
+    
+    def begin_fill(self):
+        rt = self.tu.begin_fill()
+        self.is_filling = True
+        self._fill_perimiter_points = []
+        return rt
+        
+                
+    def end_fill(self):
+        rt = self.tu.end_fill()
+        self.do_fill()
+        self.is_filling = False
+        return rt
+    
+    def forward(self, length):
+        """ Make step forward, updating location
+        """
+        rt = self.tu.forward(length)
+        x1 = self.x
+        y1 = self.y
+        angle = self.angle
+        rangle = angle/180*pi
+        x2 = x1 + length*cos(rangle)
+        y2 = y1 + length*sin(rangle)
+        self.goto(x=x2, y=y2)
+        return rt
+    
+    def goto(self, x, y=None):
+        rt = self.tu.goto(x,y) 
+        x1 = self.x
+        y1 = self.y
+        x2 = x 
+        if y is None:
+            y = self.y
+        y2 = y 
+        self.add_line(p1=(x1,y1), p2=(x2,y2))
+        return rt
+
+    def heading(self):
+        rt = self.tu.heading()
+        return rt 
+            
+    def setpos(self, x, y=None):
+        return self.goto(x, y=y) 
+    def setposition(self, x, y=None):
+        return self.goto(x, y=y) 
+    
+    def left(self, angle):
+        rt = self.tu.left(angle)
+        self.angle += angle
+        return rt
+    
+    def pendown(self):
+        rt = self.tu.pendown()
+        self.is_pendown = True
+        return rt
+    
+    def penup(self):
+        rt = self.tu.penup()
+        self.is_pendown = False
+        return rt
+    
+    def right(self, angle):
+        rt = self.tu.right(angle)
+        self.angle -= angle
+        return rt
+
+    def setheading(self, to_angle):
+        rt = self.tu.setheading(to_angle)
+        self.angle
+        return rt
+    def seth(self, to_angle):
+        return self.setheading(to_angle)
+        
+    def speed(self, speed):
+        rt = self.tu.speed(speed)
+        self._speed = speed
+        return self.tu.speed(speed)
+    
+    def mainloop(self):
+        return self.screen.mainloop()
+    def done(self):
+        return self.mainloop()
+    
+    def pensize(self, width=None):
+        rt = self.tu.pensize(width=width)
+        if width is not None:
+            self.line_width = width
+        return rt
+    def width(self, width=None):
+        return self.pensize(width=width)
+
         
 if __name__ == "__main__":
-    SlTrace.lg("Self Test")
-    SlTrace.clearFlags()
-    SlTrace.setFlags("point")
-    bw = BrailleDisplay()
-    
-    if SlTrace.trace("cell"):
-        SlTrace.lg("cell limits")
-        for ix in range(len(bw.cell_xs)):
-            SlTrace.lg(f"ix: {ix} {bw.cell_xs[ix]:5}")
-        for iy in range(len(bw.cell_ys)):
-            SlTrace.lg(f"iy: {iy} {bw.cell_ys[iy]:5}")
-        
-    sz = 300
-    color = "purple"
-    wd = 1
-    a_dot = True
-    a_square = False
-    a_diamond = False
-    if a_dot:
-        bw.add_dot(size = sz, colors=color)
-        
-    if a_square:
-        bw.add_point(p1=(-sz,sz), colors=color, width=wd)
-        bw.add_line(p2=(sz,sz))
-        bw.add_line(p2=(sz,-sz))
-        bw.add_line(p2=(-sz,-sz))
-        bw.add_line(p2=(-sz,sz))
+    import braille_display_test2
 
-    sz *= .7
-    if a_diamond:
-        color = "red"
-        bw.add_point(p1=(0,sz), colors=color, width=wd)
-        bw.add_line(p2=(sz,0))
-        bw.add_line(p2=(0,-sz))
-        bw.add_line(p2=(-sz,0))
-        bw.add_line(p2=(0,sz))
-    bw.braille_display()
-    SlTrace.lg("braille_output")
-    bw.braille_print()
-    if SlTrace.trace("cells"):
-        bw.print_cells()
-    bw.mainloop()      
