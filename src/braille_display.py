@@ -282,46 +282,6 @@ class BrailleDisplay:
             points = self.get_drawn_line_points(p1, p2, width)
             self.populate_cells_from_points(points, color=color)
         self.x, self.y = p2
-            
-            
-    def set_p12_line_funs(self, p1, p2):
-        """ Set line functions which provide determine
-        x from y,  y from x to place (x,y) on line
-        functions are self.p12_line_x(y, p1=p1, p2=p2)
-        and self.p12_line_y(x, p1=p1, p2=p2)
-        Store m, c constants in self.p12fun[(p1,p2)].lfun.XXX
-                    p1
-                    p2
-                    horz
-                    vert
-                    my
-                    cy
-                    mx
-                    cx
-        :p1: beginnin point (x,y)
-        :p2: ending point (x,y)
-        """
-        x1,y1 = p1
-        x2,y2 = p2
-        x_diff = x2 - x1
-        y_diff = y2 - y1
-        horz = False 
-        vert = False 
-        
-        if x_diff == 0:
-            vert = True 
-        else:
-            my = y_diff/x_diff
-            cy = y1 - self.lfun_my*x1 
-        if y_diff == 0:
-            horz = True 
-        else:
-            mx = x_diff/y_diff 
-            cx = x1 - self.lfun_mx*y1 
-        self.p12_line_vals[(p1,p2)] = P12LineVals(
-            p1=p1,p2=p2,horz=horz,vert=vert,
-            mx=mx,cx=cx, my=my, cy=cy)
-        
         
         
     def set_line_funs(self, p1, p2):
@@ -398,29 +358,6 @@ class BrailleDisplay:
         y = self.lfun_my*x + self.lfun_cy
         return y
 
-    def p12_line_y(self, x, p1=None, p2=None):
-        """ calculate pt y, given pt x
-        having line setup from set_p12_line_funs
-        :x: pt x value
-        :p1: first point of line
-        :p2: last point of line
-        :returns:  y value , None if undetermined
-        """
-        if p1 is None:
-            raise Exception ("p1, required is missing")
-        if p2 is None:
-            raise Exception ("p2, required is missing")
-        
-        pvals = self.p12_line_vals[(p1,p2)]
-        if pvals.horz:
-            return pvals.p1[1]  # constant y
-        
-        if pvals.vert:
-            return None 
-        
-        y = pvals.my*x + pvals.cy
-        return y
-
     def line_x(self, y):
         """ calculate pt x, given pt y
         having line setup from set_line_funs
@@ -435,31 +372,6 @@ class BrailleDisplay:
         
         x = self.lfun_mx*y + self.lfun_cx
         return x
-        
-
-    def p12_line_x(self, y, p1=None, p2=None):
-        """ calculate pt x, given pt y
-        having line setup from set_p12line_funs
-        :x: pt x value
-        :p1: first point of line
-        :p2: second point of line
-        :returns:  x value , None if undetermined
-        """
-        if p1 is None:
-            raise Exception ("p1, required is missing")
-        if p2 is None:
-            raise Exception ("p2, required is missing")
-
-        pvals = self.p12_line_vals[(p1,p2)]
-        if pvals.horz:
-            return None 
-        
-        if pvals.vert:
-            return pvals.p1[0]  # constant x
-        
-        x = pvals.mx*y + pvals.cx
-        return x
-        
         
         
     def get_line_cells(self, p1, p2, width=None):
@@ -601,7 +513,7 @@ class BrailleDisplay:
             cell.points.add(pt) 
         if color is not None:
             color = color
-            cell.color = color
+            cell._color = color
             dots = self.braille_for_color(color)
             cell.dots = dots
 
@@ -618,8 +530,6 @@ class BrailleDisplay:
             size = self.line_width
         if pt is None:
             pt = self.p2
-        if pt is None:
-            pt = self.p1    
         pt_x,pt_y = pt
         pt_sep = self.point_resolution
         radius = size/2
@@ -1065,9 +975,23 @@ class BrailleDisplay:
                           f"  win rect: {self.get_cell_rect_win(ix,iy)}")
         SlTrace.lg("")
 
+    def print_tk_items(self, title=None):
+        """ Display current braille in a window
+        """
+        if title is not None:
+            SlTrace.lg(title)
+        canvas = self.screen.getcanvas()
+        for item in sorted(canvas.find_all()):
+            #iopts = canvas.itemconfig(item)
+            itype = canvas.type(item)
+            coords = canvas.coords(item)
+            SlTrace.lg(f"{item}: {itype} {coords}")
+        SlTrace.lg("")
+
     def display(self, braille_window=True, braille_print=True,
                print_cells=False, title=None,
-               points_window=False):
+               points_window=False,
+               tk_items=False):
         """ display grid
         :braille_window: True - make window display of braille
                         default:True
@@ -1080,6 +1004,8 @@ class BrailleDisplay:
         :points_window: make window showing display points
                         instead of braille dots
                     default: False - display dots
+        :tk_items: True - display tkinter obj in cell
+                    default: False
         """
         if braille_window:
             tib = title
@@ -1101,6 +1027,11 @@ class BrailleDisplay:
             if tib is not None and tib.endswith("-"):
                 tib += " Braille Cells"
             self.print_cells(title=tib)
+        if tk_items:
+            tib = title
+            if tib is not None and tib.endswith("-"):
+                tib += " Tk Cells"
+            self.print_tk_items(title=tib)
 
     def clear_display(self):
         """ Clear display for possible new display
@@ -1154,9 +1085,9 @@ class BrailleDisplay:
         ll_y = cy2
         ox1 = ox2 = ox3 = .3 
         ox4 = ox5 = ox6 = .7
-        oy1 = oy4 = .25
-        oy2 = oy5 = .55
-        oy3 = oy6 = .85
+        oy1 = oy4 = .15
+        oy2 = oy5 = .45
+        oy3 = oy6 = .73
         dot_size = .25*grid_width   # dot size fraction
         dot_radius = dot_size//2
         dot_offset = {1: (ox1,oy1), 4: (ox4,oy4),
