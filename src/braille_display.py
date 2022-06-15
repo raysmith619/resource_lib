@@ -204,7 +204,7 @@ class BrailleDisplay:
         self.y_max = y_min + win_height
         self.line_width = line_width
         self._color = color
-        if self.color is not None:
+        if self._color is not None:
             self.tu.color(self._color)
         self._color_fill = color_fill
         if self._color_fill is not None:
@@ -975,17 +975,47 @@ class BrailleDisplay:
                           f"  win rect: {self.get_cell_rect_win(ix,iy)}")
         SlTrace.lg("")
 
+
+
+    def show_item(self, item):
+        """ display changing values for item
+        """
+        canvas = self.screen.getcanvas()
+        iopts = canvas.itemconfig(item)
+        itype = canvas.type(item)
+        coords = canvas.coords(item)
+        if itype in self.tk_item_samples:
+            item_sample_iopts = self.tk_item_samples[itype]
+        else:
+            item_sample_iopts = None
+        SlTrace.lg(f"{item}: {itype} {coords}")
+        for key in iopts:
+            val = iopts[key]
+            is_changed = True     # assume entry option changed
+            if item_sample_iopts is not None:
+                is_equal = True # Check for equal item option
+                sample_val = item_sample_iopts[key]
+                if len(val) == len(sample_val):
+                    for i in range(len(val)):
+                        if val[i] != sample_val[i]:
+                            is_equal = False
+                            break
+                    if is_equal:
+                        is_changed = False
+            if is_changed: 
+                SlTrace.lg(f"    {key} {val}")
+            self.tk_item_samples[itype] = iopts
+
+
     def print_tk_items(self, title=None):
         """ Display current braille in a window
         """
+        self.tk_item_samples = {}
         if title is not None:
             SlTrace.lg(title)
         canvas = self.screen.getcanvas()
         for item in sorted(canvas.find_all()):
-            #iopts = canvas.itemconfig(item)
-            itype = canvas.type(item)
-            coords = canvas.coords(item)
-            SlTrace.lg(f"{item}: {itype} {coords}")
+            self.show_item(item)
         SlTrace.lg("")
 
     def display(self, braille_window=True, braille_print=True,

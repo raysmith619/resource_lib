@@ -63,11 +63,10 @@ class TurtleBraille():
         self.bd = bd 
 
     def filling(self):
-        return self.tu.filling()
+        return self.bd.filling()
 
     def begin_fill(self):
         return self.bd.begin_fill()
-        step = self.prev_step()
 
     def end_fill(self):
         return self.bd.end_fill()
