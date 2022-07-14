@@ -43,7 +43,7 @@ tk_items = True
 #tests = ("vert_ line, horz_line")
 #tests = ("simple_test")
 tests = ("goto")
-
+tests = "simple_tests"
 if "simple_test" in tests:
     do_simple_test = True 
 if "no_long_test" in tests:
@@ -61,7 +61,7 @@ main_canvas.pack(expand=1, fill='both')
 if do_simple_test:
     bw = BrailleDisplay(title="braille_display test")
 
-    bw.pensize(20)
+    bw.pensize(1)
     bw.color("green")
     bw.forward(200)
     bw.right(90)

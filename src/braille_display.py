@@ -288,7 +288,7 @@ class BrailleDisplay:
         """ Set line functions which provide determine
         x from y,  y from x to place (x,y) on line
         functions are self.line_x(y) and self.line_y(x)
-        :p1: beginnin point (x,y)
+        :p1: beginning point (x,y)
         :p2: ending point (x,y)
         """
         x1,y1 = p1
@@ -590,7 +590,7 @@ class BrailleDisplay:
             
     def fill_points(self, point_list, point_resolution=None):
         """ Fill surrounding points assuming points are connected
-        and enclose an area. - we will, eventualy, do
+        and enclose an area. - we will, eventually, do
         "what turtle would do".
         Our initial technique assumes a convex region:
             given every sequential group of points (pn,
