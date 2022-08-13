@@ -20,7 +20,7 @@ characters, while not being "blank" are single dot braille constructs, and are e
 Note that the color of the braille dots is for the implementer's view to empasize the color.
 Also the rectangles surrounding the dots are to further help the visual image.
 ![braille window](Docs/braille_turtle_spokes_bw.PNG)
-# Program text printout - destined for bailler machine
+# Program text printout - targeted for the brailler machine
 Our implementation has some harsh compromises:
 - Our graphics resolution is currently 40 wide by 25 down for a 800 by 800 screen.
 - Colors are represented by braille for the color's first letter(English)
