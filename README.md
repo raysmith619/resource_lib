@@ -1,8 +1,15 @@
 # Turtle Braille
-We attempt to provide simple support for the blind who which to do simple graphics programming using a subset of the turtle command set.  Our
-approach is to accept these turtle commands, passing them on to turtle, and additionally producing the following:
+We attempt to provide simple support for the novice blind programmer.   What is provided is a simple subset of the python turtle command set.  Our programming
+approach is to accept these turtle commands, passing them unmodified to turtle, but additionally producing the following:
 * A braille window which displays the expected braille - lower resolution(e.g. 40 x 25 braille cell) rendition of the turtle display
 * A text printout which, if directed to a brailler will produce a physical display similar to the braille window.  
+
+## Some recent improvements
+These changes were the results of experiences with and comments from some 8th grade students at the Perkins School for the Blind.
+
+- Leading blanks are replaced with "," characters so as not to be compressed by the braille producing software.  The ","
+characters, while not being "blank" are single dot braille constructs, and are empty view.
+- Blank area above and to the left is removed to facilitate viewers finding graphics objects.
 
 ## A set of screen shots for a simple program
 # User program in IDLE
