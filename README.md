@@ -7,7 +7,7 @@ approach is to accept these turtle commands, passing them unmodified to turtle, 
 ## Some recent improvements
 These changes were the results of experiences with and comments from some 8th grade students at the Perkins School for the Blind.
 
-- Leading blanks are replaced with "," characters so as not to be compressed by the braille producing software.  The ","
+- Non-trailing blanks are replaced with "," characters so as not to be compressed by the braille producing software.  The ","
 characters, while not being "blank" are single dot braille constructs, and are empty view.
 - Blank area above and to the left is removed to facilitate viewers finding graphics objects.
 
