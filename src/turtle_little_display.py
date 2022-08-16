@@ -1,17 +1,14 @@
-# braille_display  19Apr2022  crs  Author
+# turtle_little_display  19Apr2022  crs  From braille_display.py
 """
-Display graphics on window
+Display graphics on character grid
 Supports simple graphical point, line specification
-Supports display of 6-point cells
+character
 on grid_width by grid_height grid
-Supports writing out braille stream
+Supports text "picture" output
 """
 from math import sin, cos, pi, atan, sqrt
-import turtle as tur
-from tkinter import *
 
 from select_trace import SlTrace
-from test.test_iterlen import NoneLengthHint
 
 def pl(point_list):
     """ display routine for point list
@@ -36,22 +33,14 @@ def pl(point_list):
     return st 
 
 
-class BrailleCell:
-    """ braille cell info augmented for analysis
+class GridCell:
+    """ Output cell info augmented for analysis
     """
-    def __str__(self):
-        st = f"BCell: [{self.ix},{self.iy}]"
-        if self._color is not None:
-            st += " " + self._color
-        if self._color_bg is not None:
-            st += " " + self._color_bg
-        return st
-        
     def __init__(self, dots=None,
                  color=None, color_bg=None,
                  ix=0, iy=0,
                  points=None):
-        """ setup braille cell
+        """ setup grid cell
         :dots: list of set dots default: none - blank
         :color: color str or tuple
         :ix: cell index(from 0) from left side
@@ -104,42 +93,12 @@ class P12LineVals:
         self.mx = mx
         self.cx = cx
         
-class BrailleDisplay:
-    """ Create and display graphics using Braille
+class TurtleLittleDisplay:
+    """ Create and display text character graphics from
+    a subset of turtle commands
     """
-    dots_for_character = {
-        " ": (),    # blank
-        "a": (1),
-        "b": (1,2),
-        "c": (1,4),
-        "d": (1,4,5),
-        "e": (1,5),
-        "f": (1,2,5),
-        "g": (1,2,4,5),
-        "h": (1,2,5),
-        "i": (2,4),
-        "j": (2,4,5),
-        "k": (1,3),
-        "l": (1,2,3),
-        "m": (1,3,4),
-        "n": (1,3,4,5),
-        "o": (1,3,5),
-        "p": (1,2,3,4),
-        "q": (1,2,3,4,5),
-        "r": (1,2,3,5),
-        "s": (2,3,4),
-        "t": (2,3,4,5),
-        "u": (1,3,6),
-        "v": (1,2,3,6),
-        "w": (2,4,5,6),
-        "x": (1,3,4,6),
-        "y": (1,3,4,5,6),
-        "z": (1,3,5,6),
-        }
-    
     
     def __init__(self, title="Braille Display",
-                 tu=None,
                  win_width=800, win_height=800,
                  grid_width=40, grid_height=25,
                  use_full_cells= True,
@@ -148,12 +107,9 @@ class BrailleDisplay:
                  color_bg = None,
                  color_fill = None,
                  point_resolution=None,
-                 blank_char=",",
-                 shift_to_edge=True):
+                 blank_char=" "):
         """ Setup display
         :title: display screen title
-        :tu: turtle instance
-            default: create one
         :win_width: display window width in pixels
             default: 800
         :win_height: display window height in pixels
@@ -181,27 +137,13 @@ class BrailleDisplay:
                     conservative to simplify/speed
                     computation
         :blank_char: replacement for non-trailing blanks
-                    default "," to provide a "mostly blank",
-                    non-compressed blank character for the
-                    braille graphics
-                    default: "," dot 2.
-        :shift_to_edge: shift picture to edge/top
-                    to aid in finding
-                    default: True - shift
+                    default " " for standard "picture",
         """
         if title is None:
-            title = "Braille Display"
+            title = "Character Display"
         self.title = title
         self.win_width = win_width
         self.win_height = win_height
-        if tu is None:
-            tu = tur.Turtle()
-            screen = tur.Screen()
-            screen.screensize(win_width,win_height)
-        else:
-            screen = tur.Screen()
-        self.tu = tu          # For turtle screen
-        self.screen = screen
         
         self.grid_width = grid_width
         self.cell_width = win_width/self.grid_width
@@ -224,14 +166,8 @@ class BrailleDisplay:
         self.y_max = y_min + win_height
         self.line_width = line_width
         self._color = color
-        if self._color is not None:
-            self.tu.color(self._color)
         self._color_fill = color_fill
-        if self._color_fill is not None:
-            self.tu.fillcolor(self._color_fill)
         self._color_bg = color_bg
-        if self._color_fill is not None:
-            self.tu.bgcolor(self._color_bg)
         self.cmds = []      # Commands to support redo
         self.cells = {}     # BrailleCell hash by (ix,iy)
         self.set_cell_lims()
@@ -241,16 +177,15 @@ class BrailleDisplay:
         self.angle = 0          # degrees (angle)
         self.pt = self.p2 = (self.x, self.y)
         self.blank_char = blank_char
-        self.shift_to_edge = shift_to_edge
         self.is_pendown = True 
         self.is_filling = False
+        self.setheading(0)      # Initial heading
+    
         
     def set_cell_lims(self):
-        """ create cell boundary values bottom through top
+        """ create cell bottom values through top
          so:
-             cell_xs[0] == left edge
              cell_xs[grid_width] == right edge
-             cell_ys[0] == bottom edge
              cell_ys[grid_height] == top edge
         """
          
@@ -269,8 +204,7 @@ class BrailleDisplay:
         :size: diameter of dot
         :color: point color
         """
-        SlTrace.lg(f"add_dot: ", "braille_cmd")
-        self.tu.dot(size, *color)
+        SlTrace.lg(f"add_dot: ", "turtle_cmd")
         if size is None:
             size = self.line_width
         pt = (self.x,self.y)
@@ -512,7 +446,7 @@ class BrailleDisplay:
             added to cell
         
         :color: cell color
-        :returns: new/updated BrailleCell
+        :returns: new/updated GridCell
         """
         if color is None:
             color = self._color
@@ -529,16 +463,11 @@ class BrailleDisplay:
         if cell_ixiy in self.cells:
             cell = self.cells[cell_ixiy]
         else:
-            cell = BrailleCell(ix=cell_ixiy[0],
+            cell = GridCell(ix=cell_ixiy[0],
                         iy=cell_ixiy[1], color=color)
             self.cells[cell_ixiy] = cell
         if pt is not None:
             cell.points.add(pt) 
-        if color is not None:
-            color = color
-            cell._color = color
-            dots = self.braille_for_color(color)
-            cell.dots = dots
 
         return cell
                 
@@ -924,65 +853,18 @@ class BrailleDisplay:
             else:
                 color_str = "pink"  # TBD - color tuple work
         return color_str
-    
-    def braille_for_color(self, color):
-        """ Return dot list for color
-        :color: color string or tuple
-        :returns: list of dots 1,2,..6 for first
-                letter of color
-        """
-        
-        if color is None:
-            color = self._color
-        if color is None:
-            color = ("black")
-        color = self.color_str(color)
-        c = color[0]
-        dots = self.braille_for_letter(c)
-        return dots
-    
-    def braille_for_letter(self, c):
-        """ convert letter to dot number seq
-        :c: character
-        :returns: dots tupple (1,2,3,4,5,6)
-        """
-        if c not in BrailleDisplay.dots_for_character:            c = " " # blank
-        dots = BrailleDisplay.dots_for_character[c]
-        return dots
         
     def complete_cell(self, cell, color=None):
         """ create/Fill braille cell
             Currently just fill with color letter (ROYGBIV)
-        :cell: (ix,iy) cell index or BrailleCell
+        :cell: (ix,iy) cell index or GridCell
         :color: cell color default: current color
         """
         if color is None:
             color = self._color
         dots = self.braille_for_color(color)
-        bc = BrailleCell(ix=cell[0],iy=cell[1], dots=dots, color=color)
+        bc = GridCell(ix=cell[0],iy=cell[1], dots=dots, color=color)
         self.cells[cell] = bc
-
-    def braille_window(self, title, show_points=False):
-        """ Display current braille in a window
-        :title: window title
-        :show_points: Show included points instead of braille dots
-                default: False - show braille dots
-        """
-        mw = Tk()
-        if title is not None and title.endswith("-"):
-            title += " Braille Window"
-        mw.title(title)
-        self.mw = mw
-        canvas = Canvas(mw, width=self.win_width, height=self.win_height)
-        canvas.pack()
-        self.braille_canvas = canvas
-        for ix in range(self.grid_width):
-            for iy in range(self.grid_height):
-                cell_ixy = (ix,iy)
-                if cell_ixy in self.cells:
-                    self.display_cell(self.cells[cell_ixy],
-                                      show_points=show_points)
-        mw.update()     # Make visible
 
     def print_cells(self, title=None):
         """ Display current braille in a window
@@ -998,48 +880,6 @@ class BrailleDisplay:
                           f"  win rect: {self.get_cell_rect_win(ix,iy)}")
         SlTrace.lg("")
 
-
-
-    def show_item(self, item):
-        """ display changing values for item
-        """
-        canvas = self.screen.getcanvas()
-        iopts = canvas.itemconfig(item)
-        itype = canvas.type(item)
-        coords = canvas.coords(item)
-        if itype in self.tk_item_samples:
-            item_sample_iopts = self.tk_item_samples[itype]
-        else:
-            item_sample_iopts = None
-        SlTrace.lg(f"{item}: {itype} {coords}")
-        for key in iopts:
-            val = iopts[key]
-            is_changed = True     # assume entry option changed
-            if item_sample_iopts is not None:
-                is_equal = True # Check for equal item option
-                sample_val = item_sample_iopts[key]
-                if len(val) == len(sample_val):
-                    for i in range(len(val)):
-                        if val[i] != sample_val[i]:
-                            is_equal = False
-                            break
-                    if is_equal:
-                        is_changed = False
-            if is_changed: 
-                SlTrace.lg(f"    {key} {val}")
-            self.tk_item_samples[itype] = iopts
-
-
-    def print_tk_items(self, title=None):
-        """ Display current braille in a window
-        """
-        self.tk_item_samples = {}
-        if title is not None:
-            SlTrace.lg(title)
-        canvas = self.screen.getcanvas()
-        for item in sorted(canvas.find_all()):
-            self.show_item(item)
-        SlTrace.lg("")
 
     def display(self, braille_window=True, braille_print=True,
                print_cells=False, title=None,
@@ -1060,83 +900,23 @@ class BrailleDisplay:
         :tk_items: True - display tkinter obj in cell
                     default: False
         """
-        self.find_edges()
-        if braille_window:
-            tib = title
-            if tib is not None and tib.endswith("-"):
-                tib += " Braille Window"
-            self.braille_window(title=tib)
-        if points_window:
-            tib = title
-            if tib is not None and tib.endswith("-"):
-                tib += " Display Points"
-            self.braille_window(title=tib, show_points=points_window)
-        if braille_print:
-            tib = title
-            if tib is not None and tib.endswith("-"):
-                tib += " Braille Print Output"
-            self.print_braille(title=tib)
         if print_cells:
             tib = title
             if tib is not None and tib.endswith("-"):
                 tib += " Braille Cells"
             self.print_cells(title=tib)
-        if tk_items:
-            tib = title
-            if tib is not None and tib.endswith("-"):
-                tib += " Tk Cells"
-            self.print_tk_items(title=tib)
-
-    def find_edges(self):
-        """Find  top and left non-blank edges
-        so we can shift picture to left,top for easier
-        recognition
-        """
-        left_edge = self.grid_width-1
-        for iy in range(self.grid_height):
-            for ix in range(left_edge):     # till closest found
-                cell_ixy = (ix,iy)
-                if cell_ixy in self.cells:
-                        left_edge = ix  # Found lines left
-                        break
-        if left_edge > 0:           # Give some space
-            left_edge -= 1
-        if left_edge > 0:
-            left_edge -= 1
-        self.left_edge = left_edge
+        self.print_grid(title)
         
-        top_edge = 0
-        for ix in range(self.grid_width):
-            for iy in reversed(range(top_edge, self.grid_height)):
-                cell_ixy = (ix,iy)
-                if cell_ixy in self.cells:
-                    top_edge = iy  # Found lines top
-                    break
-        if top_edge < self.grid_height-1:           # Give some space
-            top_edge += 1
-        if top_edge  < self.grid_height-1:
-            top_edge += 1
-        self.top_edge = top_edge
-        return left_edge, top_edge
-    
     def clear_display(self):
         """ Clear display for possible new display
         """
-        self.cmds = []      # Commands to support redo
-        self.cells = {}     # BrailleCell hash by (ix,iy)
-        
-
-    def snapshot(self, title=None, clear_after=False):
-        """ Take snapshot of current braille_screen
-        :title: title of snapshot
-        :clear_after: clear braille screen after snapshot
-        """
+        self.cells = {}     # GridCell hash by (ix,iy)
         
     
     
     def display_cell(self, cell, show_points=False):
         """ Display cell
-        :cell: BrailleCell
+        :cell: GridCell
         :show_points: show points instead of braille
                 default: False --> show braille dots
         """
@@ -1144,7 +924,7 @@ class BrailleDisplay:
         iy = cell.iy 
         canvas = self.braille_canvas
         cx1,cy1,cx2,cy2 = self.get_cell_rect_win(ix=ix, iy=iy)
-        canvas.create_rectangle(cx1,cy1,cx2,cy2, outline="light gray")
+        canvas.create_rectangle(cx1,cy1,cx2,cy2)
         color = self.color_str(cell._color)
         if show_points:
             dot_size = 1            # Display cell points
@@ -1256,22 +1036,14 @@ class BrailleDisplay:
         y2 = self.cell_ys[iy+1]
         return (x1,y1,x2,y2)
                     
-    def print_braille(self, title=None):
+    def print_grid(self, title=None):
         """ Output braille
         """
         if title is not None:
             print(title)
-        if self.shift_to_edge:
-            self.find_edges()
-            left_edge = self.left_edge
-            top_edge = self.top_edge
-        else:
-            left_edge = 0
-            top_edge = self.grid_height-1
-            
-        for iy in reversed(range(top_edge)):
+        for iy in reversed(range(self.grid_height)):
             line = ""
-            for ix in range(left_edge, self.grid_width):
+            for ix in range(self.grid_width):
                 cell_ixy = (ix,iy)
                 if cell_ixy in self.cells:
                     cell = self.cells[cell_ixy]
@@ -1282,33 +1054,32 @@ class BrailleDisplay:
             line = line.rstrip()
             if self.blank_char != " ":
                 line = line.replace(" ", self.blank_char)
-            ###print(f"{iy:2}", end=":")
             print(line)
 
     """
     turtle commands
     These commands:
-        1. call turtle via self.tu, self.screen
+        1. Skip turtle call
         2. set local drawing state
-        3. create BrailleCell self.cells
+        3. create GridCell self.cells
         4. return turtle call return
     """
     def backward(self, length):
         return self.forward(-length)
     
     def color(self, *args):
-        rt = self.tu.color(*args)
-        if len(args) == 1:
+        if len(args) == 0:
+            return self._color
+        
+        elif len(args) == 1:
             self.pencolor(args[0])
         elif len(args) == 2:
             self.pencolor(args[0])
             self.fillcolor(args[1])
         elif len(args) == 3:
             self._color = args
-        return rt
 
     def pencolor(self, *args):
-        rt = self.tu.pencolor(*args)
         if len(args) == 1:
             self._color = args[0]
         elif len(args) == 3:
@@ -1316,10 +1087,7 @@ class BrailleDisplay:
         else:
             raise Exception(f"pencolor illegal args:{args}")
         
-        return rt
-        
     def fillcolor(self, *args):
-        rt = self.tu.fillcolor(*args)
         if len(args) == 1:
             self._color_fill = args[0]
         elif len(args) == 3:
@@ -1327,33 +1095,24 @@ class BrailleDisplay:
         else:
             raise Exception(f"pencolor illegal args:{args}")
         
-        return rt
-        
     def dot(self, size=None, *color):
-        rt = self.tu.dot(size, *color)
         self.add_dot(size, *color)
-        return rt
     
     def filling(self):
-        return self.tu.filling()
+        return self.is_filling
     
     def begin_fill(self):
-        rt = self.tu.begin_fill()
         self.is_filling = True
         self._fill_perimiter_points = []
-        return rt
         
                 
     def end_fill(self):
-        rt = self.tu.end_fill()
         self.do_fill()
         self.is_filling = False
-        return rt
     
     def forward(self, length):
         """ Make step forward, updating location
         """
-        rt = self.tu.forward(length)
         x1 = self.x
         y1 = self.y
         angle = self.angle
@@ -1361,10 +1120,8 @@ class BrailleDisplay:
         x2 = x1 + length*cos(rangle)
         y2 = y1 + length*sin(rangle)
         self.goto(x=x2, y=y2)
-        return rt
     
     def goto(self, x, y=None):
-        rt = self.tu.goto(x,y) 
         x1 = self.x
         y1 = self.y
         x2 = x 
@@ -1372,11 +1129,9 @@ class BrailleDisplay:
             y = self.y
         y2 = y 
         self.add_line(p1=(x1,y1), p2=(x2,y2))
-        return rt
 
     def heading(self):
-        rt = self.tu.heading()
-        return rt 
+        return self._heading
             
     def setpos(self, x, y=None):
         return self.goto(x, y=y) 
@@ -1384,65 +1139,50 @@ class BrailleDisplay:
         return self.goto(x, y=y) 
     
     def left(self, angle):
-        rt = self.tu.left(angle)
         self.angle += angle
-        return rt
+        self.angle = self.angle % 360   # Normalize
     
     def pendown(self):
-        rt = self.tu.pendown()
         self.is_pendown = True
-        return rt
     
     def penup(self):
-        rt = self.tu.penup()
         self.is_pendown = False
-        return rt
     
     def right(self, angle):
-        rt = self.tu.right(angle)
         self.angle -= angle
-        return rt
+        self.angle = self.angle % 360   # Normalize
 
     def setheading(self, to_angle):
-        rt = self.tu.setheading(to_angle)
-        self.angle
-        return rt
+        self._heading = to_angle
+        return self._heading
+    
     def seth(self, to_angle):
         return self.setheading(to_angle)
         
     def speed(self, speed):
-        rt = self.tu.speed(speed)
+        if speed is None:
+            return self._speed
+        
         self._speed = speed
-        return self.tu.speed(speed)
     
     def mainloop(self):
-        return self.screen.mainloop()
+        """ Just print grid
+        """
+        SlTrace.lg("mainloop")
+        
     def done(self):
         return self.mainloop()
     
     def pensize(self, width=None):
-        rt = self.tu.pensize(width=width)
-        if width is not None:
-            self.line_width = width
-        return rt
+        if width is None:
+            return self.line_width
+        
+        self.line_width = width
+
     def width(self, width=None):
         return self.pensize(width=width)
 
-    # screen functions
-    def screensize(self, canvwidth=None, canvheight=None, bg=None):
-        return self.screen.screensize(canvwidth=None,
-                                       canvheight=None, bg=None)
-
-    # Special functions
-    def set_blank(self, blank_char):
-        """ Set blank replacement
-        :blank_char: blank replacement char
-        :returns: previous blank char
-        """
-        ret = self.blank_char
-        self.blank_char = blank_char
-        return ret
         
 if __name__ == "__main__":
-    import braille_display_test2
+    import turtle_little_display_test2
 

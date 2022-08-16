@@ -1,26 +1,23 @@
-#turtle_braille.py    16Apr2022  crs  Author
+#turtle_little.py    17Jul2022  crs  From turtle_braille
 """
-Turtle augmented with braille graphics output
-turtle commands create Turtle output plus approximate braille
-output
+Light weight(we hope) interface to provide a subset
+of turtle capability, printing output to character based
+output to stdout
 """
 from math import sin, cos, pi, fmod
 import turtle as tu
 
 from select_trace import SlTrace
 SlTrace.clearFlags()
-from braille_display import BrailleDisplay
+from turtle_little_display import TurtleLittleDisplay
     
-class TurtleBraille():
-    """ Parallel braille graphics output which attemps to aid
-    blind people "see" simple graphics turtle output
+class TurtleLittle():
+    """ Character based output to service those who don't 
+    have access to turtle
     """
     def __init__(self, title=None,
                  win_width=800, win_height=800,
                  cell_width=40, cell_height=25,
-                 braille_window=True,
-                 braille_print=True,
-                 points_window=False,
                  print_cells=False
                  ):
         """ Setup display
@@ -37,13 +34,6 @@ class TurtleBraille():
                     default: 40
         :cell_height: braille width in cells
                     default: 25
-        :braille_window: display a braille window
-                    default: True
-        :braille_print: print display braille to output
-                    default: True
-        :points_window: display window showing where
-                        display points were found/calculated
-                    default: False
         :print_cells: print cells in formatted way
                     default: False - no print
         """
@@ -52,11 +42,8 @@ class TurtleBraille():
         self.win_height = win_height
         self.cell_width = cell_width
         self.cell_height = cell_height
-        self.braille_window = braille_window
-        self.braille_print = braille_print
-        self.points_window = points_window
         self.print_cells = print_cells
-        bd = BrailleDisplay(win_width=self.win_width,
+        bd = TurtleLittleDisplay(win_width=self.win_width,
                             win_height=self.win_height,
                             grid_width=self.cell_width,
                             grid_height=self.cell_height)
@@ -121,48 +108,32 @@ class TurtleBraille():
     def width(self, width=None):
         return self.pensize(width=width)
 
-    # screen functions
-    
-    def screensize(self, canvwidth=None, canvheight=None, bg=None):
-        return self.bd.screensize(canvwidth=canvwidth,
-                              canvheight=canvheight, bg=bg)
-
     def braille_draw(self, title=None):
         """ Draw steps in braille
             1. create screen with drawing
             2. create braille output
         """
         self.bd.display()
+        
 
         
     def mainloop(self):
         title = self.title
         if title is None:
-            title = "Braille Display -"
+            title = "Grid Display -"
         self.bd.display(title=title,
-                   braille_window=self.braille_window,
-                   points_window=self.points_window,
-                   braille_print=self.braille_print,
                    print_cells=self.print_cells)
         self.bd.mainloop()        
+
     def done(self):
         return self.mainloop()
-
-    ### special functions
-    def set_blank(self, blank_char):
-        """ Set blank replacement
-        :blank_char: blank replacement char
-        :returns: previous blank char
-        """
-        return self.bd.set_blank(blank_char)
-
     
 
 """
 External functions 
 Some day may model after turtle's _make_global_funcs
 """
-tum = TurtleBraille()
+tum = TurtleLittle()
 
 
 def backward(length):
@@ -218,28 +189,10 @@ def pensize(width=None):
 def width(width=None):
     return tum.pensize(width)
 
-def screensize(canvwidth=None, canvheight=None, bg=None):
-    return tum.screensize(canvwidth=canvwidth,
-                          canvheight=canvheight, bg=bg)
-### special functions
-def set_blank(blank_char):
-    """ Set blank replacement
-    :blank_char: blank replacement char
-    :returns: previous blank char
-    """
-    ret = tum.set_blank(blank_char)
-    return ret
-    
 if __name__ == '__main__':
     #from turtle_braille import *    # Get graphics stuff
     #tum.points_window = True
     #tum.print_cells = True
-    w,h = screensize()
-    print(f"w:{w}, h:{h}")
-    set_blank(" ")
-    penup()
-    goto(-w/2+50,h/2-100)
-    pendown()
     width(40)
     color("green")
     pendown()

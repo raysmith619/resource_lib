@@ -1,8 +1,8 @@
-#braille_display_test2.py
+#turtle_little_display_test2.py
 from select_trace import SlTrace
-from braille_display import BrailleDisplay
+from turtle_little_display import TurtleLittleDisplay
 
-SlTrace.lg("BrailleDisplay Test braille_display_test2")
+SlTrace.lg("TurtleLittleDisplay Test braille_display_test2")
 SlTrace.clearFlags()
 #SlTrace.lg("\nAfter clearFlags")
 #SlTrace.listTraceFlagValues()
@@ -52,26 +52,18 @@ elif "do_long_test" in tests:
     do_long_test = True 
             
 SlTrace.lg(f"\ntests: {tests}")
-main_mw = tk.Tk()
-main_mw.title("BrailleDisplay Tests")
-main_mw.geometry("800x800")
-main_canvas = tk.Canvas(main_mw)
-main_canvas.pack(expand=1, fill='both')
 
 if do_simple_test:
-    bw = BrailleDisplay(title="braille_display test")
+    bw = TurtleLittleDisplay(title="turtle_little_display test")
 
     bw.pensize(10)
-    bw.color("red")
-    bw.forward(200)
-    bw.right(90)
-    bw.color("orange")
-    bw.forward(200)
-    bw.right(90)
-    bw.color("yellow")
-    bw.forward(200)
-    bw.right(90)
     bw.color("green")
+    bw.forward(200)
+    bw.right(90)
+    bw.forward(200)
+    bw.right(90)
+    bw.forward(200)
+    bw.right(90)
     bw.forward(200)
 
     bw.display(braille_window=braille_window, braille_print=braille_print,
@@ -80,7 +72,7 @@ if do_simple_test:
                tk_items=tk_items)
 
 
-bwsn = None                 # Snapshot BrailleDisplay
+bwsn = None                 # Snapshot TurtleLittleDisplay
 bwsn_title = None
 def setup_snapshot(title=None, keep_bw=False):
     global bw
@@ -88,7 +80,7 @@ def setup_snapshot(title=None, keep_bw=False):
     global bwsn_title
     if not keep_bw or bwsn is None:
         
-        bwsn = BrailleDisplay(title=title)
+        bwsn = TurtleLittleDisplay(title=title)
         bw = bwsn
         #bw.reset()      # Note only one screen
         
