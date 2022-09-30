@@ -26,7 +26,7 @@ Our implementation has some harsh compromises:
 - Colors are represented by braille for the color's first letter(English)
 - No motion - yet
 
-![Program printout](Docs/braille_turtle_spokes_to.PNG)
+![Program printout](Docs/spokes_print_output.PNG)
 
 ## Supported turtle commands
 Note that we do not handle all turtle commands - mostly those which support simple static low resolution graphics.
