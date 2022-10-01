@@ -1,4 +1,5 @@
 # Turtle Braille
+#### Added to resource_lib because we thought it might become part of our basic general support
 We attempt to provide simple support for the novice blind programmer.   What is provided is a simple subset of the python turtle command set.  Our programming
 approach is to accept these turtle commands, passing them unmodified to turtle, but additionally producing the following:
 * A braille window which displays the expected braille - lower resolution(e.g. 40 x 25 braille cell) rendition of the turtle display
@@ -50,11 +51,17 @@ def done():
 def pensize(width=None):
 def width(width=None):
 
-## Support Files
+## TurtleBraille Support Files
 - turtle_braille.py - direct outer interface to global turtle commands, and turtle object level commands
 - braille_display.py - implements turtle commands in the braille setting and the creation of display braille window and text printout
 - turtle_braille_link.py - simple link to support user level replacement of "from turtle import *" with "from turtle_braille_link import *" lines
-- 
+### TurtleBraille Trace / logging support
+-    select_trace.py
+-    crs_funs.py
+-    select_error.py
+-    select_report.py
+-    java_properties.py
+
 # resource_lib
 ## Common files / support for other projects
 Contains files used to support other projects.
