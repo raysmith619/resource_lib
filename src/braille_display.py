@@ -11,7 +11,6 @@ import turtle as tur
 from tkinter import *
 
 from select_trace import SlTrace
-from test.test_iterlen import NoneLengthHint
 
 def pl(point_list):
     """ display routine for point list
@@ -524,7 +523,7 @@ class BrailleDisplay:
             cell_ixiy = (ix,iy)
         else:
             if pt is None:
-                raise Exception(f"pt is missing")
+                raise Exception("pt is missing")
             cell_ixiy = self.get_point_cell(pt)
         if cell_ixiy in self.cells:
             cell = self.cells[cell_ixiy]

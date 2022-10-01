@@ -1,5 +1,20 @@
 #turtle_braille_link.py   25Apr2022  crs, Author
 """ link to braille turtle
+Turtle Braill support is in files found in lib/src_dir/
+        default: resource_lib_proj/src/
+This directory is searched for in sys.path.  If found,
+the directory is appended to sys.path.
+The working files expected include:
+    turtle_braille.py
+    braille_display.py
+    braille_display_test2.py    # for selftest
+    
+    select_trace.py
+    crs_funs.py
+    select_error.py
+    select_report.py
+    java_properties.py
+
 """
 import sys
 import os

@@ -4,8 +4,6 @@ Turtle augmented with braille graphics output
 turtle commands create Turtle output plus approximate braille
 output
 """
-from math import sin, cos, pi, fmod
-import turtle as tu
 
 from select_trace import SlTrace
 SlTrace.clearFlags()
