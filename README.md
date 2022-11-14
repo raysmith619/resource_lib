@@ -23,16 +23,28 @@ Also the rectangles surrounding the dots are to further help the visual image.
 ![braille window](Docs/braille_turtle_spokes_bw.PNG)
 
 
-# Program text printout - targeted for the brailler machine
-Our implementation has some harsh compromises:
-- Our graphics resolution is currently 40 wide by 25 down for a 800 by 800 screen.
-- Colors are represented by braille for the color's first letter(English)
-- No motion - yet
-
 # turtle display window - audio feedback
 ![turtle screen shot](Docs/braille_window_audio.PNG)
 # Braille Window - audio feedback - An implementation aid, providing the likely braille view
+## Keyboard display/positioning commands
+```
+        h - say this help message
+        Up - Move up one row
+        Down - Move down one row
+        Left - Move left one column
+        Right - Move right one column
+        a - Start reporting location
+        l - Start logging talk
+        m - Stop logging talk
+        s - Stop speech
+        t - Start speech
+        x - exit program
+        z - Stop reporting location
+        RETURN - Report location
+```        
 
+
+# Program text printout - targeted for the brailler machine
 
 ![Program printout](Docs/spokes_print_output.PNG)
 
@@ -57,6 +69,12 @@ def mainloop():
 def done():
 def pensize(width=None):
 def width(width=None):
+
+
+Our implementation has some harsh compromises:
+- Our graphics resolution is currently 40 wide by 25 down for a 800 by 800 screen.
+- Colors are represented by braille for the color's first letter(English)
+- No motion - yet
 
 ## TurtleBraille Support Files
 - turtle_braille.py - direct outer interface to global turtle commands, and turtle object level commands
