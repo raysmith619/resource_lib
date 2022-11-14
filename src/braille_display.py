@@ -11,6 +11,7 @@ import turtle as tur
 from tkinter import *
 
 from select_trace import SlTrace
+from audio_window import AudioWindow
 
 def pl(point_list):
     """ display routine for point list
@@ -455,7 +456,7 @@ class BrailleDisplay:
         """ Get cell in which point resides
         If on an edge returns lower cell
         If on a corner returns lowest cell
-        :pt: x,y pair location in window coordinates
+        :pt: x,y pair location in turtle coordinates
         :returns: ix,iy cell pair
         """
         x,y = pt
@@ -962,6 +963,13 @@ class BrailleDisplay:
         self.cells[cell] = bc
 
     def braille_window(self, title, show_points=False):
+        """ switch between braile_window_none and
+            braille_window_audio
+        """
+        self.braille_window_audio(title, show_points)
+        ###self.braille_window_none(title, show_points)
+        
+    def braille_window_none(self, title, show_points=False):
         """ Display current braille in a window
         :title: window title
         :show_points: Show included points instead of braille dots
@@ -983,6 +991,23 @@ class BrailleDisplay:
                                       show_points=show_points)
         mw.update()     # Make visible
 
+    def braille_window_audio(self, title, show_points=False):
+        """ Display current braille in a window
+            with audio feedback
+        :title: window title
+        :show_points: Show included points instead of braille dots
+                default: False - show braille dots
+        """
+        if title is not None and title.endswith("-"):
+            title += " Braille Window"
+        aud_win = AudioWindow(title=title,
+                              win_width=self.win_width,
+                              win_height=self.win_height,
+                              grid_width=self.grid_width,
+                              grid_height=self.grid_height,
+                              x_min=self.x_min, y_min=self.y_min)
+        aud_win.draw_cells(cells=self.cells, show_points=show_points)
+
     def print_cells(self, title=None):
         """ Display current braille in a window
         """
@@ -992,7 +1017,9 @@ class BrailleDisplay:
             for iy in range(self.grid_height):
                 cell_ixy = (ix,iy)
                 if cell_ixy in self.cells:
+                    cell = self.cells[cell_ixy]
                     SlTrace.lg(f"ix:{ix} iy:{iy} {cell_ixy}"
+                               f" {cell._color}"
                           f" rect: {self.get_cell_rect_tur(ix,iy)}"
                           f"  win rect: {self.get_cell_rect_win(ix,iy)}")
         SlTrace.lg("")
@@ -1061,6 +1088,8 @@ class BrailleDisplay:
         """
         self.find_edges()
         if braille_window:
+            if title is None:
+                title = "Audio Feedback -"
             tib = title
             if tib is not None and tib.endswith("-"):
                 tib += " Braille Window"
@@ -1077,6 +1106,8 @@ class BrailleDisplay:
             self.print_braille(title=tib)
         if print_cells:
             tib = title
+            if tib is None:
+                tib = "Print Cells"
             if tib is not None and tib.endswith("-"):
                 tib += " Braille Cells"
             self.print_cells(title=tib)

@@ -12,8 +12,10 @@ import tkinter as tk
 display_all = False          # Display all things - True overrides other settings
 braille_window = True       # Create braille window
 points_window = True        # Create window showing points
+points_window = False
 braille_print = True        # Print braille for figure 
 print_braille_cells = False # Print braille cells
+print_braille_cells = True # Print braille cells
 tk_items = False            # Display tkinter objs
 do_snapshots = True         # Do setup and do shapshot
 do_simple_test = False      # Do simple test
@@ -43,7 +45,7 @@ tk_items = True
 #tests = ("vert_ line, horz_line")
 #tests = ("simple_test")
 #tests = ("goto")
-#tests = "simple_tests"
+tests = "simple_tests"
 if "simple_test" in tests:
     do_simple_test = True 
 if "no_long_test" in tests:
