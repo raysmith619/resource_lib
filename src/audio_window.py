@@ -29,7 +29,8 @@ class AudioWindow:
         line_width=1, color="black",
         pos_check_interval= .1,
         pos_rep_interval = .1,
-        pos_rep_queue_max = 4
+        pos_rep_queue_max = 4,
+        visible_figure = True
                  ):
         """ Setup audio window
         :win_width: display window width in pixels
@@ -51,6 +52,8 @@ class AudioWindow:
                 default: .5 seconds
         :pos_rep_queue_max: maximum position report queue maximum
                 default: 4
+        :visible_figure: figure is visible
+                default: True - visible
         """
         self.win_width = win_width
         self.win_height = win_height
@@ -84,6 +87,7 @@ class AudioWindow:
         self.mw.update()        # Force display
         SlTrace.lg(f"canvas width: {canvas.winfo_width()}")
         SlTrace.lg(f"canvas height: {canvas.winfo_height()}")
+        self.visible_figure = visible_figure
         """
         Turtle usage support
         Turtle is used to support cursor movement
@@ -195,6 +199,10 @@ class AudioWindow:
             self.key_silent()           # Silent (no speaking/talking)
         elif keyslow =="t":
             self.key_talk()             # Enable talking
+        elif keyslow =="v":
+            self.key_visible()         # Make figure visible
+        elif keyslow =="w":
+            self.key_visible(False) # Make figure invisible
         elif keyslow =="x":
             self.key_exit()             # Exit program
         elif keyslow =="z":
@@ -241,6 +249,7 @@ class AudioWindow:
 
     def key_exit(self):
         self.speak_text("Quitting Program")
+        self.mw.destroy()
         sys.exit(0)         # Quit  program
 
     def key_silent(self):
@@ -284,6 +293,13 @@ class AudioWindow:
         """
         self.rept_at_loc = set_val 
         SlTrace.lg(f"rept_at_loc:{self.rept_at_loc}")
+
+    def key_visible(self,val=True):
+        """ turn on/off visibility of figure
+        
+        :val: turn on visibility Default: turn on
+        """
+        self.set_visible(val)
         
         
     def pos_report(self, *args, force_output=False):
@@ -486,7 +502,9 @@ class AudioWindow:
         :x: x-coordinate (turtle)
         :y: y-coordinate (turtle)
         """
-
+        if not self.running:
+            return
+        
         self.canvas.bind('<Motion>', None)  # Disable motion events
         self.turtle.showturtle()
         self.turtle.goto(x=x, y=y)
@@ -635,16 +653,22 @@ class AudioWindow:
         :show_points: show points instead of braille
                 default: False --> show braille dots
         """
+        canvas = self.canvas
+        # Remove current items, if any
+        for item_id in cell.canv_items:
+            self.canvas.delete(item_id)
+        cell.canv_items = []
         ix = cell.ix
         iy = cell.iy 
-        canvas = self.canvas
         cx1,cy1,cx2,cy2 = self.get_cell_rect_win(ix=ix, iy=iy)
         ###TFD HACK to reposition cell dispaly
         cx1 -= 400
         cx2 -= 400
         cy1 -= 400
         cy2 -= 400
-        canvas.create_rectangle(cx1,cy1,cx2,cy2, outline="light gray")
+        canv_item = canvas.create_rectangle(cx1,cy1,cx2,cy2,
+                                 outline="light gray")
+        cell.canv_items.append(canv_item)
         self.mw.update()
         color = self.color_str(cell._color)
         if show_points:
@@ -659,7 +683,9 @@ class AudioWindow:
                 y0 = dy+dot_size 
                 x1 = dx+dot_radius 
                 y1 = dy
-                canvas.create_oval(x0,y0,x1,y1, fill=color)
+                canv_item = canvas.create_oval(x0,y0,x1,y1,
+                                                fill=color)
+                cell.canv_items.append(canv_item)
                 SlTrace.lg(f"canvas.create_oval({x0},{y0},{x1},{y1}, fill={color})")
             self.mw.update()    # So we can see it now 
             return
@@ -691,7 +717,9 @@ class AudioWindow:
             y0 = dy+dot_size 
             x1 = dx+dot_radius 
             y1 = dy
-            canvas.create_oval(x0,y0,x1,y1, fill=color) 
+            canv_item = canvas.create_oval(x0,y0,x1,y1,
+                                            fill=color)
+            cell.canv_items.append(canv_item) 
             SlTrace.lg(f"canvas.create_oval({x0},{y0},{x1},{y1}, fill={color})")
             self.mw.update()
             pass
@@ -823,7 +851,27 @@ class AudioWindow:
             else:
                 color_str = "pink"  # TBD - color tuple work
         return color_str
-                    
+
+    def set_visible(self, val=True):
+        """ Set cells visible/invisible
+        Useful to give sighted a vision
+        :val: set visible Default: True
+        """
+        SlTrace.lg(f"set_visible:{val}")
+        for cell in self.cells.values():
+            self.set_visible_cell(cell, val)
+                
+    def set_visible_cell(self, cell, val):
+        """ Set cells visible/invisible
+        Useful to give sighted a vision
+        :val: set visible Default: True
+        """
+        canvas = self.canvas
+        for item_id in cell.canv_items:
+            if val:
+                canvas.itemconfigure(item_id, state='normal')            
+            else:
+                canvas.itemconfigure(item_id, state='hidden')            
 
         
 if __name__ == "__main__":

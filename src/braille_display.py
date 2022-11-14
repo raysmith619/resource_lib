@@ -70,7 +70,8 @@ class BrailleCell:
         self._color_bg = color_bg
         if points is None:
             points = set()
-        self.points = points 
+        self.points = points
+        self.canv_items = []        # canvas items
 
     def color_str(self, color=None):
         """ Return color string
