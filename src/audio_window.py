@@ -229,6 +229,8 @@ class AudioWindow:
         m - Stop logging talk
         s - Stop speech
         t - Start speech
+        v - make figure cells visible
+        w - make figure cells invisible
         x - exit program
         z - Stop reporting location
         RETURN - Report location
