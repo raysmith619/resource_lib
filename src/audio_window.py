@@ -12,6 +12,7 @@ import time
 from datetime import datetime 
 
 from select_trace import SlTrace
+from Lib.pickle import TRUE
 
 try:
     import pyttsx3
@@ -101,10 +102,13 @@ class AudioWindow:
         self.turtle_screen.tracer(0)
         self.turtle.showturtle()
         self.turtle.penup()
-        
+
+        self.speak_text_lines = []  # pending speak lines        
+        self.escape_pressed = False # True -> interrupt/flush
         self.cells = None
         self.set_cell_lims()
         self.do_talking = True      # Enable talking
+        self.speak_text_line_after = None
         self.logging_speech = True  # Output speech to log/screen
         self.pos_x = None           # Latest position (win), if any 
         self.pos_y = None
@@ -127,6 +131,7 @@ class AudioWindow:
         if pyttsx3_engine:
             self.pos_check_interval = .01
         self.running = True         # Set False to stop
+        self.mw.focus_force()
         self.canvas.bind('<Motion>', self.motion)
         self.canvas.bind('<Button-1>', self.button_1)
         self.mw.bind('<KeyPress>', self.on_key_press)
@@ -141,16 +146,42 @@ class AudioWindow:
         """
         if self.logging_speech:
             SlTrace.lg(msg)
+        self.speak_text_lines.extend(msg.split("\n"))
+        if self.speak_text_line_after is not None:
+            self.mw.after_cancel(self.speak_text_line_after)
+            self.speak_text_line_after = None
+        self.speak_text_line_after = self.mw.after(0,
+                                     self.speak_text_line)
+        
+    def speak_text_line(self):
+        """ Called to speak pending line
+        """
+        if len(self.speak_text_lines) == 0:
+            return
+            
+        msg_line = self.speak_text_lines.pop(0)
         if self.do_talking:
             if pyttsx3_engine:
-                pyttsx3_engine.say(msg)
+                pyttsx3_engine.say(msg_line)
                 pyttsx3_engine.setProperty('rate',120)
                 pyttsx3_engine.setProperty('volume', 0.9)
                 pyttsx3_engine.runAndWait()
+                
             else:
-                SlTrace.lg(f":{msg}")
-            
-            
+                SlTrace.lg(f":{msg_line}")
+        if len(self.speak_text_lines) > 0:
+            self.speak_text_line_after = self.mw.after(
+                                100, self.speak_text_line)
+        else:
+            if self.speak_text_line_after is not None:
+                self.mw.after_cancel(self.speak_text_line_after)
+                self.speak_text_line_after = None
+
+    def speak_text_stop(self):
+        """ Stop ongoing speach, flushing queue
+        """
+        self.speak_text_lines = []
+        
     def motion(self, event):
         """ Mouse motion in  window
         """
@@ -173,7 +204,9 @@ class AudioWindow:
     def on_key_press(self, event):
         keysym = event.keysym
         keyslow = keysym.lower()
-        if keysym == 'Space':
+        if keysym == 'Escape':
+            self.key_escape()
+        elif keysym == 'Space':
             self.key_space()
         elif keysym == 'Tab':
             self.key_tab()
@@ -215,6 +248,13 @@ class AudioWindow:
     """
     keyboard commands
     """
+    def key_escape(self):
+        SlTrace.lg("Escape pressed")
+        self.escape_pressed = True  # Let folks in prog know
+        self.flush_rep_queue()
+        self.speak_text_stop() 
+        self.escape_pressed = False
+        
     def key_help(self):
         """ Help - list keyboard action
         """
@@ -284,7 +324,10 @@ class AudioWindow:
         """
         self.logging_speech = log
         SlTrace.lg(f"logging_speech:{log}")
-        
+
+    def flush_rep_queue(self):
+        self.pos_rep_queue = []
+            
     def key_pos_report(self):
         """ Report on current position/state
         """
@@ -323,56 +366,62 @@ class AudioWindow:
         
         if len(self.pos_rep_queue) == 0:
             return          # Nothing to report
-        
+        '''
         now = datetime.now()
         if (not force_output
             and (now-self.pos_rep_time).total_seconds()
             < self.pos_rep_interval):
             return          # too soon since last report
-        
+        '''
+        '''
         # Remove excess entries
         while len(self.pos_rep_queue) > self.pos_rep_queue_max:
             self.pos_rep_queue.pop(0)   # Discard oldest
-        rep_type, *rep_args = self.pos_rep_queue.pop(0)
-        if rep_type == "dist":
-            x_dist, y_dist = rep_args
-            x_str = ""
-            if x_dist == 999:
-                rep_str = "No Drawing"
-            else:
-                if x_dist < 0:
-                    x_str = f"left {-x_dist}"
-                elif x_dist > 0:
-                    x_str = f"right {x_dist}"
-                y_str = ""
-                if y_dist < 0:
-                    y_str = f"down {-y_dist}"
-                elif y_dist > 0:
-                    y_str = f"up {y_dist}"
-                rep_str = x_str
-                if rep_str != "":
-                    rep_str += " "
-                rep_str += y_str
-        elif rep_type == "draw":
-            cell_ixiy = rep_args[0]
-            cell = self.cells[cell_ixiy]
-            color = cell._color
-            rep_str = color
-        elif rep_type == "msg":
-            rep_str = rep_args[0]
-
-        ix,iy = self.get_point_cell()
-        if self.rept_at_loc:
-            rep_str += f" at row{self.grid_height-iy} column{ix+1}"
-        if (force_output
-            or ix != self.pos_rep_ix_prev    # Avoid repeats
-            or iy != self.pos_rep_iy_prev):            
-            self.win_print(rep_str, end= "\n")
-            self.speak_text(rep_str)
-            self.pos_rep_time = datetime.now()  # Time of last report
-            self.pos_rep_ix_prev = ix
-            self.pos_rep_iy_prev = iy
-            self.pos_rep_str_prev = rep_str
+        if self.escape_pressed:
+            return      # TBD still not atomic!!!!
+        '''
+       
+        while len(self.pos_rep_queue) > 0:
+            rep_type, *rep_args = self.pos_rep_queue.pop(0)
+            if rep_type == "dist":
+                x_dist, y_dist = rep_args
+                x_str = ""
+                if x_dist == 999:
+                    rep_str = "No Drawing"
+                else:
+                    if x_dist < 0:
+                        x_str = f"left {-x_dist}"
+                    elif x_dist > 0:
+                        x_str = f"right {x_dist}"
+                    y_str = ""
+                    if y_dist < 0:
+                        y_str = f"down {-y_dist}"
+                    elif y_dist > 0:
+                        y_str = f"up {y_dist}"
+                    rep_str = x_str
+                    if rep_str != "":
+                        rep_str += " "
+                    rep_str += y_str
+            elif rep_type == "draw":
+                cell_ixiy = rep_args[0]
+                cell = self.cells[cell_ixiy]
+                color = cell._color
+                rep_str = color
+            elif rep_type == "msg":
+                rep_str = rep_args[0]
+    
+            ix,iy = self.get_point_cell()
+            if self.rept_at_loc:
+                rep_str += f" at row{self.grid_height-iy} column{ix+1}"
+            if (force_output
+                or ix != self.pos_rep_ix_prev    # Avoid repeats
+                or iy != self.pos_rep_iy_prev):            
+                self.win_print(rep_str, end= "\n")
+                self.speak_text(rep_str)
+                self.pos_rep_time = datetime.now()  # Time of last report
+                self.pos_rep_ix_prev = ix
+                self.pos_rep_iy_prev = iy
+                self.pos_rep_str_prev = rep_str
                 
     def pos_check(self, x=None, y=None, force_output=False):
         """ Do possition checkng followed by report queue processing
@@ -688,7 +737,7 @@ class AudioWindow:
                 canv_item = canvas.create_oval(x0,y0,x1,y1,
                                                 fill=color)
                 cell.canv_items.append(canv_item)
-                SlTrace.lg(f"canvas.create_oval({x0},{y0},{x1},{y1}, fill={color})")
+                SlTrace.lg(f"canvas.create_oval({x0},{y0},{x1},{y1}, fill={color})", "aud_create")
             self.mw.update()    # So we can see it now 
             return
             
@@ -722,7 +771,7 @@ class AudioWindow:
             canv_item = canvas.create_oval(x0,y0,x1,y1,
                                             fill=color)
             cell.canv_items.append(canv_item) 
-            SlTrace.lg(f"canvas.create_oval({x0},{y0},{x1},{y1}, fill={color})")
+            SlTrace.lg(f"canvas.create_oval({x0},{y0},{x1},{y1}, fill={color})", "aud_create")
             self.mw.update()
             pass
                 
