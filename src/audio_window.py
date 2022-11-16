@@ -12,8 +12,6 @@ import time
 from datetime import datetime 
 
 from select_trace import SlTrace
-from Lib.pickle import TRUE, NONE
-import pt
 
 try:
     import pyttsx3
