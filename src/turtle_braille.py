@@ -91,6 +91,9 @@ class TurtleBraille():
     def back(self, length):
         return self.backward(length)
     
+    def circle(self, radius, extent=None, steps=None):
+        return self.bd.circle(radius, extent=extent, steps=steps)
+
     def right(self, angle):
         return self.bd.right(angle)
     def rt(self, angle):
@@ -154,7 +157,6 @@ class TurtleBraille():
         """
         return self.bd.set_blank(blank_char)
 
-    
 
 """
 External functions 
@@ -168,6 +170,9 @@ def backward(length):
 
 def color(*args):
     return tum.color(*args)
+    
+def circle(self, radius, extent=None, steps=None):
+    return tum.circle(radius, extent=extent, steps=steps)
 
 def dot(size=None, *color):
     return tum.dot(size, *color)
@@ -227,6 +232,23 @@ def set_blank(blank_char):
     """
     ret = tum.set_blank(blank_char)
     return ret
+
+"""
+Screen size function to facilitate general
+possitioning
+"""
+def x_min():
+    return tum.bd.x_min
+
+def x_max():
+    return tum.bd.x_max
+def y_min():
+    return tum.bd.y_min
+
+def y_max():
+    return tum.bd.y_max
+
+
     
 if __name__ == '__main__':
     #from turtle_braille import *    # Get graphics stuff

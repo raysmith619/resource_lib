@@ -1359,6 +1359,14 @@ class BrailleDisplay:
             raise Exception(f"pencolor illegal args:{args}")
         
         return rt
+
+    
+    def circle(self, radius, extent=None, steps=None):
+        """ HACK because we don't have time
+        to do circle
+        """
+        color = self.color()
+        self.dot(size=2*radius, color=color)
         
     def dot(self, size=None, *color):
         rt = self.tu.dot(size, *color)

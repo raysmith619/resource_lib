@@ -12,7 +12,8 @@ import time
 from datetime import datetime 
 
 from select_trace import SlTrace
-from Lib.pickle import TRUE
+from Lib.pickle import TRUE, NONE
+import pt
 
 try:
     import pyttsx3
@@ -133,7 +134,8 @@ class AudioWindow:
         self.running = True         # Set False to stop
         self.mw.focus_force()
         self.canvas.bind('<Motion>', self.motion)
-        self.canvas.bind('<Button-1>', self.button_1)
+        self.canvas.bind('<Button-1>', self.on_button_1)
+        self.canvas.bind('<B1-Motion>', self.on_button_1_motion)
         self.mw.bind('<KeyPress>', self.on_key_press)
 
         self.pos_check()            # Startup possition check loop
@@ -190,17 +192,26 @@ class AudioWindow:
         self.move_to(x,y)
         #self.pos_x = x 
         #self.pos_y = y
-        #self.pos_check() 
+        #self.pos_check()
         return              # Processed via pos_check()
 
-    def button_1(self, event):
+    def on_button_1(self, event):
         """ Mouse button in window
         """
         x,y = event.x, event.y
         SlTrace.lg(f"motion x={x} y={y}", "aud_motion")
         self.move_to(x,y)
+        cell = self.get_cell_at()
+        if cell is not None:
+            self.set_visible_cell(cell)
         self.pos_check()
 
+    def on_button_1_motion(self, event):
+        """ Motion will button down is
+        treated as mouse click at point
+        """
+        self.on_button_1(event)
+        
     def on_key_press(self, event):
         keysym = event.keysym
         keyslow = keysym.lower()
@@ -222,6 +233,8 @@ class AudioWindow:
             self.key_right()
         elif keyslow =="a":
             self.key_set_rept_at()      # Turn on include at loc reporting
+        elif keyslow == "c":
+            self.key_color_cell()
         elif keyslow == "h":
             self.key_help()             # Help message
         elif keyslow =="l":
@@ -265,6 +278,7 @@ class AudioWindow:
         Left - Move left one column
         Right - Move right one column
         a - Start reporting location
+        c - color/clear cell
         l - Start logging talk
         m - Stop logging talk
         s - Stop speech
@@ -292,8 +306,20 @@ class AudioWindow:
     def key_exit(self):
         self.speak_text("Quitting Program")
         self.mw.destroy()
+        self.mw.quit()
         sys.exit(0)         # Quit  program
 
+    def key_color_cell(self, set_val=True):
+        """ color/clear cell - change visibility
+        :set_val: change visibility default: change
+        """
+        cell = self.get_cell_at()
+        if cell is None:
+            return      # TBD beep?, red dot?
+        
+        self.set_visible_cell(cell, val=set_val)
+        self.mw.update()
+        
     def key_silent(self):
         """ Disable talking
         """
@@ -562,6 +588,9 @@ class AudioWindow:
         win_x,win_y = self.get_point_win((x,y))
         self.pos_x,self.pos_y = win_x,win_y
         self.turtle_screen.update()
+        if not self.mw.winfo_exists():
+            return 
+        
         self.mw.update()
         self.pos_check(force_output=True)
         self.canvas.bind('<Motion>', self.motion)   # Reenable
@@ -586,6 +615,7 @@ class AudioWindow:
         """
         margin = 10
         top_margin = 20     # HACK to determine top before low level check
+        bottom_margin = 20   # HACK to determine before low level check
         tu_x, tu_y = self.get_point_tur((x,y))
         if tu_x <= self.x_min + margin:
             self.pos_report("msg", "At left edge")
@@ -593,7 +623,7 @@ class AudioWindow:
         elif tu_x >= self.x_max - margin:
             self.pos_report("msg", "At right edge")
             return                               
-        if tu_y <= self.y_min + margin:
+        if tu_y <= self.y_min + bottom_margin:
             self.pos_report("msg", "At bottom edge")
             return
         elif tu_y >= self.y_max - top_margin:
@@ -793,18 +823,6 @@ class AudioWindow:
             x1,y1 are lower left coordinates
             x2,y2 are upper right coordinates
         """
-        if ix < 0:
-            SlTrace.lg(f"ix:{ix} < 0")
-            return (0,0,0,0)
-        if ix >= len(self.cell_xs):
-            SlTrace.lg(f"ix:{ix} >= {len(self.cell_xs)}")
-            return (0,0,0,0)
-        if iy < 0:
-            SlTrace.lg(f"ix:{iy} < 0")
-            return (0,0,0,0)
-        if iy >= len(self.cell_ys):
-            SlTrace.lg(f"iy:{iy} >= {len(self.cell_ys)}")
-            return (0,0,0,0)
         tu_x1,tu_y1,tu_x2,tu_y2 = self.get_cell_rect_tur(ix,iy)
         win_x1 = tu_x1 + self.win_width//2
         win_y1 = self.win_height//2 - tu_y1
@@ -827,7 +845,7 @@ class AudioWindow:
             SlTrace.lg(f"ix:{ix+1} >= {len(self.cell_xs)}")
             ix = max_ix-1
         if iy < 0:
-            SlTrace.lg(f"ix:{iy} < 0")
+            SlTrace.lg(f"iy:{iy} < 0", "aud_move")
             iy = 0
         max_iy = len(self.cell_ys)-1
         if iy+1 > max_iy:
@@ -855,6 +873,21 @@ class AudioWindow:
         ix = int((tu_x-self.x_min)/self.win_width*self.grid_width)
         iy = int((tu_y-self.y_min)/self.win_height*self.grid_height)
         return (ix,iy)
+
+    def get_cell_at(self, pt=None):
+        """ Get cell at location, if one
+        :pt: x,y pair location in turtle coordinates
+                default: current location
+        :returns: cell if at, else None
+        """
+        cell_ixiy = self.get_point_cell(pt)
+        if cell_ixiy is None:
+            return None 
+        
+        if cell_ixiy in self.cells:
+            return self.cells[cell_ixiy]
+        
+        return None
         
     def get_point_win(self, pt=None):
         """ Get point in window coordinates
@@ -912,9 +945,10 @@ class AudioWindow:
         for cell in self.cells.values():
             self.set_visible_cell(cell, val)
                 
-    def set_visible_cell(self, cell, val):
+    def set_visible_cell(self, cell, val=True):
         """ Set cells visible/invisible
         Useful to give sighted a vision
+        :cell: figure cell
         :val: set visible Default: True
         """
         canvas = self.canvas
