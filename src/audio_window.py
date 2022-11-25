@@ -12,15 +12,47 @@ import time
 from datetime import datetime 
 
 from select_trace import SlTrace
+from grid_fill_gobble import GridFillGobble
 
 try:
     import pyttsx3
     pyttsx3_engine = pyttsx3.init()
 except:
     pyttsx3_engine = None 
+
+class SpeakText:
+    """ Item to speak
+    """
+    # Speech Types:
+    REPORT = "report"
+    CMD = "cmd"
+    ECHO = "echo"
     
+    def __init__(self,  msg,
+                 speech_type="report",
+                 dup_stdout=True,
+                   ):
+        
+        """ Setup item
+        :msg: text of speech
+        :speech_type: type of speach default: report
+                REPORT: std reporting
+                CMD: command
+                ECHO: echo input
+        :dup_stdout: duplicate text to stdout/console
+                default: True - duplicate
+        """
+        self.msg = msg
+        self.speech_type = speech_type
+        self.dup_stdout = dup_stdout
 
 class AudioWindow:
+
+
+    """
+    Menu Processing functions
+    """
+
     
     def __init__(self, title,
         win_width=800, win_height=800,
@@ -30,7 +62,8 @@ class AudioWindow:
         pos_check_interval= .1,
         pos_rep_interval = .1,
         pos_rep_queue_max = 4,
-        visible_figure = True
+        visible_figure = True,
+        pgmExit=None,
                  ):
         """ Setup audio window
         :win_width: display window width in pixels
@@ -60,6 +93,7 @@ class AudioWindow:
         self.grid_width = grid_width
         self.grid_height = grid_height
         self.cell_height = win_height/self.grid_height
+        self.pgmExit = pgmExit
         if x_min is None:
             x_min = -win_width//2
         self.x_min = x_min
@@ -73,6 +107,10 @@ class AudioWindow:
         mw.title(title)
         self.mw = mw
         #mw.withdraw()
+
+        # create the file object
+        self.menu_setup()
+
         
         win_print_frame = tk.Frame(mw)
         win_print_frame.pack(side=tk.TOP)
@@ -102,9 +140,9 @@ class AudioWindow:
         self.turtle.showturtle()
         self.turtle.penup()
 
-        self.speak_text_lines = []  # pending speak lines        
+        self.speak_text_lines = []  # pending speak lines (SpeakText)       
         self.escape_pressed = False # True -> interrupt/flush
-        self.cells = None
+        self.cells = []
         self.set_cell_lims()
         self.do_talking = True      # Enable talking
         self.speak_text_line_after = None
@@ -129,6 +167,11 @@ class AudioWindow:
         self.pos_check_interval = pos_check_interval
         if pyttsx3_engine:
             self.pos_check_interval = .01
+        self._echo_input = True     # True -> speak input
+        self._track_goto_cell = True    # True -> mark cells where we have gone
+        self.goto_travel_list = []    # Memory of where we have gone
+        self.goto_cell_list = []
+        self.goto_travel_list_index = None 
         self.running = True         # Set False to stop
         self.mw.focus_force()
         self.canvas.bind('<Motion>', self.motion)
@@ -139,36 +182,58 @@ class AudioWindow:
         self.pos_check()            # Startup possition check loop
         mw.update()     # Make visible
 
-    def speak_text(self, msg, dup_stdout=True):
+                
+    def speak_text(self, msg, dup_stdout=True,
+                   speech_type="report"):
         """ Speak text, if possible else write to stdout
         :msg: text message
         :dup_stdout: duplicate to stdout default: True
+        :speech_type: type of speech default: "report"
+            report - standard reporting
+            cmd    - command
         """
         if self.logging_speech:
             SlTrace.lg(msg)
-        self.speak_text_lines.extend(msg.split("\n"))
+        self.add_speak_text_lines(msg.split("\n"))
         if self.speak_text_line_after is not None:
             self.mw.after_cancel(self.speak_text_line_after)
             self.speak_text_line_after = None
         self.speak_text_line_after = self.mw.after(0,
                                      self.speak_text_line)
-        
+
+    def add_speak_text_lines(self, lines):
+        """ Add lines to be spoken
+        :lines: list of lines
+        """
+        for line in lines:
+            text_line = SpeakText(line)
+            self.speak_text_lines.append(text_line)
+                
     def speak_text_line(self):
         """ Called to speak pending line
         """
         if len(self.speak_text_lines) == 0:
             return
             
-        msg_line = self.speak_text_lines.pop(0)
+        speak_text = self.speak_text_lines.pop(0)
         if self.do_talking:
             if pyttsx3_engine:
-                pyttsx3_engine.say(msg_line)
-                pyttsx3_engine.setProperty('rate',120)
-                pyttsx3_engine.setProperty('volume', 0.9)
-                pyttsx3_engine.runAndWait()
+                if speak_text.speech_type == SpeakText.REPORT:
+                    pyttsx3_engine.say(speak_text.msg)
+                    pyttsx3_engine.setProperty('rate',120)
+                    pyttsx3_engine.setProperty('volume', 0.9)
+                    pyttsx3_engine.runAndWait()
+                elif speak_text.speech_type == SpeakText.ECHO:
+                    pyttsx3_engine.say(speak_text.msg)
+                    pyttsx3_engine.setProperty('rate',240)
+                    pyttsx3_engine.setProperty('volume', 0.9)
+                    pyttsx3_engine.runAndWait()
+                else:
+                    raise Exception(f"Unrecognized speech_type"
+                                    f" {speak_text.speech_type}")
                 
             else:
-                SlTrace.lg(f":{msg_line}")
+                SlTrace.lg(f":{speak_text.msg}")
         if len(self.speak_text_lines) > 0:
             self.speak_text_line_after = self.mw.after(
                                 100, self.speak_text_line)
@@ -213,6 +278,9 @@ class AudioWindow:
     def on_key_press(self, event):
         keysym = event.keysym
         keyslow = keysym.lower()
+        if keysym == 'Alt_L':
+            return                  # Ignore ALT
+        self.key_echo(keysym)
         if keysym == 'Escape':
             self.key_escape()
         elif keysym == 'Space':
@@ -233,6 +301,8 @@ class AudioWindow:
             self.key_set_rept_at()      # Turn on include at loc reporting
         elif keyslow == "c":
             self.key_color_cell()
+        elif keyslow == "g":
+            self.key_goto()             # Goto closest figure
         elif keyslow == "h":
             self.key_help()             # Help message
         elif keyslow =="l":
@@ -240,7 +310,7 @@ class AudioWindow:
         elif keyslow =="m":
             self.key_log_speech(False)  # Don't log speech/talking 
         elif keyslow =="s":
-            self.key_silent()           # Silent (no speaking/talking)
+            self.key_talk(False)           # Silent (no speaking/talking)
         elif keyslow =="t":
             self.key_talk()             # Enable talking
         elif keyslow =="v":
@@ -259,13 +329,128 @@ class AudioWindow:
     """
     keyboard commands
     """
-    def key_escape(self):
-        SlTrace.lg("Escape pressed")
+    def key_echo(self,keysym):
+        """ Echo key, if appropriate
+        :keysym; key symbol
+        """
+        self.key_flush(keysym=keysym)
+        if self._echo_input:
+            self.speak_text(keysym, speech_type=SpeakText.ECHO)
+
+    def key_flush(self, keysym):
+        """ Do appropriate flushing
+        :keysym: key symbol
+        """
         self.escape_pressed = True  # Let folks in prog know
         self.flush_rep_queue()
         self.speak_text_stop() 
         self.escape_pressed = False
+            
         
+    def key_escape(self):
+        SlTrace.lg("Escape pressed")
+        self.key_flush(keysym="Escape")
+
+    def goto_cell(self, ix=None, iy=None):
+        """ Move cursor to center of cell
+        :ix: cell's ix index
+        :iy: cell's iy index
+        """
+        win_xc,win_yc = self.get_cell_center_win(ix,iy)
+        self.move_to(win_xc,win_yc)
+        self.goto_cell_list.append((ix,iy))
+        if self._track_goto_cell:
+            self.mark_cell((ix,iy))
+
+    def mark_cell(self, ixy):
+        """ Mark cell for viewing of history
+        :ixy: index (ix,iy) of cell
+        """
+        if ixy in self.cells:
+            cell = self.cells[ixy]
+            canvas = self.canvas
+            for item_id in cell.canv_items:
+                item_type = canvas.type(item_id)
+                if item_type == "rectangle":
+                    canvas.itemconfigure(item_id, fill='dark gray')            
+            
+        
+    def key_goto(self):
+        """ Go to closest figure
+            go to figure not in one already
+            else go one step within current figure, toward
+            longest inside path
+        """
+        dist, dist_x, dist_y, cell = self.distance_from_drawing()
+        if dist is None:
+            return              # Nowhere
+        
+        if dist > 0:
+            self.goto_cell(ix=cell.ix, iy=cell.iy)
+            self.goto_cell_list = []
+            start_cell = (cell.ix,cell.iy)
+            self.goto_cell_list.append(start_cell)
+            gfg = GridFillGobble(self.cells,
+                                         start_cell)
+            self.goto_travel_list = gfg.find_region(start_cell)
+            self.goto_travel_list_index = 0
+        else:
+            if not self.goto_travel_list:
+                return  # No travel list
+            
+            goto_idx = self.goto_travel_list_index + 1
+            goto_idx %= len(self.goto_travel_list)
+            self.goto_travel_list_index = goto_idx
+            new_cell= self.goto_travel_list[goto_idx]
+            self.goto_cell(ix=new_cell[0], iy=new_cell[1])
+
+    def trav_len(self, ix, iy, dir_x, dir_y, require_cell=True):
+        """ Find the travel length
+        This is the number of steps from cell(ix,iy) in 
+        direction (dir_x,dir_y) while still in self.cells[]
+        traversal is stopped at traversed cells - in
+        self.goto_cell_list
+        :ix: cell x-index
+        :iy: cell y_index
+        :dir_x: x change each step
+        :dir_y: y change each step
+        :require_cell: Require cell in traversal default: True - required
+        :returns: steps_forward, steps_backward, -1,-1
+                 if cell, itself is not in figure(self.cells)
+        """
+        if require_cell and (ix,iy) not in self.cells:
+            return -1,-1       # Not in figure
+        
+        if dir_x == 0 and dir_y == 0:
+            return 0,0
+        
+        tlen_forward = 0
+        ix_f = ix
+        iy_f = iy
+        while True:
+            ix_f += dir_x
+            iy_f += dir_y
+            if (ix_f,iy_f) not in self.cells:
+                break
+            if (ix_f,iy_f) in self.goto_cell_list:
+                break
+            tlen_forward += 1   # traversal extended
+
+        # Get backend of line
+        tlen_backward = 0
+        ix_b = ix
+        iy_b = iy
+        
+        while True:
+            ix_b -= dir_x
+            iy_b -= dir_y
+            if (ix_b,iy_b) not in self.cells:
+                break
+            if (ix_b,iy_b) in self.goto_cell_list:
+                break
+            tlen_backward += 1   # traversal extended
+        return tlen_forward,tlen_backward
+
     def key_help(self):
         """ Help - list keyboard action
         """
@@ -286,6 +471,7 @@ class AudioWindow:
         x - exit program
         z - Stop reporting location
         RETURN - Report location
+        Escape - flush pending report output
         """
         self.speak_text(help_str)
         
@@ -303,6 +489,7 @@ class AudioWindow:
 
     def key_exit(self):
         self.speak_text("Quitting Program")
+        self.mw.update()     # Process any pending events
         self.mw.destroy()
         self.mw.quit()
         sys.exit(0)         # Quit  program
@@ -317,17 +504,11 @@ class AudioWindow:
         
         self.set_visible_cell(cell, val=set_val)
         self.mw.update()
-        
-    def key_silent(self):
-        """ Disable talking
-        """
-        self.do_talking = False
-        SlTrace.lg(f"do_talking:{self.do_talking}")
 
-    def key_talk(self):
-        """ Disable talking
+    def key_talk(self, val=True):
+        """ Enable / Disable talking
         """
-        self.do_talking = True
+        self.do_talking = val
         SlTrace.lg(f"do_talking:{self.do_talking}")
                     
     def key_space(self):
@@ -482,15 +663,20 @@ class AudioWindow:
         :x: x-coordinate (win) default: self.pos_x
         :y: y-coordinate (win) default: self.pos_y
         :force_output: if and output, clear queue first
+        :returns: dist, dist_x, dist_y, cell
+                where: dist - distance
+                        dist_x - in cells right
+                        dist_y - in cells down
+                        cell - closest cell, if one, else None
         """
         
-        dist, dist_x, dist_y = self.distance_from_drawing(x,y)
+        dist, dist_x, dist_y, cell = self.distance_from_drawing(x,y)
         if dist is not None and dist > 0:
             if force_output:
                 self.pos_rep_force_output = True
                 self.pos_rep_queue = []
             self.pos_rep_queue.append(("dist", dist_x, dist_y))
-        return dist, dist_x, dist_y    
+        return dist, dist_x, dist_y, cell    
 
     def check_if_drawing(self, x=None, y=None,
                           force_output=False):       
@@ -500,16 +686,16 @@ class AudioWindow:
         :y: y-coordinate (win) default: self.pos_y
         :force_output: if and output, clear queue first
         """
-        dist, dist_x, dist_y = self.distance_from_drawing(x,y)
+        dist, dist_x, dist_y, cell = self.distance_from_drawing(x,y)
         if dist is None or dist > 0:
-            return None,None,None       # Not on figure
+            return None,None,None,None       # Not on figure
 
         if x is None:
             x = self.pos_x
         if y is None:
             y = self.pos_y
         if x is None:
-            return  None,None,None # No drawing/location
+            return  None,None,None, None # No drawing/location
         
         tu_x, tu_y = self.get_point_tur((x,y))        
         cell_ixiy = self.get_point_cell((tu_x,tu_y))
@@ -521,7 +707,7 @@ class AudioWindow:
             self.pos_rep_queue.append(("draw", cell_ixiy))
             return 0,dist_x,dist_y      # Force "on figure"
         
-        return dist,dist_x,dist_y
+        return dist,dist_x,dist_y,cell
         
     def win_print(self,*args, dup_stdout=False, **kwargs):
         """ print to listing area
@@ -542,10 +728,13 @@ class AudioWindow:
         self.win_print_entry.insert(0, lstr)    
         #time.sleep(.2)
              
-    def draw_cells(self, cells, show_points=False):
+    def draw_cells(self, cells=None, show_points=False):
         """ Display braille cells on canvas
+        :cells: cells to draw
+        :show_points: instead of braille, show sample points
         """
-        #self.turtle.pendown()
+        if cells is None:
+            cells = self.cells
         self.cells = cells      # Copy
         for ix in range(self.grid_width):
             for iy in range(self.grid_height):
@@ -603,6 +792,7 @@ class AudioWindow:
         ix,iy = self.get_point_cell((tu_x,tu_y))
         ix += x_inc
         iy += y_inc
+        self.mark_cell((ix,iy))
         win_xc,win_yc = self.get_cell_center_win(ix,iy)
         SlTrace.lg(f"move_cursor: ix={ix}, y={iy}", "move_cursor")
         self.move_to(win_xc,win_yc)
@@ -648,12 +838,13 @@ class AudioWindow:
             y = int(self.y_min + i*self.win_height/self.grid_height)
             self.cell_ys.append(y)
 
-    def distance_from_drawing(self, x, y):
+    def distance_from_drawing(self, x=None, y=None):
         """ Approximately minimum distance in cells from point
             to some displayed cell
-        :x: window x-coordinate
-        :y: window y-coordinate
-        :returns: number of cells, number_x_cells, number_y_cells
+        :x: window x-coordinate default: current x position
+        :y: window y-coordinate default: current y position
+        :returns: distance, number_x_cells, number_y_cells,
+                             cell iff inside cell
                 None - if no figure
                  (0 only iff already in displayed cell)
         """
@@ -662,19 +853,21 @@ class AudioWindow:
         if y is None:
             y = self.pos_y
         if x is None:
-            return  None,None,None # Nothing to report
+            return  None,None,None,None # Nothing to report
         
                         # Check/Report on distance from figure
         if (self.cells is None
                  or len(self.cells) == 0):
-            return 999,999,999   # Far....p
+            return 999,999,999, None   # Far....p
 
         tu_x, tu_y = self.get_point_tur((x,y))
         SlTrace.lg(f"distance_from_drawing: x={x} y={y}", "aud_motion")
         
         pt_ixiy = self.get_point_cell((tu_x,tu_y))
+        cell_closest = None         # Set if found
         if pt_ixiy in self.cells:
-            return 0,0,0        # On drawing
+            cell_closest = self.cells[pt_ixiy]      # We're there
+            return 0,0,0, cell_closest        # On drawing
         
         min_dist = None
         min_dist_x = 0      # x,y offset at min dist
@@ -687,9 +880,10 @@ class AudioWindow:
                 min_dist = dist
                 min_dist_x = cell_ix - pt_ix
                 min_dist_y = cell_iy - pt_iy
+                cell_closest = self.cells[cell_ixiy]    # Closest so far
         if min_dist <= 0:
             min_dist = .001     # Saving 0 for in display element
-        return min_dist, min_dist_x, min_dist_y
+        return min_dist, min_dist_x, min_dist_y, cell_closest
 
     def drawing_bounding_box(self):
         """ turtle coordinates which bound displayed figure
@@ -956,6 +1150,138 @@ class AudioWindow:
             else:
                 canvas.itemconfigure(item_id, state='hidden')            
 
+    """
+    Setup menus
+    """
+    def pgm_exit(self):
+        if self.pgmExit is not None:
+            self.pgmExit()
+        else:
+            sys.exit()    
+        
+    def File_Open_tbd(self):
+        print("File_Open_menu to be determined")
+
+    def File_Save_tbd(self):
+        print("File_Save_menu to be determined")
+
+    def add_menu_command(self, label=None, call_back=None):
+        """ Add simple menu command to top menu
+        :label: command label
+        :call_back: function to be called when selected
+        """
+        self.menubar.add_command(label=label, command=call_back)
+
+    def command_proc(self):
+        """ Setup command processing options / action
+        """
+
+    def on_alt_c(self, event):
+        """ keep from key-press
+        """
+        SlTrace.lg("on_alt_c")
+
+    def on_alt_f(self, event):
+        """ keep from key-press
+        """
+        SlTrace.lg("on_alt_f")
+    
+    def menu_setup(self):
+        # creating a menu instance
+        self.mw.bind('<Alt-f>', self.on_alt_f)  # Keep this from key cmds
+        self.mw.bind('<Alt-c>', self.on_alt_c)  # Keep this from key cmds
+        
+        menubar = tk.Menu(self.mw)
+        self.menubar = menubar      # Save for future reference
+        self.mw.config(menu=menubar)
+        
+        self.Properties = None
+        self.LogFile = None
+        filemenu = tk.Menu(menubar, tearoff=0)
+        filemenu.add_command(label="Open", command=self.File_Open_tbd)
+        filemenu.add_command(label="Save", command=self.File_Save_tbd)
+        filemenu.add_separator()
+        filemenu.add_command(label="Log", command=self.LogFile)
+        filemenu.add_command(label="Properties", command=self.Properties)
+        filemenu.add_separator()
+        ###filemenu.add_comand(label="Cmd", command=self.command_proc)
+        filemenu.add_separator()
+        filemenu.add_command(label="Exit", command=self.pgm_exit, underline=1)
+        menubar.add_cascade(label="File", menu=filemenu)
+        
+        cmd_menu = tk.Menu(menubar, tearoff=0)
+        cmd_menu.add_command(label="Help", command=self.cmd_key_help,
+                             underline=0)
+        cmd_menu.add_command(label="add At loc", command=self.cmd_add_loc,
+                             underline=0)
+        cmd_menu.add_command(label="remove At loc", command=self.cmd_no_add_loc,
+                             underline=0)
+        cmd_menu.add_command(label="echo input on", command=self.cmd_echo_on,
+                             underline=0)
+        cmd_menu.add_command(label="echo off", command=self.cmd_echo_off,
+                             underline=5)
+        
+        cmd_menu.add_command(label="visible cells", command=self.cmd_make_visible,
+                             underline=0)
+        cmd_menu.add_command(label="invisible cells", command=self.cmd_make_invisible,
+                             underline=0)
+        cmd_menu.add_command(label="silent", command=self.cmd_make_silent,
+                             underline=0)
+        cmd_menu.add_command(label="talking", command=self.cmd_make_talk,
+                             underline=0)
+        cmd_menu.add_command(label="log talk", command=self.cmd_logt,
+                             underline=0)
+        cmd_menu.add_command(label="no log talk", command=self.cmd_no_logt,
+                             underline=0)
+        cmd_menu.add_command(label="redraw figure", command=self.cmd_redraw,
+                             underline=2)
+    
+        menubar.add_cascade(label="Command", menu=cmd_menu)
+
+
+    def cmd_key_help(self):
+        """ Help for cmds
+        """
+        self.key_help()
+
+    def cmd_echo_on(self):
+        self._echo_input = True 
+    
+    def cmd_echo_off(self):
+        self._echo_input = False 
+                
+    def cmd_add_loc(self):
+        """ Add At location info to report
+        """
+        self.key_set_rept_at()
+        
+    def cmd_no_add_loc(self):
+        """ Remove At location info to report
+        """
+        self.key_set_rept_at(False)
+        
+    def cmd_logt(self):
+        """ Log talking
+        """
+        self.key_log_speech()
+
+    def cmd_no_logt(self):
+        self.key_log_speech(False)
+
+    def cmd_make_invisible(self):
+        self.key_visible(False) 
+        
+    def cmd_make_visible(self):
+        self.key_visible()
+
+    def cmd_make_silent(self):
+        self.key_talk(False)
+
+    def cmd_make_talk(self):
+        self.key_talk()
+    
+    def cmd_redraw(self):
+        self.draw_cells()    
         
 if __name__ == "__main__":
     aw = AudioWindow(title="AudioWindow Self-Test")
