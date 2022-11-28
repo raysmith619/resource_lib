@@ -3,6 +3,7 @@
 
 from turtle_braille_link import *        # Set link to library
 #from turtle import *    # Bring in turtle graphic functions
+speed("fastest")
 for i in range(7):      # Do things 7 times
     if i == 0:
         color("red")

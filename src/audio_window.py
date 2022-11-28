@@ -13,6 +13,10 @@ from datetime import datetime
 
 from select_trace import SlTrace
 from grid_fill_gobble import GridFillGobble
+from grid_path import GridPath
+from braille_cell import BrailleCell
+from audio_beep import AudioBeep
+
 
 try:
     import pyttsx3
@@ -171,7 +175,11 @@ class AudioWindow:
         self._track_goto_cell = True    # True -> mark cells where we have gone
         self.goto_travel_list = []    # Memory of where we have gone
         self.goto_cell_list = []
-        self.goto_travel_list_index = None 
+        self.goto_travel_list_index = None
+        self.cell_history = []          # History of all movement
+        self._audio_beep = False
+        self.audio_beep = AudioBeep(self)
+        self.grid_path = GridPath(goto_path=self.cell_history)
         self.running = True         # Set False to stop
         self.mw.focus_force()
         self.canvas.bind('<Motion>', self.motion)
@@ -220,7 +228,7 @@ class AudioWindow:
             if pyttsx3_engine:
                 if speak_text.speech_type == SpeakText.REPORT:
                     pyttsx3_engine.say(speak_text.msg)
-                    pyttsx3_engine.setProperty('rate',120)
+                    pyttsx3_engine.setProperty('rate',240)
                     pyttsx3_engine.setProperty('volume', 0.9)
                     pyttsx3_engine.runAndWait()
                 elif speak_text.speech_type == SpeakText.ECHO:
@@ -308,7 +316,9 @@ class AudioWindow:
         elif keyslow =="l":
             self.key_log_speech()       # Log/print speech/talking
         elif keyslow =="m":
-            self.key_log_speech(False)  # Don't log speech/talking 
+            self.key_log_speech(False)  # Don't log speech/talking
+        elif keyslow == "r":
+            self.key_report_pos() 
         elif keyslow =="s":
             self.key_talk(False)           # Silent (no speaking/talking)
         elif keyslow =="t":
@@ -321,8 +331,6 @@ class AudioWindow:
             self.key_exit()             # Exit program
         elif keyslow =="z":
             self.key_set_rept_at(False) # Turn off include at loc reporting
-        elif keyslow =="return":
-            self.key_pos_report()       # Report location
         else:
             self.speak_text(f"Don't understand {keysym}")
 
@@ -362,10 +370,14 @@ class AudioWindow:
         if self._track_goto_cell:
             self.mark_cell((ix,iy))
 
-    def mark_cell(self, ixy):
+    def mark_cell(self, cell):
         """ Mark cell for viewing of history
-        :ixy: index (ix,iy) of cell
+        :cell: Cell(BrailleCell) or (ix,iy) of cell
         """
+        if isinstance(cell, BrailleCell):
+            ixy = (cell.ix,cell.iy) 
+        else:
+            ixy = cell
         if ixy in self.cells:
             cell = self.cells[ixy]
             canvas = self.canvas
@@ -464,13 +476,13 @@ class AudioWindow:
         c - color/clear cell
         l - Start logging talk
         m - Stop logging talk
+        r - Report position
         s - Stop speech
         t - Start speech
         v - make figure cells visible
         w - make figure cells invisible
         x - exit program
         z - Stop reporting location
-        RETURN - Report location
         Escape - flush pending report output
         """
         self.speak_text(help_str)
@@ -510,7 +522,12 @@ class AudioWindow:
         """
         self.do_talking = val
         SlTrace.lg(f"do_talking:{self.do_talking}")
-                    
+
+    def key_report_pos(self):
+        """ Report current position with voice
+        """
+        self.pos_check(force_output=True, with_voice=True) 
+                            
     def key_space(self):
         """ repeat last key cmd
         """
@@ -532,11 +549,6 @@ class AudioWindow:
 
     def flush_rep_queue(self):
         self.pos_rep_queue = []
-            
-    def key_pos_report(self):
-        """ Report on current position/state
-        """
-        self.pos_check(force_output=True)
 
     def key_set_rept_at(self, set_val=True):
         """ Turn on/off "addition of at location" on reporting
@@ -552,11 +564,12 @@ class AudioWindow:
         self.set_visible(val)
         
         
-    def pos_report(self, *args, force_output=False):
+    def pos_report(self, *args, force_output=False, with_voice=False):
         """ Report position, from queue if sufficient time since last
         report. Reduce queue if too long
         :*args: optional args to add to report queue
         :force_output: force this output, clearing queue, wait-time
+        :with_voice: say it default: False - do as set
         """
         if self.pos_rep_force_output:
             force_output = True 
@@ -616,24 +629,34 @@ class AudioWindow:
                 rep_str = rep_args[0]
     
             ix,iy = self.get_point_cell()
-            if self.rept_at_loc:
-                rep_str += f" at row{self.grid_height-iy} column{ix+1}"
-            if (force_output
-                or ix != self.pos_rep_ix_prev    # Avoid repeats
-                or iy != self.pos_rep_iy_prev):            
-                self.win_print(rep_str, end= "\n")
-                self.speak_text(rep_str)
-                self.pos_rep_time = datetime.now()  # Time of last report
-                self.pos_rep_ix_prev = ix
-                self.pos_rep_iy_prev = iy
-                self.pos_rep_str_prev = rep_str
+            if self._audio_beep and not with_voice:
+                self.audio_beep.announce_pcell((ix,iy))
+                if self.grid_path is not None:
+                    pcells = self.grid_path.find_predictive_list(goto_path=self.cell_history)
+                    self.audio_beep.announce_pcells(pc_ixys=pcells)
+            else:
+                if self.rept_at_loc:
+                    rep_str += f" at row{self.grid_height-iy} column{ix+1}"
+                if (force_output
+                    or ix != self.pos_rep_ix_prev    # Avoid repeats
+                    or iy != self.pos_rep_iy_prev):            
+                    self.win_print(rep_str, end= "\n")
+                    self.speak_text(rep_str)
+                    self.pos_rep_time = datetime.now()  # Time of last report
+                    self.pos_rep_ix_prev = ix
+                    self.pos_rep_iy_prev = iy
+                    self.pos_rep_str_prev = rep_str
                 
-    def pos_check(self, x=None, y=None, force_output=False):
-        """ Do possition checkng followed by report queue processing
+    def pos_check(self, x=None, y=None, force_output=False, with_voice=False):
+        """ Do position checkng followed by report queue processing
+        :x: x postion default: current
+        :y: y position default: current
+        :force_output: force output, flushing current queue
+        :with_voice: say if, even if beep enable
         """
         self.pos_check_1(x=x, y=y, force_output=force_output)
         self.pos_report(
-            force_output=force_output)  # Handles reporting, queue, timeing
+            force_output=force_output, with_voice=with_voice)  # Handles reporting, queue, timeing
             
     def pos_check_1(self, x=None, y=None, force_output=False):
         """ Position check to see if reporting is warranted
@@ -750,6 +773,8 @@ class AudioWindow:
             self.set_cursor_pos_tu(x=min_x, y=min_y)
             x,y = self.get_point_win((min_x,min_y))
             self.pos_check(x=x,  y=y)
+        self.grid_path = GridPath(goto_path=self.cell_history)
+        self.audio_beep.set_cells(cells)
         self.mw.update()
         #self.turtle.penup()
         
@@ -774,6 +799,11 @@ class AudioWindow:
         self.turtle.goto(x=x, y=y)
         win_x,win_y = self.get_point_win((x,y))
         self.pos_x,self.pos_y = win_x,win_y
+        cell_ixiy = self.get_cell_at()
+        if cell_ixiy is not None:
+            self.cell_history.append(cell_ixiy)
+            self.mark_cell(cell_ixiy)         # Mark cell if one
+
         self.turtle_screen.update()
         if not self.mw.winfo_exists():
             return 
@@ -792,10 +822,10 @@ class AudioWindow:
         ix,iy = self.get_point_cell((tu_x,tu_y))
         ix += x_inc
         iy += y_inc
-        self.mark_cell((ix,iy))
         win_xc,win_yc = self.get_cell_center_win(ix,iy)
         SlTrace.lg(f"move_cursor: ix={ix}, y={iy}", "move_cursor")
         self.move_to(win_xc,win_yc)
+        
 
     def move_to(self, x,y):
         """ Move to window loc
@@ -1210,11 +1240,11 @@ class AudioWindow:
         menubar.add_cascade(label="File", menu=filemenu)
         
         cmd_menu = tk.Menu(menubar, tearoff=0)
-        cmd_menu.add_command(label="Help", command=self.cmd_key_help,
+        cmd_menu.add_command(label="Help", command=self.cmd_help,
                              underline=0)
         cmd_menu.add_command(label="add At loc", command=self.cmd_add_loc,
                              underline=0)
-        cmd_menu.add_command(label="remove At loc", command=self.cmd_no_add_loc,
+        cmd_menu.add_command(label="z-remove At loc", command=self.cmd_no_add_loc,
                              underline=0)
         cmd_menu.add_command(label="echo input on", command=self.cmd_echo_on,
                              underline=0)
@@ -1233,16 +1263,43 @@ class AudioWindow:
                              underline=0)
         cmd_menu.add_command(label="no log talk", command=self.cmd_no_logt,
                              underline=0)
+        cmd_menu.add_command(label="position", command=self.cmd_say_position,
+                             underline=0)
         cmd_menu.add_command(label="redraw figure", command=self.cmd_redraw,
                              underline=2)
-    
+        cmd_menu.add_command(label="audio beep", command=self.cmd_audio_beep,
+                             underline=1)
+        cmd_menu.add_command(label="no audio_beep",
+                             command=self.cmd_no_audio_beep,
+                             underline=5)
+        
         menubar.add_cascade(label="Command", menu=cmd_menu)
 
 
-    def cmd_key_help(self):
-        """ Help for cmds
+    def cmd_help(self):
+        """ Help for Alt-c commands
         """
-        self.key_help()
+        """ Help - list command (Alt-c) commands
+        """
+        help_str = """
+        Help - list command (Alt-c) commands
+        h - say this help message
+        a - Start reporting position
+        z - stop reporting position
+        e - echo input on
+        o - echo off
+        v - visible cells
+        i - invisible cells
+        s - silent speech
+        t - talking speech
+        l - log speach
+        n - no log speach
+        p - report position
+        u - audio beep
+        d - no audio beep
+        Escape - flush pending report output
+        """
+        self.speak_text(help_str)
 
     def cmd_echo_on(self):
         self._echo_input = True 
@@ -1255,6 +1312,22 @@ class AudioWindow:
         """
         self.key_set_rept_at()
         
+    def cmd_audio_beep(self):
+        """ Use audio beeps to aid positioning
+        """
+        self.set_audio_beep()
+        
+    def cmd_no_audio_beep(self):
+        """ Use audio beeps to aid positioning
+        """
+        self.set_audio_beep(False)
+
+    def set_audio_beep(self, set=True): 
+        """ Set/Clear use audio_beep to aid positioning
+        :set: True set flag
+        """
+        self._audio_beep = set
+               
     def cmd_no_add_loc(self):
         """ Remove At location info to report
         """
@@ -1282,6 +1355,9 @@ class AudioWindow:
     
     def cmd_redraw(self):
         self.draw_cells()    
+
+    def cmd_say_position(self):
+        self.pos_report(force_output=True)
         
 if __name__ == "__main__":
     aw = AudioWindow(title="AudioWindow Self-Test")

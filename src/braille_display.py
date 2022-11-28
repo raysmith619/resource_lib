@@ -11,6 +11,7 @@ import turtle as tur
 from tkinter import *
 
 from select_trace import SlTrace
+from braille_cell import BrailleCell
 from audio_window import AudioWindow
 
 def pl(point_list):
@@ -35,43 +36,6 @@ def pl(point_list):
         st += ")"
     return st 
 
-
-class BrailleCell:
-    """ braille cell info augmented for analysis
-    """
-    def __str__(self):
-        st = f"BCell: [{self.ix},{self.iy}]"
-        if self._color is not None:
-            st += " " + self._color
-        if self._color_bg is not None:
-            st += " " + self._color_bg
-        return st
-        
-    def __init__(self, dots=None,
-                 color=None, color_bg=None,
-                 ix=0, iy=0,
-                 points=None):
-        """ setup braille cell
-        :dots: list of set dots default: none - blank
-        :color: color str or tuple
-        :ix: cell index(from 0) from left side
-        :iy: cell index from bottom
-        :points: initial set of points, if any
-            default: empty
-        """
-        self.ix = ix    # Include to make self sufficient
-        self.iy = iy
-        self.dots = dots
-        if color is None:
-            color = "black"
-        if color_bg is None: 
-            color_bg = "white"
-        self._color = color
-        self._color_bg = color_bg
-        if points is None:
-            points = set()
-        self.points = points
-        self.canv_items = []        # canvas items
 
     def color_str(self, color=None):
         """ Return color string
