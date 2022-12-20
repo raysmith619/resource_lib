@@ -3,6 +3,7 @@
 Audio Support for audio_window
 """
 import winsound
+from Lib.pickle import FALSE
 
 class AudioBeep:
     beep_dur = 100      # Default beep duration
@@ -28,17 +29,34 @@ class AudioBeep:
         "gray" : 10*color_fm,
         }
     
-    def __init__(self, awin):
+    def __init__(self, awin, silence_checker=None):
         """ Setup audio sound support
         :awin: instance of AudioWindow
+        :silence_checker: function to check if we should
+                        go silent
         """
         self.awin = awin
         self.set_cells(awin.cells)
+        self._silence_checker = silence_checker
 
+    def silence(self):
+        """ Check if we are silenced
+        """
+        if self._silence_checker is None:
+            return False 
+        
+        if self._silence_checker():
+            return True    # We're silent
+       
+        return False    # We make noise 
+    
     def set_cells(self,cells):
         self.cells = cells
             
     def on_edge(self):
+        if self.silence():
+            return
+        
         winsound.Beep(200, 500) 
         
     def announce_pcells(self, pc_ixys, dur=None):
@@ -54,6 +72,9 @@ class AudioBeep:
             dur //= 2
 
     def announce_pcell(self, pc_ixy, dur=None):
+        if self.silence():
+            return
+        
         if dur is None:
             dur = self.beep_dur
         if pc_ixy in self.cells:

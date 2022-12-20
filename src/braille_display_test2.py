@@ -45,7 +45,7 @@ tk_items = True
 #tests = ("vert_ line, horz_line")
 #tests = ("simple_test")
 #tests = ("goto")
-tests = "simple_tests"
+#tests = "simple_tests"
 if "simple_test" in tests:
     do_simple_test = True 
 if "no_long_test" in tests:

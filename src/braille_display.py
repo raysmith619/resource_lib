@@ -72,35 +72,6 @@ class P12LineVals:
 class BrailleDisplay:
     """ Create and display graphics using Braille
     """
-    dots_for_character = {
-        " ": (),    # blank
-        "a": (1),
-        "b": (1,2),
-        "c": (1,4),
-        "d": (1,4,5),
-        "e": (1,5),
-        "f": (1,2,5),
-        "g": (1,2,4,5),
-        "h": (1,2,5),
-        "i": (2,4),
-        "j": (2,4,5),
-        "k": (1,3),
-        "l": (1,2,3),
-        "m": (1,3,4),
-        "n": (1,3,4,5),
-        "o": (1,3,5),
-        "p": (1,2,3,4),
-        "q": (1,2,3,4,5),
-        "r": (1,2,3,5),
-        "s": (2,3,4),
-        "t": (2,3,4,5),
-        "u": (1,3,6),
-        "v": (1,2,3,6),
-        "w": (2,4,5,6),
-        "x": (1,3,4,6),
-        "y": (1,3,4,5,6),
-        "z": (1,3,5,6),
-        }
     
     
     def __init__(self, title="Braille Display",
@@ -877,18 +848,7 @@ class BrailleDisplay:
         """ convert turtle colors arg(s) to color string
         :color: turtle color arg
         """
-        color_str = color
-        if (color_str is None
-             or (isinstance(color_str, tuple)
-                  and len(color_str) == 0)
-             ):
-            color_str = self._color
-        if isinstance(color_str,tuple):
-            if len(color_str) == 1:
-                color_str = color_str[0]
-            else:
-                color_str = "pink"  # TBD - color tuple work
-        return color_str
+        return BrailleCell.color_str(color)
     
     def braille_for_color(self, color):
         """ Return dot list for color
@@ -901,9 +861,9 @@ class BrailleDisplay:
             color = self._color
         if color is None:
             color = ("black")
-        color = self.color_str(color)
+        color = BrailleCell.color_str(color)
         c = color[0]
-        dots = self.braille_for_letter(c)
+        dots = BrailleCell.braille_for_letter(c)
         return dots
     
     def braille_for_letter(self, c):
@@ -911,9 +871,7 @@ class BrailleDisplay:
         :c: character
         :returns: dots tupple (1,2,3,4,5,6)
         """
-        if c not in BrailleDisplay.dots_for_character:            c = " " # blank
-        dots = BrailleDisplay.dots_for_character[c]
-        return dots
+        return BrailleCell.braille_for_letter(c)
         
     def complete_cell(self, cell, color=None):
         """ create/Fill braille cell
@@ -1270,7 +1228,7 @@ class BrailleDisplay:
                 cell_ixy = (ix,iy)
                 if cell_ixy in self.cells:
                     cell = self.cells[cell_ixy]
-                    color = cell.color_str()
+                    color = cell.color_string()
                     line += color[0]
                 else:
                     line += " "

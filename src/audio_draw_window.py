@@ -1,8 +1,11 @@
-#audio_window.py    08Nov2022  crs, Author
+#audio_draw_window.py    12Dec2022  crs, from audio_window.py
+#                        08Nov2022  crs, Author
 """
-Provide graphical window with audio feedback as to cursor position
-to facilitate examination by blind people
+Provide simple drawing graphical window with audio feedback
+to facilitate use and examination by the visually impaired.
 Uses turtle to facilitate cursor movement within screen
+Adapted from audio_window to concentrate on figure drawing
+as well as presentation.
 """
 import sys
 import tkinter as tk
@@ -12,11 +15,12 @@ import time
 from datetime import datetime 
 
 from select_trace import SlTrace
+from trace_control_window import TraceControlWindow
 from grid_fill_gobble import GridFillGobble
 from grid_path import GridPath
 from braille_cell import BrailleCell
 from audio_beep import AudioBeep
-from Lib.pickle import FALSE, NONE
+
 
 
 try:
@@ -50,14 +54,32 @@ class SpeakText:
         self.msg = msg
         self.speech_type = speech_type
         self.dup_stdout = dup_stdout
-            
-class AudioWindow:
+
+class NavDisp:
+    def __init__(self, label, command, underline):
+        self.label = label
+        self.command = command
+        self.underline = underline
+        self.shortcut = label[underline].lower()
+        
+class AudioDrawWindow:
 
 
     """
     Menu Processing functions
     """
+    # Multi-key commands
+    NAV_COLOR_CHANGE = "color_change_cmd"
+    
+    # direction for digit pad
+    digit_dir = {"7":(-1,1),  "8":(0,1),  "9":(1,1),
+                 "4":(-1,0),  "5":(0,0),  "6":(1,0),
+                 "1":(-1,-1), "2":(0,-1), "3":(1,-1)}
 
+    # letter keys for color change
+    color_letters = {"r": "red", "o": "orange", "y": "yellow",
+                     "g": "green", "b": "blue", "i": "indigo",
+                     "v": "violet"}
     
     def __init__(self, title,
         win_width=800, win_height=800,
@@ -69,6 +91,11 @@ class AudioWindow:
         pos_rep_queue_max = 4,
         visible_figure = True,
         pgmExit=None,
+        blank_char=",",
+        shift_to_edge=True,
+        silent=False,
+        nav_str="",
+        key_str="",
                  ):
         """ Setup audio window
         :win_width: display window width in pixels
@@ -92,7 +119,26 @@ class AudioWindow:
                 default: 4
         :visible_figure: figure is visible
                 default: True - visible
+        :blank_char: replacement for non-trailing blanks
+                    default "," to provide a "mostly blank",
+                    non-compressed blank character for the
+                    braille graphics
+                    default: "," dot 2.
+        :shift_to_edge: shift picture to edge/top
+                    to aid in finding
+                    default: True - shift
+        :silent: Suppress talking / audio
+                default: False
+        :nav_str:  Initial navigation commands
+                    default=None
+                    Note that interpretation is case insensitive
+        :key_str:  Initial key symbol command string
+                    Each command separated by ";" to facilitate
+                    recognition of multi charater symbols
+                    such as "up", "down" Note that
+                    interpretation is case insensitive
         """
+        control_prefix = "AudioDraw"
         self.win_width = win_width
         self.win_height = win_height
         self.grid_width = grid_width
@@ -107,7 +153,7 @@ class AudioWindow:
             y_min = -win_width//2
         self.y_min = y_min
         self.y_max = y_min + win_height
-        
+        self._color = "black"       # Current color
         mw = tk.Tk()
         mw.title(title)
         self.mw = mw
@@ -147,7 +193,7 @@ class AudioWindow:
 
         self.speak_text_lines = []  # pending speak lines (SpeakText)       
         self.escape_pressed = False # True -> interrupt/flush
-        self.cells = []
+        self.cells = {}         # Dictionary of cells by (ix,iy)
         self.set_cell_lims()
         self.do_talking = True      # Enable talking
         self.speak_text_line_after = None
@@ -178,8 +224,9 @@ class AudioWindow:
         self.goto_cell_list = []
         self.goto_travel_list_index = None
         self.cell_history = []          # History of all movement
+        self._silent = silent       # True - override talking/beeping
         self._audio_beep = False
-        self.audio_beep = AudioBeep(self)
+        self.audio_beep = AudioBeep(self, self.silence)
         self.grid_path = GridPath(goto_path=self.cell_history)
         self.running = True         # Set False to stop
         self.mw.focus_force()
@@ -187,10 +234,42 @@ class AudioWindow:
         self.canvas.bind('<Button-1>', self.on_button_1)
         self.canvas.bind('<B1-Motion>', self.on_button_1_motion)
         self.mw.bind('<KeyPress>', self.on_key_press)
-
+        self._multi_key_progress = False    # True - processing multiple keys
+        self._multi_key_cmd = None          # Set if in progress
+        self._pendown = False       # True - move marks
+        self.blank_char = blank_char
+        self.shift_to_edge = shift_to_edge
+        self.nav_str = nav_str
+        self.do_nav_str(nav_str)
+        self.key_str = key_str
+        self.do_key_str(key_str)
         self.pos_check()            # Startup possition check loop
         mw.update()     # Make visible
 
+    def silence(self):
+        """ Check if silent mode
+        """
+        return self._silent
+    
+    def do_nav_str(self, nav_str=None):
+        """ Execute initial navigate string, if any
+        :nav_str: string default: use self.nav_str
+        """
+        if nav_str is None:
+            nav_str = self.nav_str 
+        for c in nav_str:
+            self.nav_direct_call(c)
+
+    def do_key_str(self, key_str=None):
+        """ Execute initial key string, if any
+        :nav_str: string default: use self.nav_str
+        """
+        if key_str is None:
+            key_str = self.key_str 
+        syms = key_str.split(";")
+        for sym in syms:
+            self.key_press(sym)    
+            
                 
     def speak_text(self, msg, dup_stdout=True,
                    speech_type="report"):
@@ -222,6 +301,10 @@ class AudioWindow:
         """ Called to speak pending line
         """
         if len(self.speak_text_lines) == 0:
+            return
+        
+        if self.silence():
+            self.speak_text_lines = []  # Flush lines
             return
             
         speak_text = self.speak_text_lines.pop(0)
@@ -285,11 +368,25 @@ class AudioWindow:
         self.on_button_1(event)
         
     def on_key_press(self, event):
+        """ Key press event
+        :event: Actual event
+        """        
         keysym = event.keysym
+        self.key_press(keysym)
+        
+    def key_press(self, keysym):
+        """ Actual or simulated key event
+        :keysym: Symbolic key value/string
+        """
         keyslow = keysym.lower()
+        SlTrace.lg(f"on_key_press({keysym}) _multi...{self._multi_key_progress}", "motion")
         if keysym == 'Alt_L':
             return                  # Ignore ALT
         self.key_echo(keysym)
+        if self._multi_key_progress:
+            self.key_multi_process(keysym)
+            return
+        
         if keysym == 'Escape':
             self.key_escape()
         elif keysym == 'Up':
@@ -300,16 +397,30 @@ class AudioWindow:
             self.key_left()
         elif keysym == 'Right':
             self.key_right()
-        elif keyslow == "c":
-            self.key_color_cell()
+        elif keysym in "1234567890":
+            self.key_digit(keysym)
+        elif keyslow == "e":            # Erase current position with current color
+            self.key_mark(False)
         elif keyslow == "g":
             self.key_goto()             # Goto closest figure
         elif keyslow == "h":
             self.key_help()             # Help message
+        elif keyslow == "c":            # Change color
+            self.key_color_change()
+        elif keyslow == "u":            # raise pen - for subsequent not visible
+            self.key_pendown(False)
+        elif keyslow == "d":
+            self.key_pendown()          # lower pen - for subsequent visible
+        elif keyslow == "m":            # Mark current position with current color
+            self.key_mark()
         elif keyslow == "p":
-            self.key_report_pos() 
+            self.key_report_pos()       # Report position
+        elif keyslow == "z": 
+            self.key_clear_display()     # Clear display
+        elif keyslow == "w":
+            self.key_write_display()     # Write(print) out figure
         else:
-            self.speak_text(f"Don't understand {keysym}")
+            self.key_unrecognized(keysym)
 
     """
     keyboard commands
@@ -330,10 +441,10 @@ class AudioWindow:
         self.flush_rep_queue()
         self.speak_text_stop() 
         self.escape_pressed = False
-            
         
     def key_escape(self):
         SlTrace.lg("Escape pressed")
+        #self._multi_key_progress = False    # Stop multi key processing   
         self.key_flush(keysym="Escape")
 
     def goto_cell(self, ix=None, iy=None):
@@ -347,6 +458,64 @@ class AudioWindow:
         if self._track_goto_cell:
             self.mark_cell((ix,iy))
 
+    def key_color_change(self):
+        """ Accept color change specification
+        Next input must be a string for  red, orange, yellow...
+        of the rainbow.  We may increase the flexibility here.
+        """
+        self._multi_key_cmd = self.NAV_COLOR_CHANGE
+        self._multi_key_progress = True
+        SlTrace.lg(f"key_color_change: ")
+        SlTrace.lg(f"cmd: {self._multi_key_cmd}")
+        SlTrace.lg(f"multi...{self._multi_key_progress}")
+                 
+    def key_color_changeing(self, keysym):
+        """ Process color changeing
+        :keysym: color letter
+        """
+        color_letter = keysym.lower()
+        if color_letter in self.color_letters:
+                color = self.color_letters[color_letter]
+                self._color = color
+        else:
+            self.speak_text(f"Don't recognize {color_letter} for color")
+        self._multi_key_cmd = None 
+        self._multi_key_progress = False
+            
+    def key_multi_process(self, keysym):
+        """ Process multiple keys
+        :keysym: next symbol
+        """
+        if keysym == 'Escape':
+            self.speak_text('Escape break')
+            self.key_escape()
+            return
+        if self._multi_key_cmd == self.NAV_COLOR_CHANGE:
+            self.key_color_changeing(keysym)
+        else:
+            self.speak_text("Unrecognized multi-key process")
+            self.key_escape()
+
+    def key_pendown(self, val=True):
+        """ Lower/raise pen (starting,stopping) drawing
+        :val: lower pen, if True else raise pen
+        """
+        self._pendown = val
+
+    def key_write_display(self):
+        """ Write display
+        """
+        title = 15*"_" + " Braille " + 15*"_"
+        self.print_braille(title)
+
+    def key_clear_display(self):
+        """ Clear display figure
+        """
+        for cell in list(self.cells.values()):
+            self.erase_cell(cell)
+        del self.cells
+        self.cells = {}
+        
     def mark_cell(self, cell):
         """ Mark cell for viewing of history
         :cell: Cell(BrailleCell) or (ix,iy) of cell
@@ -362,7 +531,54 @@ class AudioWindow:
                 item_type = canvas.type(item_id)
                 if item_type == "rectangle":
                     canvas.itemconfigure(item_id, fill='dark gray')            
-            
+
+    def key_digit(self, keyslow):
+        """ Process digit key as direction
+        :keyslow: 1-9,0 as move direction
+                    with:   5 - mark location
+                            0 - erase location
+        """
+        if keyslow == "5":
+            self.key_mark()
+        elif keyslow == "0":
+            self.key_mark(False)
+        elif keyslow in "123456789":
+            self.key_direction(keyslow)
+        else:
+            self.key_unrecognized(keyslow)
+
+
+    def key_mark(self, val=True):
+        """ Mark/Erase current location with current color
+            if empty create cell, else change current cell
+        :val: True - mark location default: True
+                False - erase location
+        """
+        if val:
+            cell = self.get_cell_at()
+            if cell is None:
+                ixy = self.get_point_cell()
+                cell = self.complete_cell(cell=ixy)
+            else:
+                cell._color = self._color
+            self.display_cell(cell)
+        else:
+            cell = self.get_cell_at()
+            if cell is None:
+                pass    # beep ?
+            else:
+                self.erase_cell(cell)
+                del self.cells[(cell.ix,cell.iy)]
+                
+        
+    def key_direction(self, keyslow):
+        """ Process key direction command
+        :keyslow: key 123 4 6 789
+        """
+        inc_x, inc_y = self.digit_dir[keyslow]
+        self.move_cursor(x_inc=inc_x, y_inc=inc_y)
+        
+        
         
     def key_goto(self):
         """ Go to closest figure
@@ -392,7 +608,7 @@ class AudioWindow:
             self.goto_travel_list_index = goto_idx
             new_cell= self.goto_travel_list[goto_idx]
             self.goto_cell(ix=new_cell[0], iy=new_cell[1])
-
+        
     def trav_len(self, ix, iy, dir_x, dir_y, require_cell=True):
         """ Find the travel length
         This is the number of steps from cell(ix,iy) in 
@@ -449,8 +665,20 @@ class AudioWindow:
         Down - Move down one row
         Left - Move left one column
         Right - Move right one column
+        direction (from center):
+           7-up left    8-up       9-up right
+           4-left       5-mark     6-right
+           1-down left  2-down     3-down right
+              0-erase
+        c<roygbiv> - set color red, orange, ...
+        d - pendown - mark when we move
+                
         g - Go to closest figure
+        m - mark location
         p - Report/Say current position
+        u - penup - move with out marking 
+        w - write out braille
+        z - clear board
         Escape - flush pending report output
         """
         self.speak_text(help_str)
@@ -495,13 +723,33 @@ class AudioWindow:
         """ Report current position with voice
         """
         self.pos_check(force_output=True, with_voice=True) 
-                            
+
+    def key_silent(self):
+        """ Disable sound
+        """
+        self.make_silent(val=True)
+        
+    def make_noisy(self):
+        """ Enable sound
+        """
+        self.make_silent(val=False)
+
+    def make_silent(self, val=True):
+        self._silent = val
+                                            
     def key_space(self):
         """ repeat last key cmd
         """
     def key_tab(self):
         """ repeat last key cmd 4 times
         """
+        
+    def key_unrecognized(self, keyslow):
+        """ Process unrecognized key
+        :keyslow: key symbol (lower case)
+        """
+        self.speak_text(f"Don't understand {keyslow}")
+
     
     def key_backspace(self):    
         """ retract last key command
@@ -745,6 +993,89 @@ class AudioWindow:
         self.audio_beep.set_cells(cells)
         self.mw.update()
         #self.turtle.penup()
+                    
+    def print_braille(self, title=None):
+        """ Output braille display
+        """
+        if title is not None:
+            print(title)
+        if self.shift_to_edge:
+            self.find_edges()
+            left_edge = self.left_edge
+            top_edge = self.top_edge
+            bottom_edge = self.bottom_edge
+        else:
+            left_edge = 0
+            top_edge = self.grid_height-1
+
+        braille_text = ""
+        for iy in reversed(range(bottom_edge, top_edge)):
+            line = ""
+            for ix in range(left_edge, self.grid_width):
+                cell_ixy = (ix,iy)
+                if cell_ixy in self.cells:
+                    cell = self.cells[cell_ixy]
+                    color = cell.color_string()
+                    line += color[0]
+                else:
+                    line += " "
+            line = line.rstrip()
+            if self.blank_char != " ":
+                line = line.replace(" ", self.blank_char)
+            ###print(f"{iy:2}", end=":")
+            braille_text += line + "\n"
+            print(line)
+            self.mw.clipboard_clear()
+            self.mw.clipboard_append(braille_text)
+
+    def find_edges(self):
+        """Find  top, left, bottom, right non-blank edges
+        so we can shift picture to left,top for easier
+        recognition
+        """
+        left_edge = None 
+        right_edge = None 
+        top_edge = None 
+        bottom_edge = None 
+        for iy in range(self.grid_height):
+            for ix in range(self.grid_width):
+                cell_ixy = (ix,iy)
+                if cell_ixy not in self.cells:
+                    continue
+                
+                if left_edge is None or ix < left_edge:
+                    left_edge = ix
+                if right_edge is None or ix > right_edge:
+                    right_edge = ix
+                if top_edge is None or iy > top_edge:
+                    top_edge = iy
+                if bottom_edge is None or iy < bottom_edge:
+                    bottom_edge = iy
+        if left_edge is None:
+            left_edge = 0
+        if right_edge is None:
+            right_edge = 0
+        if top_edge is None:
+            top_edge = 0
+        if bottom_edge is None:
+            bottom_edge = 0
+                    
+        if left_edge > 0:           # Give some space
+            left_edge -= 1
+        if left_edge > 0:
+            left_edge -= 1
+        self.left_edge = left_edge
+        
+        if top_edge < self.grid_height-1:           # Give some space
+            top_edge += 1
+        if top_edge  < self.grid_height-1:
+            top_edge += 1
+        self.top_edge = top_edge
+        
+        self.right_edge = right_edge
+        self.bottom_edge = bottom_edge
+        
+        return left_edge, top_edge, right_edge, bottom_edge
         
     def set_cursor_pos_win(self, x=0, y=0):
         """ Set mouse cursor position in win(canvas) coordinates
@@ -770,7 +1101,8 @@ class AudioWindow:
         cell_ixiy = self.get_cell_at()
         if cell_ixiy is not None:
             self.cell_history.append(cell_ixiy)
-            self.mark_cell(cell_ixiy)         # Mark cell if one
+            if not self._pendown:   # If we're not drawing
+                self.mark_cell(cell_ixiy)   # Mark cell if one
 
         self.turtle_screen.update()
         if not self.mw.winfo_exists():
@@ -793,6 +1125,8 @@ class AudioWindow:
         win_xc,win_yc = self.get_cell_center_win(ix,iy)
         SlTrace.lg(f"move_cursor: ix={ix}, y={iy}", "move_cursor")
         self.move_to(win_xc,win_yc)
+        if self._pendown:
+            self.key_mark()
         
 
     def move_to(self, x,y):
@@ -804,16 +1138,16 @@ class AudioWindow:
         bottom_margin = 20   # HACK to determine before low level check
         tu_x, tu_y = self.get_point_tur((x,y))
         if tu_x <= self.x_min + margin:
-            self.pos_report("msg", "At left edge")
+            self.pos_report("msg", "At left edge", force_output=True)
             return
         elif tu_x >= self.x_max - margin:
-            self.pos_report("msg", "At right edge")
+            self.pos_report("msg", "At right edge", force_output=True)
             return                               
         if tu_y <= self.y_min + bottom_margin:
-            self.pos_report("msg", "At bottom edge")
+            self.pos_report("msg", "At bottom edge", force_output=True)
             return
         elif tu_y >= self.y_max - top_margin:
-            self.pos_report("msg", "At top edge")
+            self.pos_report("msg", "At top edge", force_output=True)
             return                               
         self.set_cursor_pos_win(x,y)
         
@@ -917,6 +1251,18 @@ class AudioWindow:
                 max_iy = cell_iy
         return min_ix, max_iy, max_ix,min_iy
 
+
+    def erase_cell(self, cell):
+        """ Erase cell
+        :cell: BrailleCell
+        """
+        canvas = self.canvas
+        # Remove current items, if any
+        if cell.canv_items:
+            for item_id in cell.canv_items:
+                self.canvas.delete(item_id)
+        cell.canv_items = []
+        
     
     def display_cell(self, cell, show_points=False):
         """ Display cell
@@ -924,11 +1270,8 @@ class AudioWindow:
         :show_points: show points instead of braille
                 default: False --> show braille dots
         """
+        self.erase_cell(cell)
         canvas = self.canvas
-        # Remove current items, if any
-        for item_id in cell.canv_items:
-            self.canvas.delete(item_id)
-        cell.canv_items = []
         ix = cell.ix
         iy = cell.iy 
         cx1,cy1,cx2,cy2 = self.get_cell_rect_win(ix=ix, iy=iy)
@@ -1174,20 +1517,24 @@ class AudioWindow:
         """ Setup command processing options / action
         """
 
-    def on_alt_c(self, event):
+    def on_alt_n(self, event):
         """ keep from key-press
         """
-        SlTrace.lg("on_alt_c")
+        SlTrace.lg("on_alt_n")
 
     def on_alt_f(self, event):
         """ keep from key-press
         """
         SlTrace.lg("on_alt_f")
-    
+
+    def trace_menu(self):
+        TraceControlWindow(tcbase=self.mw)
+            
     def menu_setup(self):
         # creating a menu instance
         self.mw.bind('<Alt-f>', self.on_alt_f)  # Keep this from key cmds
-        self.mw.bind('<Alt-c>', self.on_alt_c)  # Keep this from key cmds
+        self.mw.bind('<Alt-n>', self.on_alt_n)  # Keep this from key cmds
+        self.mw.bind('<Alt-N>', self.on_alt_n)  # Keep this from key cmds
         
         menubar = tk.Menu(self.mw)
         self.menubar = menubar      # Save for future reference
@@ -1207,50 +1554,81 @@ class AudioWindow:
         filemenu.add_command(label="Exit", command=self.pgm_exit, underline=1)
         menubar.add_cascade(label="File", menu=filemenu)
         
-        cmd_menu = tk.Menu(menubar, tearoff=0)
-        cmd_menu.add_command(label="Help", command=self.cmd_help,
+        nav_menu = tk.Menu(menubar, tearoff=0)
+        self.nav_menu_setup(nav_menu)
+        menubar.add_cascade(label="Navigate", menu=nav_menu)
+        
+        aux_menu = tk.Menu(menubar,tearoff=0)
+        aux_menu.add_command(label="Trace", command=self.trace_menu)
+        menubar.add_cascade(label="Auxiliary", menu=aux_menu)
+
+    def nav_menu_setup(self, nav_menu):
+        self.nav_menu = nav_menu
+        self.nav_dispatch = {}
+        self.nav_menu_add_command(label="Help", command=self.nav_help,
                              underline=0)
-        cmd_menu.add_command(label="add At loc", command=self.cmd_add_loc,
+        self.nav_menu.add_command(label="add At loc", command=self.nav_add_loc,
                              underline=0)
-        cmd_menu.add_command(label="z-remove At loc", command=self.cmd_no_add_loc,
+        self.nav_menu_add_command(label="b-remove At loc", command=self.nav_no_add_loc,
                              underline=0)
-        cmd_menu.add_command(label="echo input on", command=self.cmd_echo_on,
+        self.nav_menu_add_command(label="echo input on", command=self.nav_echo_on,
                              underline=0)
-        cmd_menu.add_command(label="echo off", command=self.cmd_echo_off,
+        self.nav_menu_add_command(label="echo off", command=self.nav_echo_off,
                              underline=5)
         
-        cmd_menu.add_command(label="visible cells", command=self.cmd_make_visible,
+        self.nav_menu_add_command(label="visible cells", command=self.nav_make_visible,
                              underline=0)
-        cmd_menu.add_command(label="invisible cells", command=self.cmd_make_invisible,
+        self.nav_menu_add_command(label="invisible cells", command=self.nav_make_invisible,
                              underline=0)
-        cmd_menu.add_command(label="silent", command=self.cmd_make_silent,
+        self.nav_menu_add_command(label="noisy", command=self.make_noisy,
                              underline=0)
-        cmd_menu.add_command(label="talking", command=self.cmd_make_talk,
+        self.nav_menu_add_command(label="silent", command=self.make_silent,
                              underline=0)
-        cmd_menu.add_command(label="log talk", command=self.cmd_logt,
+        self.nav_menu_add_command(label="talking", command=self.nav_make_talk,
                              underline=0)
-        cmd_menu.add_command(label="no log talk", command=self.cmd_no_logt,
+        self.nav_menu_add_command(label="log talk", command=self.nav_logt,
                              underline=0)
-        cmd_menu.add_command(label="position", command=self.cmd_say_position,
+        self.nav_menu_add_command(label="no log talk", command=self.nav_no_logt,
+                             underline=10)
+        self.nav_menu_add_command(label="position", command=self.nav_say_position,
                              underline=0)
-        cmd_menu.add_command(label="redraw figure", command=self.cmd_redraw,
+        self.nav_menu_add_command(label="redraw figure", command=self.nav_redraw,
                              underline=2)
-        cmd_menu.add_command(label="audio beep", command=self.cmd_audio_beep,
+        self.nav_menu_add_command(label="audio beep", command=self.nav_audio_beep,
                              underline=1)
-        cmd_menu.add_command(label="no audio beep",
-                             command=self.cmd_no_audio_beep,
+        self.nav_menu_add_command(label="no audio beep",
+                             command=self.nav_no_audio_beep,
                              underline=9)
-        
-        menubar.add_cascade(label="Command", menu=cmd_menu)
-
-
-    def cmd_help(self):
-        """ Help for Alt-c commands
+         
+    def nav_menu_add_command(self, label, command, underline):
+        """ Setup menu commands, setup dispatch for direct call
+        :label: add_command label
+        :command: command to call
+        :underline: short-cut index in label
         """
-        """ Help - list command (Alt-c) commands
+        self.nav_menu.add_command(label=label, command=command,
+                                  underline=underline)
+        navde = NavDisp(label=label, command=command,
+                              underline=underline)
+        
+        self.nav_dispatch[navde.shortcut] = navde
+
+    def nav_direct_call(self, short_cut):
+        """ Short-cut call direct to option
+        :short_cut: one letter option for call 
+        """
+        if short_cut not in self.nav_dispatch:
+            raise Exception(f"nav option:{short_cut} not recognized")
+        navde = self.nav_dispatch[short_cut]
+        navde.command()
+                           
+    def nav_help(self):
+        """ Help for Alt-n commands
+        """
+        """ Help - list command (Alt-n) commands
         """
         help_str = """
-        Help - list command (Alt-c) commands
+        Help - list navigate commands (Alt-n) commands
         h - say this help message
         a - Start reporting position
         z - stop reporting position
@@ -1261,8 +1639,8 @@ class AudioWindow:
         r - redraw figure
         s - silent speech
         t - talking speech
-        l - log speach
-        n - no log speach
+        l - log speech
+        n - no log speech
         p - report position
         u - audio beep
         d - no audio beep
@@ -1270,23 +1648,24 @@ class AudioWindow:
         """
         self.speak_text(help_str)
 
-    def cmd_echo_on(self):
+    def nav_echo_on(self):
         self._echo_input = True 
     
-    def cmd_echo_off(self):
+    def nav_echo_off(self):
         self._echo_input = False 
                 
-    def cmd_add_loc(self):
+    def nav_add_loc(self):
         """ Add At location info to report
         """
         self.key_set_rept_at()
         
-    def cmd_audio_beep(self):
+    def nav_audio_beep(self):
         """ Use audio beeps to aid positioning
         """
         self.set_audio_beep()
+        self.nav_echo_off()
         
-    def cmd_no_audio_beep(self):
+    def nav_no_audio_beep(self):
         """ Use audio beeps to aid positioning
         """
         self.set_audio_beep(False)
@@ -1297,39 +1676,84 @@ class AudioWindow:
         """
         self._audio_beep = set
                
-    def cmd_no_add_loc(self):
+    def nav_no_add_loc(self):
         """ Remove At location info to report
         """
         self.key_set_rept_at(False)
         
-    def cmd_logt(self):
+    def nav_logt(self):
         """ Log talking
         """
         self.key_log_speech()
 
-    def cmd_no_logt(self):
+    def nav_no_logt(self):
         self.key_log_speech(False)
 
-    def cmd_make_invisible(self):
+    def nav_make_invisible(self):
         self.key_visible(False) 
         
-    def cmd_make_visible(self):
+    def nav_make_visible(self):
         self.key_visible()
 
-    def cmd_make_silent(self):
-        self.key_talk(False)
-
-    def cmd_make_talk(self):
+    def nav_make_talk(self):
         self.key_talk()
     
-    def cmd_redraw(self):
+    def nav_redraw(self):
         self.draw_cells()    
 
-    def cmd_say_position(self):
+    def nav_say_position(self):
         self.pos_report(force_output=True)
+
+    
+    def braille_for_color(self, color):
+        """ Return dot list for color
+        :color: color string or tuple
+        :returns: list of dots 1,2,..6 for first
+                letter of color
+        """
+        
+        if color is None:
+            color = self._color
+        if color is None:
+            color = ("black")
+        color = BrailleCell.color_str(color)
+        c = color[0]
+        dots = BrailleCell.braille_for_letter(c)
+        return dots
+    
+    def braille_for_letter(self, c):
+        """ convert letter to dot number seq
+        :c: character
+        :returns: dots tupple (1,2,3,4,5,6)
+        """
+        return BrailleCell.braille_for_letter(c)
+        
+    def complete_cell(self, cell, color=None):
+        """ create/Fill braille cell
+            Currently just fill with color letter (ROYGBIV)
+        :cell: (ix,iy) cell index or BrailleCell
+        :color: cell color default: current color
+        :returns: created/modified cell
+        """
+        if color is None:
+            color = self._color
+        dots = self.braille_for_color(color)
+        bc = BrailleCell(ix=cell[0],iy=cell[1], dots=dots, color=color)
+        self.cells[cell] = bc
+        return bc
+
         
 if __name__ == "__main__":
-    aw = AudioWindow(title="AudioWindow Self-Test")
+    SlTrace.clearFlags()
+    aw = AudioDrawWindow(title="AudioDrawWindow Self-Test",
+                         nav_str="sh",
+                         key_str="d"
+                         ";c;g;9;9;9;9"
+                         ";c;r;7;7;7;7"
+                         ";c;o;1;1;1;1"
+                         ";c;b;3;3;3;3"
+                         ";w")
+
 
     
     
