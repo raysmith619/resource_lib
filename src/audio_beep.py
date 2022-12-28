@@ -3,7 +3,6 @@
 Audio Support for audio_window
 """
 import winsound
-from Lib.pickle import FALSE
 
 class AudioBeep:
     beep_dur = 100      # Default beep duration
@@ -39,6 +38,12 @@ class AudioBeep:
         self.set_cells(awin.cells)
         self._silence_checker = silence_checker
 
+    def announce_can_not_do(self, msg=None, val=None):
+        """ Announce we can't do something
+        """
+        winsound.Beep(frequency=self.color_fm*10, duration=self.beep_dur*5)
+
+
     def silence(self):
         """ Check if we are silenced
         """
@@ -71,6 +76,12 @@ class AudioBeep:
             self.announce_pcell(pc_ixy, dur)
             dur //= 2
 
+    def announce_next_pcell(self, pc_ixy):
+        """ Announce next cell
+        :pc_ixy: (ix,iy) of next cell
+        """
+        self.announce_pcell(pc_ixy=pc_ixy, dur=self.beep_dur//2)
+        
     def announce_pcell(self, pc_ixy, dur=None):
         if self.silence():
             return
@@ -86,5 +97,33 @@ class AudioBeep:
             else:
                 freq = self.color_freqs[color]
                 winsound.Beep(freq, dur)
+        elif self.out_of_bounds_check(pc_ixy):
+            return
         else:
             winsound.Beep(frequency=self.blank_freq, duration=self.blank_dur)
+            
+    def out_of_bounds_check(self, pc_ixy):
+        """ Check for out of bounds / illegal location
+            and announce
+        :pc_ixy: (ix,iy) location
+        :returns: True if out of bounds / illegal
+        """
+        if pc_ixy is None:
+            self.announce_can_not_do()
+            return
+        
+        ix, iy = pc_ixy
+        if ix < self.awin.get_ix_min():
+            self.announce_can_not_do()
+            return True
+        if ix > self.awin.get_ix_max():
+            self.announce_can_not_do()
+            return True
+        if iy < self.awin.get_iy_min():
+            self.announce_can_not_do()
+            return True
+        if iy > self.awin.get_iy_max():
+            self.announce_can_not_do()
+            return True
+
+        return False

@@ -2,6 +2,37 @@
 """
 Determine predictive following moves
 """
+from select_trace import SlTrace
+
+from braille_cell import BrailleCell
+
+class Cell:
+    @classmethod
+    def from_tuple(cls, *tp):
+        if len(tp) == 1:
+            tp = tp[0]
+            if tp is None:
+                return tp
+            
+            if isinstance(tp, BrailleCell):
+                return Cell(ix=tp.ix, iy=tp.iy)
+            
+            if isinstance(tp, Cell):
+                return tp
+            
+            if isinstance(tp, tuple):
+                return Cell(ix=tp[0], iy=tp[1])
+            raise Exception(f"tp: {tp} unexpected type")
+        
+        if len(tp) == 2:
+            return Cell(ix=tp[0], iy=tp[1])
+        
+        raise Exception(f"tp: {tp} unexpected type")
+    
+    def __init__(self, ix, iy):
+        self.ix, self.iy = ix,iy
+
+
 
 class GridPath:
     def __init__(self, goto_path, pred_len=1, det_len=4, hv_len=2):
@@ -18,7 +49,27 @@ class GridPath:
         self.pred_len = pred_len
         self.det_len = det_len
         self.hv_len = hv_len
+
+    def get_next_position(self):
+        """ get likely next move
+        :returns: (ix,iy) of likely next move
+        """
+        if len(self.goto_path) < 2:
+            return      # Can't tell
         
+        pos_now = self.goto_path[-1]
+        ix_now, iy_now = pos_now
+        pos_prev = self.goto_path[-2]
+        ix_prev, iy_prev = pos_prev
+        ix_chg = ix_now - ix_prev
+        iy_chg = iy_now - iy_prev
+        ix_new = ix_now + ix_chg
+        iy_new = iy_now + iy_chg
+        SlTrace.lg(f"prev:{pos_prev} now:{pos_now}"
+                   f" ix_new:{ix_new} iy:{iy_new}", "pos_tracking")
+        return (ix_new,iy_new)
+        
+                
     def find_predictive_list(self, pred_len=None, det_len=None, 
                              goto_path=None, hv_len=None):
         """ Find likely next path (list of cell ixiy)
@@ -47,7 +98,7 @@ class GridPath:
         if path_xy == (0,0):
             return []       # No prediction if can't find direction
         
-        cell = goto_path[-1]
+        cell = Cell.from_tuple(goto_path[-1])
         if cell is None:
             return []
         
@@ -89,22 +140,22 @@ class GridPath:
         if len(goto_path) < 2:
             return (0,0)        # Need at least two points
         
-        cell = goto_path[-1]
+        cell = Cell.from_tuple(goto_path[-1])
         if cell is None:
             return 0,0          # Nothing
-        
+            
         x_end,y_end = cell.ix,cell.iy
         ##print(f"end: {x_end},{y_end}")
         if len(goto_path) >= hv_len:
             for i in range(hv_len-1):
-                cell = goto_path[-i-2]
+                cell = Cell.from_tuple(goto_path[-i-2])
                 if cell is None:
                     break
                 x = cell.ix
                 if x != x_end:
                     break
             else:
-                cell = goto_path[-hv_len]
+                cell = Cell.from_tuple(goto_path[-hv_len])
                 if cell is None:
                     return 0,0
                 
@@ -113,7 +164,7 @@ class GridPath:
                 return(0, y_chg)
             
             for i in range(hv_len-1):
-                cell = goto_path[-i-2]
+                cell = Cell.from_tuple(goto_path[-i-2])
                 if cell is None:
                     return 0,0
                 
@@ -121,7 +172,7 @@ class GridPath:
                 if y != x_end:
                     break
             else:
-                cell = goto_path[-hv_len]
+                cell = Cell.from_tuple(goto_path[-hv_len])
                 if cell is None:
                     return 0,0
                 
@@ -130,7 +181,7 @@ class GridPath:
                 return(x_chg, 0)
             
             det_len = min(det_len, len(goto_path))
-            cell = goto_path[-det_len]
+            cell = Cell.from_tuple(goto_path[-det_len])
             if cell is None:
                 return 0,0
             

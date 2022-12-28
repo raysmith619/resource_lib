@@ -20,6 +20,7 @@ from grid_fill_gobble import GridFillGobble
 from grid_path import GridPath
 from braille_cell import BrailleCell
 from audio_beep import AudioBeep
+from Lib.pickle import TRUE
 
 
 
@@ -55,7 +56,10 @@ class SpeakText:
         self.speech_type = speech_type
         self.dup_stdout = dup_stdout
 
-class NavDisp:
+class MenuDisp:
+    """ Menu dispatch table entry
+    Supporting multiple mode dispatch (e.g, Dropdown item plus command mode)
+    """
     def __init__(self, label, command, underline):
         self.label = label
         self.command = command
@@ -92,9 +96,10 @@ class AudioDrawWindow:
         visible_figure = True,
         pgmExit=None,
         blank_char=",",
+        drawing=False,
         shift_to_edge=True,
         silent=False,
-        nav_str="",
+        menu_str="",
         key_str="",
                  ):
         """ Setup audio window
@@ -127,11 +132,16 @@ class AudioDrawWindow:
         :shift_to_edge: shift picture to edge/top
                     to aid in finding
                     default: True - shift
+        :drawing: We're in drawing mode
+                 default: False - no drawing
         :silent: Suppress talking / audio
                 default: False
-        :nav_str:  Initial navigation commands
+        :menu_str:  Initial menu commands
                     default=None
                     Note that interpretation is case insensitive
+                    Format: <Menu Letter><option letters>; as separator
+                            e.g. n:sh;d:d  for Navigator silent, help
+                                                Drawing: start drawing
         :key_str:  Initial key symbol command string
                     Each command separated by ";" to facilitate
                     recognition of multi charater symbols
@@ -154,6 +164,7 @@ class AudioDrawWindow:
         self.y_min = y_min
         self.y_max = y_min + win_height
         self._color = "black"       # Current color
+        self._drawing = drawing
         mw = tk.Tk()
         mw.title(title)
         self.mw = mw
@@ -219,6 +230,7 @@ class AudioDrawWindow:
         if pyttsx3_engine:
             self.pos_check_interval = .01
         self._echo_input = True     # True -> speak input
+        self.pos_history = []       # position history (ix,iy)
         self._track_goto_cell = True    # True -> mark cells where we have gone
         self.goto_travel_list = []    # Memory of where we have gone
         self.goto_cell_list = []
@@ -227,7 +239,7 @@ class AudioDrawWindow:
         self._silent = silent       # True - override talking/beeping
         self._audio_beep = False
         self.audio_beep = AudioBeep(self, self.silence)
-        self.grid_path = GridPath(goto_path=self.cell_history)
+        self.grid_path = GridPath(goto_path=self.pos_history)
         self.running = True         # Set False to stop
         self.mw.focus_force()
         self.canvas.bind('<Motion>', self.motion)
@@ -239,8 +251,8 @@ class AudioDrawWindow:
         self._pendown = False       # True - move marks
         self.blank_char = blank_char
         self.shift_to_edge = shift_to_edge
-        self.nav_str = nav_str
-        self.do_nav_str(nav_str)
+        self.menu_str = menu_str
+        self.do_menu_str(menu_str)
         self.key_str = key_str
         self.do_key_str(key_str)
         self.pos_check()            # Startup possition check loop
@@ -251,21 +263,35 @@ class AudioDrawWindow:
         """
         return self._silent
     
-    def do_nav_str(self, nav_str=None):
+    def do_menu_str(self, menu_str=None):
         """ Execute initial navigate string, if any
-        :nav_str: string default: use self.nav_str
+        :menu_str: string default: use self.menu_str
         """
-        if nav_str is None:
-            nav_str = self.nav_str 
-        for c in nav_str:
-            self.nav_direct_call(c)
+        if menu_str is None:
+            menu_str = self.menu_str
+        if menu_str is None or menu_str == "":
+            return
+        
+        menu_cmds = menu_str.split(';')
+        for cmd in menu_cmds:
+            cmd = cmd.strip()
+            cmd_type, cmd_letters = cmd.split(':')
+            if cmd_type == 'n':
+                for c in cmd_letters:
+                    self.nav_direct_call(c)
+            elif cmd_type == 'd':
+                for c in cmd_letters:
+                    self.draw_direct_call(c)
 
     def do_key_str(self, key_str=None):
         """ Execute initial key string, if any
         :nav_str: string default: use self.nav_str
         """
         if key_str is None:
-            key_str = self.key_str 
+            key_str = self.key_str
+        if key_str is None or key_str == "":
+            return
+         
         syms = key_str.split(";")
         for sym in syms:
             self.key_press(sym)    
@@ -477,6 +503,8 @@ class AudioDrawWindow:
         if color_letter in self.color_letters:
                 color = self.color_letters[color_letter]
                 self._color = color
+                if self.is_at_cell():
+                    self.set_cell()
         else:
             self.speak_text(f"Don't recognize {color_letter} for color")
         self._multi_key_cmd = None 
@@ -534,14 +562,24 @@ class AudioDrawWindow:
 
     def key_digit(self, keyslow):
         """ Process digit key as direction
-        :keyslow: 1-9,0 as move direction
-                    with:   5 - mark location
-                            0 - erase location
+        :keyslow: 1-9 move in direction
+                    with 0,5 dependent on self._drawing
+                    If drawing: self._drawing == True
+                        5 - Mark position with new cell
+                        0 - Remove cell at position
+                    else:
+                        5,0 - announce current location
         """
         if keyslow == "5":
-            self.key_mark()
+            if self._drawing:
+                self.key_mark()
+            else:
+                self.announce_location()
         elif keyslow == "0":
-            self.key_mark(False)
+            if self._drawing:
+                self.key_mark(False)
+            else:
+                self.announce_location()
         elif keyslow in "123456789":
             self.key_direction(keyslow)
         else:
@@ -554,13 +592,16 @@ class AudioDrawWindow:
         :val: True - mark location default: True
                 False - erase location
         """
+        if not self._drawing:
+            self.announce_can_not_do("Not drawing", val)
+            
         if val:
             cell = self.get_cell_at()
             if cell is None:
                 ixy = self.get_point_cell()
                 cell = self.complete_cell(cell=ixy)
             else:
-                cell._color = self._color
+                cell.color_cell()
             self.display_cell(cell)
         else:
             cell = self.get_cell_at()
@@ -848,8 +889,8 @@ class AudioDrawWindow:
             if self._audio_beep and not with_voice:
                 self.audio_beep.announce_pcell((ix,iy))
                 if self.grid_path is not None:
-                    pcells = self.grid_path.find_predictive_list(goto_path=self.cell_history)
-                    self.audio_beep.announce_pcells(pc_ixys=pcells)
+                    pcell = self.grid_path.get_next_position()
+                    self.audio_beep.announce_next_pcell(pc_ixy=pcell)
             else:
                 if self.rept_at_loc or with_voice:
                     rep_str += f" at row{self.grid_height-iy} column{ix+1}"
@@ -989,7 +1030,7 @@ class AudioDrawWindow:
             self.set_cursor_pos_tu(x=min_x, y=min_y)
             x,y = self.get_point_win((min_x,min_y))
             self.pos_check(x=x,  y=y)
-        self.grid_path = GridPath(goto_path=self.cell_history)
+        self.grid_path = GridPath(goto_path=self.pos_history)
         self.audio_beep.set_cells(cells)
         self.mw.update()
         #self.turtle.penup()
@@ -1098,6 +1139,8 @@ class AudioDrawWindow:
         self.turtle.goto(x=x, y=y)
         win_x,win_y = self.get_point_win((x,y))
         self.pos_x,self.pos_y = win_x,win_y
+        loc_ixiy = self.get_point_cell()
+        self.pos_history.append(loc_ixiy)   # location history
         cell_ixiy = self.get_cell_at()
         if cell_ixiy is not None:
             self.cell_history.append(cell_ixiy)
@@ -1126,7 +1169,7 @@ class AudioDrawWindow:
         SlTrace.lg(f"move_cursor: ix={ix}, y={iy}", "move_cursor")
         self.move_to(win_xc,win_yc)
         if self._pendown:
-            self.key_mark()
+            self.set_cell()
         
 
     def move_to(self, x,y):
@@ -1170,6 +1213,32 @@ class AudioDrawWindow:
             y = int(self.y_min + i*self.win_height/self.grid_height)
             self.cell_ys.append(y)
 
+    def get_ix_min(self):
+        """ get minimum ix on grid
+        :returns: min ix
+        """
+        return 0
+
+    def get_ix_max(self):
+        """ get maximum ix on grid
+        :returns: min ix
+        """
+        return self.grid_width-1
+
+    def get_iy_min(self):
+        """ get minimum iy on grid
+        :returns: min iy
+        """
+        return 0
+
+    def get_iy_max(self):
+        """ get maximum ix on grid
+        :returns: min ix
+        """
+        return self.grid_height-1
+    
+        
+        
     def distance_from_drawing(self, x=None, y=None):
         """ Approximately minimum distance in cells from point
             to some displayed cell
@@ -1335,8 +1404,8 @@ class AudioDrawWindow:
                                             fill=color)
             cell.canv_items.append(canv_item) 
             SlTrace.lg(f"canvas.create_oval({x0},{y0},{x1},{y1}, fill={color})", "aud_create")
-            self.mw.update()
-            pass
+        self.mw.update()
+        pass
                 
     def get_cell_center_win(self, ix, iy):
         """ Get cell's window rectangle x, y  upper left, x,  y lower right
@@ -1452,6 +1521,44 @@ class AudioDrawWindow:
         tu_y = self.win_height//2 - win_y 
         return (tu_x,tu_y)
 
+    def is_at_cell(self, pt=None):
+        """ Check if at cell
+        :pt: x,y pair location in turtle coordinates
+                default: current location
+        :returns: True if at cell, else False
+        """
+        if self.get_cell_at(pt) is None:
+            return False 
+        
+        return True
+
+    def set_cell(self, pt=None, color=None):
+        """ Set cell at pt, else current cell
+        If no cell at current location create cell
+        :pt: at point
+            default: current location
+        :color: color default: current color
+        """
+        if not self.is_at_cell(pt):
+            self.create_cell(color=color)
+        self.change_cell(pt=pt, color=color)
+
+    def change_cell(self, pt=None, color=None):
+        """ Change cell at pt if None current pt
+        :pt: location default: current
+        :color: color default: current color
+        :returns: updated cell
+        """
+        if color is None:
+            color = self._color
+        cell = self.get_cell_at(pt=pt)
+        if cell is None:
+            cell = self.create_cell(pt=pt, color=color)
+        if cell is not None:
+            cell.color_cell(color=color)
+            self.display_cell(cell)
+        return cell
+                
     def color_str(self, color=None):
         """ Return color string
         :color: color specification str or tuple
@@ -1517,6 +1624,11 @@ class AudioDrawWindow:
         """ Setup command processing options / action
         """
 
+    def on_alt_a(self, event):
+        """ keep from key-press
+        """
+        SlTrace.lg("on_alt_a")
+
     def on_alt_n(self, event):
         """ keep from key-press
         """
@@ -1532,6 +1644,8 @@ class AudioDrawWindow:
             
     def menu_setup(self):
         # creating a menu instance
+        self.mw.bind('<Alt-a>', self.on_alt_f)  # Keep this from key cmds
+        self.mw.bind('<Alt-d>', self.on_alt_f)  # Keep this from key cmds
         self.mw.bind('<Alt-f>', self.on_alt_f)  # Keep this from key cmds
         self.mw.bind('<Alt-n>', self.on_alt_n)  # Keep this from key cmds
         self.mw.bind('<Alt-N>', self.on_alt_n)  # Keep this from key cmds
@@ -1558,10 +1672,70 @@ class AudioDrawWindow:
         self.nav_menu_setup(nav_menu)
         menubar.add_cascade(label="Navigate", menu=nav_menu)
         
+        draw_menu = tk.Menu(menubar, tearoff=0)
+        self.draw_menu_setup(draw_menu)
+        menubar.add_cascade(label="Draw", menu=draw_menu)
+        
         aux_menu = tk.Menu(menubar,tearoff=0)
-        aux_menu.add_command(label="Trace", command=self.trace_menu)
+        aux_menu.add_command(label="Trace", command=self.trace_menu,
+                             underline=0)
         menubar.add_cascade(label="Auxiliary", menu=aux_menu)
 
+    def draw_menu_setup(self, draw_menu):
+        self.draw_menu = draw_menu
+        self.draw_dispatch = {}
+        self.draw_menu_add_command(label="Help", command=self.draw_help,
+                             underline=0)
+        self.draw_menu_add_command(label="drawing", command=self.start_drawing,
+                             underline=0)
+        self.draw_menu_add_command(label="stop_drawing", command=self.stop_drawing,
+                             underline=0)
+         
+    def draw_menu_add_command(self, label, command, underline):
+        """ Setup menu commands, setup dispatch for direct call
+        :label: add_command label
+        :command: command to call
+        :underline: short-cut index in label
+        """
+        self.draw_menu.add_command(label=label, command=command,
+                                  underline=underline)
+        menu_de = MenuDisp(label=label, command=command,
+                              underline=underline)
+        
+        self.draw_dispatch[menu_de.shortcut] = menu_de
+
+    def draw_direct_call(self, short_cut):
+        """ Short-cut call direct to option
+        :short_cut: one letter option for call 
+        """
+        if short_cut not in self.draw_dispatch:
+            raise Exception(f"draw option:{short_cut} not recognized")
+        menu_de = self.draw_dispatch[short_cut]
+        menu_de.command()
+
+    def draw_help(self):
+        """ Help for drawing
+        """
+        """ Help - list command (Alt-d) commands
+        """
+        help_str = """
+        Help - list drawing setup commands (Alt-d) commands
+        h - say this help message
+        d - Start/enable drawing
+        s - stop/disable drawing
+        Escape - flush pending report output
+        """
+        
+    def start_drawing(self):
+        """ Start/enable drawing
+        """
+        self._drawing = True 
+
+    def stop_drawing(self):
+        """ Stop/disable drawing
+        """
+        self._drawing = False 
+        
     def nav_menu_setup(self, nav_menu):
         self.nav_menu = nav_menu
         self.nav_dispatch = {}
@@ -1598,7 +1772,7 @@ class AudioDrawWindow:
                              underline=1)
         self.nav_menu_add_command(label="no audio beep",
                              command=self.nav_no_audio_beep,
-                             underline=9)
+                             underline=10)
          
     def nav_menu_add_command(self, label, command, underline):
         """ Setup menu commands, setup dispatch for direct call
@@ -1608,10 +1782,10 @@ class AudioDrawWindow:
         """
         self.nav_menu.add_command(label=label, command=command,
                                   underline=underline)
-        navde = NavDisp(label=label, command=command,
+        menu_de = MenuDisp(label=label, command=command,
                               underline=underline)
         
-        self.nav_dispatch[navde.shortcut] = navde
+        self.nav_dispatch[menu_de.shortcut] = menu_de
 
     def nav_direct_call(self, short_cut):
         """ Short-cut call direct to option
@@ -1648,6 +1822,17 @@ class AudioDrawWindow:
         """
         self.speak_text(help_str)
 
+    def announce_can_not_do(self, msg=None, val=None):
+        """ Announce we can't do something
+        """
+        if self.audio_beep:
+            self.audio_beep.announce_can_not_do(msg=msg, val=val)
+
+    def announce_location(self):
+        """ Announce current / cursor location
+        """
+        self.pos_check(force_output=True, with_voice=True) 
+        
     def nav_echo_on(self):
         self._echo_input = True 
     
@@ -1727,7 +1912,25 @@ class AudioDrawWindow:
         :returns: dots tupple (1,2,3,4,5,6)
         """
         return BrailleCell.braille_for_letter(c)
-        
+
+    def create_cell(self, cell_ixy=None, color=None):
+        """ Create new cell ad cell_xy
+        :cell_xy: ix,iy tuple default: current location
+        :color: color default: curren color
+        :returns: cell
+        """
+        if cell_ixy is None:
+            cell_ixy = self.get_point_cell()
+        if color is None:
+            color = self._color
+        dots = self.braille_for_color(color)
+        bc = BrailleCell(ix=cell_ixy[0], iy=cell_ixy[1],
+                         dots=dots, color=color)
+        if cell_ixy in self.cells:
+            del self.cells[cell_ixy]
+        self.cells[cell_ixy] = bc
+        return bc
+            
     def complete_cell(self, cell, color=None):
         """ create/Fill braille cell
             Currently just fill with color letter (ROYGBIV)
@@ -1745,16 +1948,21 @@ class AudioDrawWindow:
         
 if __name__ == "__main__":
     SlTrace.clearFlags()
+    menu_str = "n:sh;d:d"
+    key_str = (
+                "d"
+                ";c;g;9;9;9;9"
+                ";c;r;7;7;7;7"
+                ";c;o;1;1;1;1"
+                ";c;b;3;3;3;3"
+                ";w"
+            )
     aw = AudioDrawWindow(title="AudioDrawWindow Self-Test",
-                         nav_str="sh",
-                         key_str="d"
-                         ";c;g;9;9;9;9"
-                         ";c;r;7;7;7;7"
-                         ";c;o;1;1;1;1"
-                         ";c;b;3;3;3;3"
-                         ";w")
+                         menu_str=menu_str,
+                         key_str=key_str)
 
-
+    aw.do_menu_str("n:nu;d:s")
+    aw.do_key_str("u")
     
     
     
