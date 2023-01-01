@@ -12,7 +12,7 @@ from tkinter import *
 
 from select_trace import SlTrace
 from braille_cell import BrailleCell
-from audio_window import AudioWindow
+from audio_draw_window import AudioDrawWindow
 
 def pl(point_list):
     """ display routine for point list
@@ -886,33 +886,9 @@ class BrailleDisplay:
         self.cells[cell] = bc
 
     def braille_window(self, title, show_points=False):
-        """ switch between braile_window_none and
-            braille_window_audio
+        """ setup braille window
         """
         self.braille_window_audio(title, show_points)
-        ###self.braille_window_none(title, show_points)
-        
-    def braille_window_none(self, title, show_points=False):
-        """ Display current braille in a window
-        :title: window title
-        :show_points: Show included points instead of braille dots
-                default: False - show braille dots
-        """
-        mw = Tk()
-        if title is not None and title.endswith("-"):
-            title += " Braille Window"
-        mw.title(title)
-        self.mw = mw
-        canvas = Canvas(mw, width=self.win_width, height=self.win_height)
-        canvas.pack()
-        self.braille_canvas = canvas
-        for ix in range(self.grid_width):
-            for iy in range(self.grid_height):
-                cell_ixy = (ix,iy)
-                if cell_ixy in self.cells:
-                    self.display_cell(self.cells[cell_ixy],
-                                      show_points=show_points)
-        mw.update()     # Make visible
 
     def braille_window_audio(self, title, show_points=False):
         """ Display current braille in a window
@@ -923,13 +899,14 @@ class BrailleDisplay:
         """
         if title is not None and title.endswith("-"):
             title += " Braille Window"
-        aud_win = AudioWindow(title=title,
+        aud_win = AudioDrawWindow(title=title,
                               win_width=self.win_width,
                               win_height=self.win_height,
                               grid_width=self.grid_width,
                               grid_height=self.grid_height,
                               x_min=self.x_min, y_min=self.y_min)
         aud_win.draw_cells(cells=self.cells, show_points=show_points)
+        self.aud_win = aud_win  # access to print_braille
 
     def print_cells(self, title=None):
         """ Display current braille in a window
@@ -1010,7 +987,7 @@ class BrailleDisplay:
                     default: False
         """
         self.find_edges()
-        if braille_window:
+        if braille_print or braille_window:
             if title is None:
                 title = "Audio Feedback -"
             tib = title
@@ -1026,7 +1003,7 @@ class BrailleDisplay:
             tib = title
             if tib is not None and tib.endswith("-"):
                 tib += " Braille Print Output"
-            self.print_braille(title=tib)
+            self.aud_win.print_braille(title=tib)
         if print_cells:
             tib = title
             if tib is None:
@@ -1209,35 +1186,6 @@ class BrailleDisplay:
         y2 = self.cell_ys[iy+1]
         return (x1,y1,x2,y2)
                     
-    def print_braille(self, title=None):
-        """ Output braille
-        """
-        if title is not None:
-            print(title)
-        if self.shift_to_edge:
-            self.find_edges()
-            left_edge = self.left_edge
-            top_edge = self.top_edge
-        else:
-            left_edge = 0
-            top_edge = self.grid_height-1
-            
-        for iy in reversed(range(top_edge)):
-            line = ""
-            for ix in range(left_edge, self.grid_width):
-                cell_ixy = (ix,iy)
-                if cell_ixy in self.cells:
-                    cell = self.cells[cell_ixy]
-                    color = cell.color_string()
-                    line += color[0]
-                else:
-                    line += " "
-            line = line.rstrip()
-            if self.blank_char != " ":
-                line = line.replace(" ", self.blank_char)
-            ###print(f"{iy:2}", end=":")
-            print(line)
-
     """
     turtle commands
     These commands:

@@ -3,6 +3,7 @@
 Audio Support for audio_window
 """
 import winsound
+from select_trace import SlTrace
 
 class AudioBeep:
     beep_dur = 100      # Default beep duration
@@ -35,12 +36,12 @@ class AudioBeep:
                         go silent
         """
         self.awin = awin
-        self.set_cells(awin.cells)
         self._silence_checker = silence_checker
 
     def announce_can_not_do(self, msg=None, val=None):
         """ Announce we can't do something
         """
+        SlTrace.lg("announce_can_not_do()")
         winsound.Beep(frequency=self.color_fm*10, duration=self.beep_dur*5)
 
 
@@ -54,9 +55,6 @@ class AudioBeep:
             return True    # We're silent
        
         return False    # We make noise 
-    
-    def set_cells(self,cells):
-        self.cells = cells
             
     def on_edge(self):
         if self.silence():
@@ -88,19 +86,25 @@ class AudioBeep:
         
         if dur is None:
             dur = self.beep_dur
-        if pc_ixy in self.cells:
-            cell = self.cells[pc_ixy]
+        cell = self.awin.get_cell_at_ixy(pc_ixy)
+        if cell is not None:
             color = cell._color
             if color not in self.color_freqs:
                 freq = self.color_freqs["OTHER"]
                 dur = self.other_dur
+                SlTrace.lg(f"color:{color} freq:{freq} dur:{dur}",
+                            "pos_tracking")
             else:
                 freq = self.color_freqs[color]
-                winsound.Beep(freq, dur)
+            winsound.Beep(freq, dur)
+            SlTrace.lg(f"in cell: winsound.Beep({freq},{dur})"
+                       f" cell:{cell} at {pc_ixy}", "pos_tracking")
         elif self.out_of_bounds_check(pc_ixy):
-            return
+            SlTrace.lg(f"announce_pcell({pc_ixy}) out of bounds")
         else:
             winsound.Beep(frequency=self.blank_freq, duration=self.blank_dur)
+            SlTrace.lg(f"blank: winsound.Beep({self.blank_freq},{self.blank_dur})"
+                       f" {cell} at {pc_ixy}", "pos_tracking")
             
     def out_of_bounds_check(self, pc_ixy):
         """ Check for out of bounds / illegal location
@@ -110,7 +114,7 @@ class AudioBeep:
         """
         if pc_ixy is None:
             self.announce_can_not_do()
-            return
+            return True
         
         ix, iy = pc_ixy
         if ix < self.awin.get_ix_min():

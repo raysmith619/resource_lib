@@ -91,7 +91,7 @@ class BrailleCell:
         if self._color is not None:
             st += " " + self._color
         if self._color_bg is not None:
-            st += " " + self._color_bg
+            st += " bg:" + self._color_bg
         return st
         
     
@@ -118,3 +118,13 @@ class BrailleCell:
         if color is None:
             color = self._color
         return self.color_str(color)
+    
+    def color_cell(self, color=None):
+        """ Color cell
+        :color: turtle color
+        """
+        if color is None:
+            color = self._color
+        dots = self.braille_for_color(color=color)
+        self.dots = dots
+        self._color = color

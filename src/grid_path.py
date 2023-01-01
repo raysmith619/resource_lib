@@ -35,9 +35,9 @@ class Cell:
 
 
 class GridPath:
-    def __init__(self, goto_path, pred_len=1, det_len=4, hv_len=2):
+    def __init__(self, awin, pred_len=1, det_len=4, hv_len=2):
         """ Setup path determination
-        :goto_path: list of (ix,iy) of recent movement most recent last
+        :awin: AudioDrawWin basis
         :pred_len: maximum length of predictive cells (ix,iy)
                     default: 3
         :det_len: length of goto path used to determing prediction - usually
@@ -45,7 +45,7 @@ class GridPath:
                 default: 4
         :hv_len: length after which line is considered horizontal/vertical
         """
-        self.goto_path = goto_path
+        self.awin = awin
         self.pred_len = pred_len
         self.det_len = det_len
         self.hv_len = hv_len
@@ -54,24 +54,28 @@ class GridPath:
         """ get likely next move
         :returns: (ix,iy) of likely next move
         """
-        if len(self.goto_path) < 2:
+        pos_history = self.awin.pos_history
+        if len(pos_history) < 2:
             return      # Can't tell
         
-        pos_now = self.goto_path[-1]
+        pos_now = pos_history[-1]
         ix_now, iy_now = pos_now
-        pos_prev = self.goto_path[-2]
+        pos_prev = pos_history[-2]
         ix_prev, iy_prev = pos_prev
         ix_chg = ix_now - ix_prev
         iy_chg = iy_now - iy_prev
         ix_new = ix_now + ix_chg
         iy_new = iy_now + iy_chg
+        pos_new = (ix_new,iy_new)
+        cell_new = self.awin.get_cell_at_ixy(cell_ixy=pos_new)
         SlTrace.lg(f"prev:{pos_prev} now:{pos_now}"
-                   f" ix_new:{ix_new} iy:{iy_new}", "pos_tracking")
+                   f" new:{pos_new} {cell_new}"
+                   , "pos_tracking")
         return (ix_new,iy_new)
         
                 
     def find_predictive_list(self, pred_len=None, det_len=None, 
-                             goto_path=None, hv_len=None):
+                             hv_len=None):
         """ Find likely next path (list of cell ixiy)
         :pred_len: maximum length of predictive cells (ix,iy)
                     default: self.pred_len(3)
@@ -82,8 +86,6 @@ class GridPath:
                  horizontal/vertical
         :returns: list of cell ordered to be the likely next set of cells
         """
-        if goto_path is None:
-            goto_path = self.goto_path
         if pred_len is None:
             pred_len = self.pred_len
         if det_len is None:
@@ -92,13 +94,13 @@ class GridPath:
             hv_len = self.hv_len
         
         path_xy = self.find_path_dir_xy(det_len=det_len, 
-                             goto_path=goto_path,
+                             goto_path=self.awin.pos_history,
                              hv_len = hv_len)
         ##print(f"path_xy: {path_xy}")
         if path_xy == (0,0):
             return []       # No prediction if can't find direction
         
-        cell = Cell.from_tuple(goto_path[-1])
+        cell = Cell.from_tuple(path_xy[-1])
         if cell is None:
             return []
         
@@ -193,6 +195,9 @@ class GridPath:
         
 
 if __name__ == "__main__":
+    from audio_draw_window import AudioDrawWindow
+    awin = AudioDrawWindow(title="grid_path self test")
+
     print(f"Self Test: {__file__}")
     cells_set = {
             (2,6), (3,6), (4,6), (5,6), (6,6),
@@ -203,15 +208,16 @@ if __name__ == "__main__":
          }
     cells = dict.fromkeys(cells_set, 0)
     goto_cells = [(2,6), (2,5), (2,4), (2,3)]
-    
-    gp = GridPath(goto_path=goto_cells)
+    awin.pos_history = goto_cells
+    gp = GridPath(awin=awin)
     #pred_cells = gp.find_predictive_list()
     #print(f"goto_path:{goto_cells},\npred_cells:{pred_cells}")
 
     goto_cells = [(1,3), (2,3),
                   (1,2), (2,2), (3,2),
                                  (3,1)]
-    pred_cells = gp.find_predictive_list(goto_path=goto_cells)
-    print(f"goto_path:{goto_cells},\npred_cells:{pred_cells}")
+    awin.pos_history = goto_cells
+    pred_pos = gp.get_next_position()
+    print(f"goto_path:{goto_cells},\nnext:{pred_pos}")
 
         

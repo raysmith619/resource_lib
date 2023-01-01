@@ -151,7 +151,11 @@ class DataFiles:
     def get_groups(self):
         """ Get all group names, sorted
         """
-        return sorted(list(self.data_file_groups))
+        group_names = sorted(list(self.data_file_groups))
+        groups = []
+        for name in group_names:
+            groups.append(self.data_file_groups[name])                     
+        return groups
     
 if __name__ == "__main__":
         import os 
