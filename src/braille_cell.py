@@ -6,6 +6,12 @@ Basis for Braille cell (6 dot pattern)
 class BrailleCell:
     """ braille cell info augmented for analysis
     """
+    # Marking type
+    MARK_UNMARKED = 1
+    MARK_SELECTED = 2
+    MARK_TRAVERSED = 3
+
+    
     dots_for_character = {
         " ": (),    # blank
         "a": (1),
@@ -63,17 +69,23 @@ class BrailleCell:
     def __init__(self, dots=None,
                  color=None, color_bg=None,
                  ix=0, iy=0,
+                 mtype=None,
                  points=None):
         """ setup braille cell
         :dots: list of set dots default: none - blank
         :color: color str or tuple
         :ix: cell index(from 0) from left side
         :iy: cell index from bottom
+        :mtype: marked type
+                default: MARK_UNSELECTED
         :points: initial set of points, if any
             default: empty
         """
         self.ix = ix    # Include to make self sufficient
         self.iy = iy
+        if mtype is None:
+            mtype = BrailleCell.MARK_SELECTED
+        self.mtype = mtype
         self.dots = dots
         if color is None:
             color = "black"

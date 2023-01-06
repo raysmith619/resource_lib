@@ -74,6 +74,7 @@ class AudioDrawWindow:
     # Multi-key commands
     NAV_COLOR_CHANGE = "color_change_cmd"
     
+    
     # direction for digit pad
     digit_dir = {"7":(-1,1),  "8":(0,1),  "9":(1,1),
                  "4":(-1,0),  "5":(0,0),  "6":(1,0),
@@ -96,6 +97,7 @@ class AudioDrawWindow:
         pgmExit=None,
         blank_char=",",
         drawing=False,
+        show_marked=False,
         shift_to_edge=True,
         silent=False,
         menu_str="",
@@ -133,6 +135,9 @@ class AudioDrawWindow:
                     default: True - shift
         :drawing: We're in drawing mode
                  default: False - no drawing
+        :show_marked: Make marked cells
+                shown even when invisible
+                default: True
         :silent: Suppress talking / audio
                 default: False
         :menu_str:  Initial menu commands
@@ -164,6 +169,7 @@ class AudioDrawWindow:
         self.y_max = y_min + win_height
         self._color = "black"       # Current color
         self._drawing = drawing
+        self._show_marked = show_marked
         mw = tk.Tk()
         mw.title(title)
         self.mw = mw
@@ -229,6 +235,9 @@ class AudioDrawWindow:
         if pyttsx3_engine:
             self.pos_check_interval = .01
         self._echo_input = True     # True -> speak input
+        self._loc_list_first = None     # a,b horiz/vert move targets
+        self._loc_list_second = None
+
         self.pos_history = []       # position history (ix,iy)
         self._track_goto_cell = True    # True -> mark cells where we have gone
         self.goto_travel_list = []    # Memory of where we have gone
@@ -424,6 +433,10 @@ class AudioDrawWindow:
             self.key_right()
         elif keysym in "1234567890":
             self.key_digit(keysym)
+        elif keyslow == "a":
+            self.key_to_hv_move("first")
+        elif keyslow == "b":
+            self.key_to_hv_move("second")
         elif keyslow == "e":            # Erase current position with current color
             self.key_mark(False)
         elif keyslow == "g":
@@ -549,9 +562,11 @@ class AudioDrawWindow:
         self.pos_history = []
         self.draw_cells(cells=self.cells)
         
-    def mark_cell(self, cell):
+    def mark_cell(self, cell,
+                  mtype=BrailleCell.MARK_SELECTED):
         """ Mark cell for viewing of history
         :cell: Cell(BrailleCell) or (ix,iy) of cell
+        :mtype: Mark type default: MARK_SELECTED
         """
         if isinstance(cell, BrailleCell):
             ixy = (cell.ix,cell.iy) 
@@ -559,6 +574,13 @@ class AudioDrawWindow:
             ixy = cell
         if ixy in self.cells:
             cell = self.cells[ixy]
+            cell.mtype = mtype
+            self.show_cell(ixy=ixy)
+            
+    def show_cell(self, ixy=None):
+        if ixy in self.cells:
+            cell = self.cells[ixy]
+            self.set_visible_cell(cell)
             canvas = self.canvas
             for item_id in cell.canv_items:
                 item_type = canvas.type(item_id)
@@ -711,19 +733,21 @@ class AudioDrawWindow:
         Down - Move down one row
         Left - Move left one column
         Right - Move right one column
-        direction (from center):
+        DIGIT - direction (from center):
            7-up left    8-up       9-up right
            4-left       5-mark     6-right
            1-down left  2-down     3-down right
               0-erase
+        a - move to first(Left if Horizontal, Top if Vertical)
+        b - move to second(Right if Horizontal, Bottom if Vertical)
         c<roygbiv> - set color red, orange, ...
         d - pendown - mark when we move
                 
         g - Go to closest figure
         m - mark location
         p - Report/Say current position
-        r - Horizontal position stuff to left, to right
-        t - Vertical position stuff to top, to bottom
+        r - Horizontal position stuff to left, to Right
+        t - Vertical position stuff to Top, to bottom
         u - penup - move with out marking 
         w - write out braille
         z - clear board
@@ -767,6 +791,24 @@ class AudioDrawWindow:
         self.do_talking = val
         SlTrace.lg(f"do_talking:{self.do_talking}")
 
+    def key_to_hv_move(self, end_pos="first"):
+        """ Move to end of previous horizontal(r), vertical(t)
+        report
+        :end_pos: "first" - first end (horizontal-left, vertical-top)
+                  "second" - second end(horizontal-right, vertical-bottom)
+                  default: first
+        """
+        if self._loc_list_first is None:
+            return      # No current target
+        
+        if end_pos == "first":
+            self.move_to_ixy(*self._loc_list_first)
+        elif end_pos == "second":
+            self.move_to_ixy(*self._loc_list_second)
+        else:
+            self.audio_beep.announce_can_not_do()          
+
+
     def key_report_pos(self):
         """ Report current position with voice
         """
@@ -809,16 +851,26 @@ class AudioDrawWindow:
                 loc_list.append(loc)
         return loc_list   
 
-    def loc_list_msg(self, pos_ixy, name, dir):
-        """ Create msg N {name} type
+    def loc_list_target(self, pos_ixy, name, dir):
+        """ Create target (msg, ixy) of search
+        msg: text description of range
+        ixy: ixy tuple of position at end
+        
+        Where:
+        msg:  N {name} type
         where name:= "right", "left",...,
+        target: (ix,iy) of location at end
+        
         :pos_ixy: curent location tuple
         :name: type direction e.g. "left"
         :dir: chg-x,chg-y in index up =>  y increases
+        :returns: (msg_text, target_ixy)
         """
         cell = self.get_cell_at_ixy(pos_ixy)
         loc_list = self.get_cells_in_dir(ixy=pos_ixy, dir=dir)
         msg = ""
+        target_ixy = pos_ixy
+        
         if cell is not None:
             colors = {}         # Inside figure
             ncell = 0
@@ -828,13 +880,17 @@ class AudioDrawWindow:
                 if isinstance(lcell, BrailleCell):
                     ncell += 1
                     colors[lcell.color_string()] = 1
+                    target_ixy = (lcell.ix, lcell.iy)   # move as string grows
                 else:
                     if ncell == 0:
-                        for ltblank in loc_list[1:]:
+                        for ltblank in loc_list:
                             if not isinstance(ltblank, tuple):
                                 cell_end = ltblank   # Set if we have a cell at end
+                                target_ixy = (cell_end.ix, cell_end.iy)
                                 break
                             ntblank += 1
+                            target_ixy = ltblank
+                            
                         
                     break
             if ncell > 0:
@@ -856,17 +912,20 @@ class AudioDrawWindow:
             ntcell = 0      # Number of trailing cells
             cell_end = None         # Set if we have a cell at end
             tcell_colors = {}
-            for lcell in loc_list:
-                if isinstance(lcell, tuple):
+            for loc_or_cell in loc_list:
+                if isinstance(loc_or_cell, tuple):
                     nblank += 1
+                    target_ixy = loc_or_cell    # move along blanks
                 else:
-                    cell_end = lcell    # After end
+                    cell_end = loc_or_cell    # Cell after end
+                    target_ixy = (cell_end.ix,cell_end.iy) 
                     if nblank == 0:
                         for ltcell in loc_list[nblank:]:
                             if not isinstance(ltcell, BrailleCell):
                                 break
                             ntcell += 1
                             tcell_colors[ltcell.color_string()] = 1
+                            target_ixy = (ltcell.ix, ltcell.iy)
                             
                     break
             if nblank > 0:      # Are there a string of blanks
@@ -881,7 +940,7 @@ class AudioDrawWindow:
                     plr = "s" if ntcell  > 1  else ""
                     msg += plr
                 msg += f" to {name}"
-        return msg
+        return (msg,target_ixy)
                 
     def key_report_pos_horz(self):
         """ Report current horizontal position
@@ -892,8 +951,12 @@ class AudioDrawWindow:
         Currently left == neg x, right == pos x
         """
         pos_ixy = self.get_ixy_at()
-        msg_left = self.loc_list_msg(pos_ixy, name="left", dir=(-1,0))
-        msg_right = self.loc_list_msg(pos_ixy, name="right", dir=(1,0))
+        msg_left, loc_left_end = self.loc_list_target(pos_ixy,
+                                             name="left", dir=(-1,0))
+        msg_right, loc_right_end = self.loc_list_target(pos_ixy,
+                                             name="right", dir=(1,0))
+        self._loc_list_first = loc_left_end
+        self._loc_list_second = loc_right_end
         self.speak_text(msg_left)
         self.speak_text(msg_right)
                 
@@ -908,8 +971,13 @@ class AudioDrawWindow:
         Currently left == neg x, right == pos x
         """
         pos_ixy = self.get_ixy_at()
-        msg_top = self.loc_list_msg(pos_ixy, name="above", dir=(0,1))
-        msg_bottom = self.loc_list_msg(pos_ixy, name="below", dir=(0,-1))
+        msg_top, loc_top_end = self.loc_list_target(pos_ixy,
+                                         name="above", dir=(0,1))
+        msg_bottom, loc_bottom_end = self.loc_list_target(pos_ixy,
+                                         name="below", dir=(0,-1))
+        self._loc_list_first = loc_top_end
+        self._loc_list_second = loc_bottom_end
+
         self.speak_text(msg_top)
         self.speak_text(msg_bottom)
                 
@@ -1172,6 +1240,8 @@ class AudioDrawWindow:
                 if cell_ixy in self.cells:
                     self.display_cell(self.cells[cell_ixy],
                                       show_points=show_points)
+                    cell = self.cells[cell_ixy]
+                    cell.mtype = cell.MARK_UNMARKED
         self.mw.update()
         min_x, max_y, max_x,min_y = self.drawing_bounding_box()
         if min_x is not None:            
@@ -1325,6 +1395,8 @@ class AudioDrawWindow:
     def move_to(self, x,y):
         """ Move to window loc
         Stop at edges, with message
+        :x: turtle x-coordinate
+        :y: turtle y-coordinate
         """
         margin = 10
         top_margin = 20     # HACK to determine top before low level check
@@ -1332,18 +1404,34 @@ class AudioDrawWindow:
         tu_x, tu_y = self.get_point_tur((x,y))
         if tu_x <= self.x_min + margin:
             self.pos_report("msg", "At left edge", force_output=True)
-            return
+            x,_ = self.get_point_win((self.x_min + margin + 1, tu_y))
+            
         elif tu_x >= self.x_max - margin:
             self.pos_report("msg", "At right edge", force_output=True)
-            return                               
+            x,_ = self.get_point_win((self.x_max - margin - 1, tu_y))                               
         if tu_y <= self.y_min + bottom_margin:
             self.pos_report("msg", "At bottom edge", force_output=True)
-            return
+            _,y = self.get_point_win((tu_x, self.y_min + bottom_margin + 1))
         elif tu_y >= self.y_max - top_margin:
             self.pos_report("msg", "At top edge", force_output=True)
-            return                               
+            _,y = self.get_point_win((tu_x, self.y_max - top_margin - 1))
+                                           
         self.set_cursor_pos_win(x,y)
-        
+
+    def move_to_ixy(self, ix=None, iy=None):
+        """ Move to grid (cell) ix,iy
+        :ix: ix index default: current ix
+        :iy: iy index default: current iy
+        """
+        ix_cur,iy_cur = self.get_ixy_at()
+        if ix is None:
+            ix = ix_cur 
+        if iy is None:
+            iy = iy_cur
+        win_xc,win_yc = self.get_cell_center_win(ix,iy)
+        self.move_to(win_xc,win_yc)
+
+                
     def set_cell_lims(self):
         """ create cell boundary values bottom through top
          so:
@@ -1767,7 +1855,14 @@ class AudioDrawWindow:
             if val:
                 canvas.itemconfigure(item_id, state='normal')            
             else:
-                canvas.itemconfigure(item_id, state='hidden')            
+                if (self._show_marked
+                     and cell.mtype !=cell.MARK_UNMARKED): 
+                    canvas.itemconfigure(item_id, state='normal')            
+                else:
+                    canvas.itemconfigure(item_id, state='hidden')
+        if not val:
+            if cell.mtype != cell.MARK_UNMARKED:
+                self.show_cell((cell.ix,cell.iy))   # force view                            
 
     """
     Setup menus
@@ -1925,6 +2020,8 @@ class AudioDrawWindow:
                              underline=0)
         self.nav_menu_add_command(label="invisible cells", command=self.nav_make_invisible,
                              underline=0)
+        self.nav_menu_add_command(label="marked", command=self.nav_show_marked,
+                             underline=0)
         self.nav_menu_add_command(label="noisy", command=self.make_noisy,
                              underline=0)
         self.nav_menu_add_command(label="silent", command=self.make_silent,
@@ -1985,6 +2082,7 @@ class AudioDrawWindow:
         s - silent speech
         t - talking speech
         l - log speech
+        m - show marked(even if invisible)
         n - no log speech
         p - report position
         u - audio beep
@@ -2051,6 +2149,11 @@ class AudioDrawWindow:
     def nav_make_visible(self):
         self.key_visible()
 
+    def nav_show_marked(self):
+        """ Show marked cells
+        """
+        self.set_show_marked()
+        
     def nav_make_talk(self):
         self.key_talk()
     
@@ -2060,6 +2163,10 @@ class AudioDrawWindow:
     def nav_say_position(self):
         self.pos_report(force_output=True)
 
+    def set_show_marked(self,val=True):
+        """ Show marked "invisible" cells
+        """
+        self._show_marked = val
     
     def braille_for_color(self, color):
         """ Return dot list for color
