@@ -94,6 +94,7 @@ class AudioDrawWindow:
         pos_rep_interval = .1,
         pos_rep_queue_max = 4,
         visible_figure = True,
+        enable_mouse = False,
         pgmExit=None,
         blank_char=",",
         drawing=False,
@@ -145,7 +146,8 @@ class AudioDrawWindow:
                     Note that interpretation is case insensitive
                     Format: <Menu Letter><option letters>; as separator
                             e.g. n:sh;d:d  for Navigator silent, help
-                                                Drawing: start drawing
+        :enable_mouse: mouse cursor operation enabled
+                    default: False                                        Drawing: start drawing
         :key_str:  Initial key symbol command string
                     Each command separated by ";" to facilitate
                     recognition of multi charater symbols
@@ -170,6 +172,7 @@ class AudioDrawWindow:
         self._color = "black"       # Current color
         self._drawing = drawing
         self._show_marked = show_marked
+        self._enable_mouse = enable_mouse
         mw = tk.Tk()
         mw.title(title)
         self.mw = mw
@@ -316,6 +319,7 @@ class AudioDrawWindow:
         """
         if self.logging_speech:
             SlTrace.lg(msg)
+        self.win_print(msg)
         self.add_speak_text_lines(msg.split("\n"))
         if self.speak_text_line_after is not None:
             self.mw.after_cancel(self.speak_text_line_after)
@@ -376,6 +380,9 @@ class AudioDrawWindow:
     def motion(self, event):
         """ Mouse motion in  window
         """
+        if not self._enable_mouse:
+            return      # Ignore mouse motion 
+        
         x,y = event.x, event.y
         SlTrace.lg(f"motion x={x} y={y}", "aud_motion")
         self.move_to(x,y)
@@ -399,7 +406,8 @@ class AudioDrawWindow:
         """ Motion will button down is
         treated as mouse click at point
         """
-        self.on_button_1(event)
+        if self._enable_mouse:
+            self.on_button_1(event)
         
     def on_key_press(self, event):
         """ Key press event
@@ -2041,6 +2049,12 @@ class AudioDrawWindow:
         self.nav_menu_add_command(label="q no audio beep",
                              command=self.nav_no_audio_beep,
                              underline=0)
+        self.nav_menu_add_command(label="x enable mouse navigation",
+                             command=self.nav_enable_mouse,
+                             underline=0)
+        self.nav_menu_add_command(label="y disable mouse navigation",
+                             command=self.nav_disable_mouse,
+                             underline=0)
          
     def nav_menu_add_command(self, label, command, underline):
         """ Setup menu commands, setup dispatch for direct call
@@ -2073,6 +2087,7 @@ class AudioDrawWindow:
         Help - list navigate commands (Alt-n) commands
         h - say this help message
         a - Start reporting position
+        b - remove 
         z - stop reporting position
         e - echo input on
         o - echo off
@@ -2101,6 +2116,13 @@ class AudioDrawWindow:
         """ Announce current / cursor location
         """
         self.pos_check(force_output=True, with_voice=True) 
+        
+    def nav_enable_mouse(self):
+        self._enable_mouse = True 
+    
+    def nav_disable_mouse(self):
+        self._enable_mouse = False 
+                
         
     def nav_echo_on(self):
         self._echo_input = True 
