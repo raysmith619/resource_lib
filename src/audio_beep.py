@@ -6,7 +6,7 @@ import winsound
 from select_trace import SlTrace
 
 class AudioBeep:
-    beep_dur = 100      # Default beep duration
+    beep_dur = 200      # Default beep duration
     color_fm = 1000     # Color frequency multiplier
 
     other_freq = color_fm//4
@@ -41,8 +41,8 @@ class AudioBeep:
     def announce_can_not_do(self, msg=None, val=None):
         """ Announce we can't do something
         """
-        SlTrace.lg("announce_can_not_do()")
-        winsound.Beep(frequency=self.color_fm*10, duration=self.beep_dur*5)
+        SlTrace.lg("announce_can_not_do()", "bounds")
+        winsound.Beep(frequency=self.color_fm//5, duration=self.beep_dur//3)
 
 
     def silence(self):
@@ -78,7 +78,8 @@ class AudioBeep:
         """ Announce next cell
         :pc_ixy: (ix,iy) of next cell
         """
-        self.announce_pcell(pc_ixy=pc_ixy, dur=self.beep_dur//2)
+        self.announce_pcell(pc_ixy=pc_ixy,
+                             dur=int(self.beep_dur*.5))
         
     def announce_pcell(self, pc_ixy, dur=None):
         if self.silence():
@@ -100,7 +101,7 @@ class AudioBeep:
             SlTrace.lg(f"in cell: winsound.Beep({freq},{dur})"
                        f" cell:{cell} at {pc_ixy}", "pos_tracking")
         elif self.out_of_bounds_check(pc_ixy):
-            SlTrace.lg(f"announce_pcell({pc_ixy}) out of bounds")
+            SlTrace.lg(f"announce_pcell({pc_ixy}) out of bounds", "bounds")
         else:
             winsound.Beep(frequency=self.blank_freq, duration=self.blank_dur)
             SlTrace.lg(f"blank: winsound.Beep({self.blank_freq},{self.blank_dur})"

@@ -192,7 +192,7 @@ class AudioDrawWindow:
         canvas = tk.Canvas(mw, width=self.win_width, height=self.win_height)
         canvas.pack()
         self.canvas = canvas
-        self.mw.update()        # Force display
+        self.update()        # Force display
         SlTrace.lg(f"canvas width: {canvas.winfo_width()}")
         SlTrace.lg(f"canvas height: {canvas.winfo_height()}")
         self.visible_figure = visible_figure
@@ -267,7 +267,7 @@ class AudioDrawWindow:
         self.key_str = key_str
         self.do_key_str(key_str)
         self.pos_check()            # Startup possition check loop
-        mw.update()     # Make visible
+        self.update()     # Make visible
 
     def silence(self):
         """ Check if silent mode
@@ -385,7 +385,8 @@ class AudioDrawWindow:
         
         x,y = event.x, event.y
         SlTrace.lg(f"motion x={x} y={y}", "aud_motion")
-        self.move_to(x,y)
+        quiet = self._drawing   # move quietly if drawing
+        self.move_to(x,y, quiet=quiet)
         #self.pos_x = x 
         #self.pos_y = y
         #self.pos_check()
@@ -396,11 +397,17 @@ class AudioDrawWindow:
         """
         x,y = event.x, event.y
         SlTrace.lg(f"motion x={x} y={y}", "aud_motion")
-        self.move_to(x,y)
+        self.move_to(x,y, quiet=True)
         cell = self.get_cell_at()
-        if cell is not None:
-            self.set_visible_cell(cell)
-        self.pos_check()
+        if self._drawing:
+            if cell is None:
+                new_cell = self.create_cell()
+                self.display_cell(new_cell)
+        else:
+            if cell is not None:
+                self.set_visible_cell(cell)
+            self.pos_check()
+        self.update()
 
     def on_button_1_motion(self, event):
         """ Motion will button down is
@@ -777,7 +784,7 @@ class AudioDrawWindow:
 
     def key_exit(self):
         self.speak_text("Quitting Program")
-        self.mw.update()     # Process any pending events
+        self.update()     # Process any pending events
         self.mw.destroy()
         self.mw.quit()
         sys.exit(0)         # Quit  program
@@ -791,7 +798,7 @@ class AudioDrawWindow:
             return      # TBD beep?, red dot?
         
         self.set_visible_cell(cell, val=set_val)
-        self.mw.update()
+        self.update()
 
     def key_talk(self, val=True):
         """ Enable / Disable talking
@@ -1131,7 +1138,7 @@ class AudioDrawWindow:
                     self.pos_rep_str_prev = rep_str
                 
     def pos_check(self, x=None, y=None, force_output=False, with_voice=False):
-        """ Do position checkng followed by report queue processing
+        """ Do position checking followed by report queue processing
         :x: x postion default: current
         :y: y position default: current
         :force_output: force output, flushing current queue
@@ -1250,7 +1257,7 @@ class AudioDrawWindow:
                                       show_points=show_points)
                     cell = self.cells[cell_ixy]
                     cell.mtype = cell.MARK_UNMARKED
-        self.mw.update()
+        self.update()
         min_x, max_y, max_x,min_y = self.drawing_bounding_box()
         if min_x is not None:            
             SlTrace.lg(f"Lower left: min_x:{min_x} min_y:{min_y}")
@@ -1259,7 +1266,7 @@ class AudioDrawWindow:
             x,y = self.get_point_win((min_x,min_y))
             self.pos_check(x=x,  y=y)
         self.grid_path = GridPath(self)
-        self.mw.update()
+        self.update()
         #self.turtle.penup()
                     
     def print_braille(self, title=None):
@@ -1345,18 +1352,22 @@ class AudioDrawWindow:
         
         return left_edge, top_edge, right_edge, bottom_edge
         
-    def set_cursor_pos_win(self, x=0, y=0):
+    def set_cursor_pos_win(self, x=0, y=0, quiet=False):
         """ Set mouse cursor position in win(canvas) coordinates
         :x: x-coordinate (win(canvas))
         :y: y-coordinate (win(canvas))
+        :quiet: Don't announce legal moves
+                default:False
         """
         tu_x,tu_y = self.get_point_tur((x,y))
-        self.set_cursor_pos_tu(x=tu_x, y=tu_y)
+        self.set_cursor_pos_tu(x=tu_x, y=tu_y, quiet=quiet)
 
-    def set_cursor_pos_tu(self, x=0, y=0):
+    def set_cursor_pos_tu(self, x=0, y=0, quiet=False):
         """ Set mouse cursor position in turtle coordinates
         :x: x-coordinate (turtle)
         :y: y-coordinate (turtle)
+        :quiet: Don't announce legal moves
+                default: False
         """
         if not self.running:
             return
@@ -1372,15 +1383,16 @@ class AudioDrawWindow:
         cell_ixiy = self.get_cell_at()
         if cell_ixiy is not None:
             self.cell_history.append(cell_ixiy)
-            if not self._pendown:   # If we're not drawing
+            if not self._drawing:   # If we're not drawing
                 self.mark_cell(cell_ixiy)   # Mark cell if one
 
         self.turtle_screen.update()
         if not self.mw.winfo_exists():
             return 
         
-        self.mw.update()
-        self.pos_check(force_output=True)
+        self.update()
+        if not quiet:
+            self.pos_check(force_output=True)
         self.canvas.bind('<Motion>', self.motion)   # Reenable
 
     def move_cursor(self, x_inc=0, y_inc=0):
@@ -1400,11 +1412,13 @@ class AudioDrawWindow:
             self.set_cell()
         
 
-    def move_to(self, x,y):
+    def move_to(self, x,y, quiet=False):
         """ Move to window loc
         Stop at edges, with message
         :x: turtle x-coordinate
         :y: turtle y-coordinate
+        :quiet: Don't announce legal move
+                default:False
         """
         margin = 10
         top_margin = 20     # HACK to determine top before low level check
@@ -1424,7 +1438,7 @@ class AudioDrawWindow:
             self.pos_report("msg", "At top edge", force_output=True)
             _,y = self.get_point_win((tu_x, self.y_max - top_margin - 1))
                                            
-        self.set_cursor_pos_win(x,y)
+        self.set_cursor_pos_win(x=x, y=y, quiet=quiet)
 
     def move_to_ixy(self, ix=None, iy=None):
         """ Move to grid (cell) ix,iy
@@ -1571,6 +1585,9 @@ class AudioDrawWindow:
         """ Erase cell
         :cell: BrailleCell
         """
+        if cell is None:
+            return
+        
         canvas = self.canvas
         # Remove current items, if any
         if cell.canv_items:
@@ -1598,7 +1615,7 @@ class AudioDrawWindow:
         canv_item = canvas.create_rectangle(cx1,cy1,cx2,cy2,
                                  outline="light gray")
         cell.canv_items.append(canv_item)
-        self.mw.update()
+        self.update()
         color = self.color_str(cell._color)
         if show_points:
             dot_size = 1            # Display cell points
@@ -1616,7 +1633,7 @@ class AudioDrawWindow:
                                                 fill=color)
                 cell.canv_items.append(canv_item)
                 SlTrace.lg(f"canvas.create_oval({x0},{y0},{x1},{y1}, fill={color})", "aud_create")
-            self.mw.update()    # So we can see it now 
+            self.update()    # So we can see it now 
             return
             
         dots = cell.dots
@@ -1650,7 +1667,7 @@ class AudioDrawWindow:
                                             fill=color)
             cell.canv_items.append(canv_item) 
             SlTrace.lg(f"canvas.create_oval({x0},{y0},{x1},{y1}, fill={color})", "aud_create")
-        self.mw.update()
+        self.update()
         pass
                 
     def get_cell_center_win(self, ix, iy):
@@ -2213,10 +2230,12 @@ class AudioDrawWindow:
         """
         return BrailleCell.braille_for_letter(c)
 
-    def create_cell(self, cell_ixy=None, color=None):
+    def create_cell(self, cell_ixy=None, color=None,
+                    show=True):
         """ Create new cell ad cell_xy
         :cell_xy: ix,iy tuple default: current location
         :color: color default: curren color
+        :show: show cell default:True
         :returns: cell
         """
         if cell_ixy is None:
@@ -2229,6 +2248,8 @@ class AudioDrawWindow:
         if cell_ixy in self.cells:
             del self.cells[cell_ixy]
         self.cells[cell_ixy] = bc
+        if show:
+            self.update()
         return bc
             
     def complete_cell(self, cell, color=None):
@@ -2245,6 +2266,10 @@ class AudioDrawWindow:
         self.cells[cell] = bc
         return bc
 
+    def update(self):
+        """ Update display
+        """
+        self.mw.update()
         
 if __name__ == "__main__":
     SlTrace.clearFlags()
