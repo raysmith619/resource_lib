@@ -6,6 +6,10 @@ Supports display of 6-point cells
 on grid_width by grid_height grid
 Supports writing out braille stream
 """
+import os
+import __main__
+import datetime
+
 from math import sin, cos, pi, atan, sqrt
 import turtle as tur
 from tkinter import *
@@ -968,6 +972,7 @@ class BrailleDisplay:
         SlTrace.lg("")
 
     def display(self, braille_window=True, braille_print=True,
+               braille_title=None,
                print_cells=False, title=None,
                points_window=False,
                tk_items=False):
@@ -976,6 +981,8 @@ class BrailleDisplay:
                         default:True
         :braille_print: True - print braille
                         default: True
+        :braille_title: Printed title in braille text output
+                        default: Use default title
         :print_cells: True - print out non-empty cells
                         default: False
         :title: text title to display
@@ -986,8 +993,15 @@ class BrailleDisplay:
         :tk_items: True - display tkinter obj in cell
                     default: False
         """
+        file_base_name = os.path.basename(__main__.__file__)
+        current_time = datetime.datetime.now()
+        self.braille_title = f"File: {file_base_name}"
+        self.braille_title += f" Date: {current_time}"
+        SlTrace.lg(f"braille_title: {self.braille_title}")
         self.find_edges()
         if braille_print or braille_window:
+            if self.braille_title is not None:
+                title = self.braille_title
             if title is None:
                 title = "Audio Feedback -"
             tib = title
@@ -1000,7 +1014,10 @@ class BrailleDisplay:
                 tib += " Display Points"
             self.braille_window(title=tib, show_points=points_window)
         if braille_print:
-            tib = title
+            if self.braille_title is not None:
+                tib = self.braille_title
+            else:
+                tib = title
             if tib is not None and tib.endswith("-"):
                 tib += " Braille Print Output"
             self.aud_win.print_braille(title=tib)

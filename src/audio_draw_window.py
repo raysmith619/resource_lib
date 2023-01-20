@@ -154,6 +154,7 @@ class AudioDrawWindow:
                     such as "up", "down" Note that
                     interpretation is case insensitive
         """
+        self.title = title
         control_prefix = "AudioDraw"
         self.win_width = win_width
         self.win_height = win_height
@@ -174,6 +175,7 @@ class AudioDrawWindow:
         self._show_marked = show_marked
         self._enable_mouse = enable_mouse
         mw = tk.Tk()
+        self.title = title
         mw.title(title)
         self.mw = mw
         #mw.withdraw()
@@ -564,8 +566,11 @@ class AudioDrawWindow:
     def key_write_display(self):
         """ Write display
         """
-        title = 15*"_" + " Braille " + 15*"_"
-        self.print_braille(title)
+        if self.title is not None:
+            title = self.title
+        else:
+            title = 15*"_" + " Braille " + 15*"_"
+        self.print_braille(title=title)
 
     def key_clear_display(self):
         """ Clear display figure
@@ -1272,6 +1277,8 @@ class AudioDrawWindow:
     def print_braille(self, title=None):
         """ Output braille display
         """
+        if title is None:
+            title = self.title
         if title is not None:
             print(title)
         if self.shift_to_edge:
@@ -1299,9 +1306,11 @@ class AudioDrawWindow:
                 line = line.replace(" ", self.blank_char)
             ###print(f"{iy:2}", end=":")
             braille_text += line + "\n"
-            print(line)
-            self.mw.clipboard_clear()
-            self.mw.clipboard_append(braille_text)
+        SlTrace.lg(braille_text)
+        self.mw.clipboard_clear()
+        if title is not None:
+            self.mw.clipboard_append(f"\n{title}\n")
+        self.mw.clipboard_append(braille_text)
 
     def find_edges(self):
         """Find  top, left, bottom, right non-blank edges
