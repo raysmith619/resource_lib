@@ -255,6 +255,7 @@ class AudioDrawWindow:
         self.grid_path = GridPath(self)
         self.running = True         # Set False to stop
         self.mw.focus_force()
+        self.motion_level = 0   # Track possible recursive calls
         self.canvas.bind('<Motion>', self.motion)
         self.canvas.bind('<Button-1>', self.on_button_1)
         self.canvas.bind('<B1-Motion>', self.on_button_1_motion)
@@ -385,6 +386,11 @@ class AudioDrawWindow:
         if not self._enable_mouse:
             return      # Ignore mouse motion 
         
+        if self.motion_level > 1:
+            SlTrace.lg("Motion Recursion: motion_level({self.motion_Level} > 1")
+            self.motion_level = 0
+            return
+        
         x,y = event.x, event.y
         SlTrace.lg(f"motion x={x} y={y}", "aud_motion")
         quiet = self._drawing   # move quietly if drawing
@@ -392,6 +398,7 @@ class AudioDrawWindow:
         #self.pos_x = x 
         #self.pos_y = y
         #self.pos_check()
+        self.motion_level -= 1
         return              # Processed via pos_check()
 
     def on_button_1(self, event):
@@ -478,6 +485,8 @@ class AudioDrawWindow:
             self.key_clear_display()     # Clear display
         elif keyslow == "w":
             self.key_write_display()     # Write(print) out figure
+        elif keyslow == "win_l":
+            pass                        # Ignore Win key
         else:
             self.key_unrecognized(keysym)
 
@@ -1395,7 +1404,7 @@ class AudioDrawWindow:
             if not self._drawing:   # If we're not drawing
                 self.mark_cell(cell_ixiy)   # Mark cell if one
 
-        self.turtle_screen.update()
+        ###self.turtle_screen.update()
         if not self.mw.winfo_exists():
             return 
         

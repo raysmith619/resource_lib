@@ -7,6 +7,7 @@ on grid_width by grid_height grid
 Supports writing out braille stream
 """
 import os
+import re
 import __main__
 import datetime
 
@@ -994,9 +995,15 @@ class BrailleDisplay:
                     default: False
         """
         file_base_name = os.path.basename(__main__.__file__)
-        current_time = datetime.datetime.now()
+        current_time = str(datetime.datetime.now())
+        mt = re.match(r'(.*):\d+\.\d+$', current_time)
+        if mt is not None:
+            current_time = mt.group(1)  # Ignore seconds
+        username = os.getlogin()
         self.braille_title = f"File: {file_base_name}"
-        self.braille_title += f" Date: {current_time}"
+        self.braille_title += f"  Date: {current_time}"
+        if username is not None and username != "":
+            self.braille_title += f"  User: {username}"
         SlTrace.lg(f"braille_title: {self.braille_title}")
         self.find_edges()
         if braille_print or braille_window:
