@@ -4,11 +4,11 @@ Audio Support for audio_window
 """
 import winsound
 from select_trace import SlTrace
+from sinewave_beep import SineWaveBeep
 
 class AudioBeep:
     beep_dur = 200      # Default beep duration
     color_fm = 1000     # Color frequency multiplier
-
     other_freq = color_fm//4
     other_dur = beep_dur*2
     blank_freq = color_fm//3
@@ -37,12 +37,17 @@ class AudioBeep:
         """
         self.awin = awin
         self._silence_checker = silence_checker
+        self.sinewave_beep = SineWaveBeep(awin, silence_checker)
+        self.has_sinewave = self.sinewave_beep.has_sinewave
 
     def announce_can_not_do(self, msg=None, val=None):
         """ Announce we can't do something
         """
         SlTrace.lg("announce_can_not_do()", "bounds")
-        winsound.Beep(frequency=self.color_fm//5, duration=self.beep_dur//3)
+        if self.has_sinewave:
+            self.sinewave_beep.announce("can_not_do")
+        else:    
+            winsound.Beep(frequency=self.color_fm//5, duration=self.beep_dur//3)
 
 
     def silence(self):
@@ -59,8 +64,10 @@ class AudioBeep:
     def on_edge(self):
         if self.silence():
             return
-        
-        winsound.Beep(200, 500) 
+        if self.has_sinewave:
+            self.sinewave_beep.announce("on_edge")
+        else:
+            winsound.Beep(200, 500) 
         
     def announce_pcells(self, pc_ixys, dur=None):
         """ Anounce what we're up against
@@ -68,44 +75,68 @@ class AudioBeep:
         :pc_ixys: list of possible cells ixy
         :dur: max duration of beep default: 200 
         """
-        if dur is None:
-            dur = self.beep_dur
-        for pc_ixy in pc_ixys:
-            self.announce_pcell(pc_ixy, dur)
-            dur //= 2
+        if self.has_sinewave:
+            self.sinewave_beep.announce_pcells(pc_ixys, dur)
+        else:
+            if dur is None:
+                dur = self.beep_dur
+            for pc_ixy in pc_ixys:
+                self.announce_pcell(pc_ixy, dur)
+                dur //= 2
+        
+    def announce_next_pcells(self, pc_ixys, dur=None):
+        """ Announce what we're up against
+        200 ms first cell, 100 ms second cell 50 ms
+        :pc_ixys: list of possible cells ixy
+        :dur: max duration of beep default: 200 
+        """
+        if self.has_sinewave:
+            self.sinewave_beep.announce_next_pcells(pc_ixys, dur)
+        else:
+            if dur is None:
+                dur = self.beep_dur
+            for pc_ixy in pc_ixys:
+                self.announce_pcell(pc_ixy, dur)
+                dur //= 2
 
     def announce_next_pcell(self, pc_ixy):
         """ Announce next cell
         :pc_ixy: (ix,iy) of next cell
         """
-        self.announce_pcell(pc_ixy=pc_ixy,
-                             dur=int(self.beep_dur*.5))
+        if self.has_sinewave:
+            self.sinewave_beep.announce_next_pcell(pc_ixy=pc_ixy)
+        else:    
+            self.announce_pcell(pc_ixy=pc_ixy,
+                                 dur=int(self.beep_dur*.5))
         
     def announce_pcell(self, pc_ixy, dur=None):
         if self.silence():
             return
         
-        if dur is None:
-            dur = self.beep_dur
-        cell = self.awin.get_cell_at_ixy(pc_ixy)
-        if cell is not None:
-            color = cell._color
-            if color not in self.color_freqs:
-                freq = self.color_freqs["OTHER"]
-                dur = self.other_dur
-                SlTrace.lg(f"color:{color} freq:{freq} dur:{dur}",
-                            "pos_tracking")
-            else:
-                freq = self.color_freqs[color]
-            winsound.Beep(freq, dur)
-            SlTrace.lg(f"in cell: winsound.Beep({freq},{dur})"
-                       f" cell:{cell} at {pc_ixy}", "pos_tracking")
-        elif self.out_of_bounds_check(pc_ixy):
-            SlTrace.lg(f"announce_pcell({pc_ixy}) out of bounds", "bounds")
+        if self.has_sinewave:
+            self.sinewave_beep.announce_pcell(pc_ixy, dur=dur)
         else:
-            winsound.Beep(frequency=self.blank_freq, duration=self.blank_dur)
-            SlTrace.lg(f"blank: winsound.Beep({self.blank_freq},{self.blank_dur})"
-                       f" {cell} at {pc_ixy}", "pos_tracking")
+            if dur is None:
+                dur = self.beep_dur
+            cell = self.awin.get_cell_at_ixy(pc_ixy)
+            if cell is not None:
+                color = cell._color
+                if color not in self.color_freqs:
+                    freq = self.color_freqs["OTHER"]
+                    dur = self.other_dur
+                    SlTrace.lg(f"color:{color} freq:{freq} dur:{dur}",
+                                "pos_tracking")
+                else:
+                    freq = self.color_freqs[color]
+                winsound.Beep(freq, dur)
+                SlTrace.lg(f"in cell: winsound.Beep({freq},{dur})"
+                           f" cell:{cell} at {pc_ixy}", "pos_tracking")
+            elif self.out_of_bounds_check(pc_ixy):
+                SlTrace.lg(f"announce_pcell({pc_ixy}) out of bounds", "bounds")
+            else:
+                winsound.Beep(frequency=self.blank_freq, duration=self.blank_dur)
+                SlTrace.lg(f"blank: winsound.Beep({self.blank_freq},{self.blank_dur})"
+                           f" {cell} at {pc_ixy}", "pos_tracking")
             
     def out_of_bounds_check(self, pc_ixy):
         """ Check for out of bounds / illegal location

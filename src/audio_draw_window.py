@@ -20,6 +20,8 @@ from grid_fill_gobble import GridFillGobble
 from grid_path import GridPath
 from braille_cell import BrailleCell
 from audio_beep import AudioBeep
+from Lib.pickle import NONE
+from pygments.lexers import rdf
 
 
 
@@ -101,6 +103,7 @@ class AudioDrawWindow:
         show_marked=False,
         shift_to_edge=True,
         silent=False,
+        look_dist=2,
         menu_str="",
         key_str="",
                  ):
@@ -153,6 +156,8 @@ class AudioDrawWindow:
                     recognition of multi charater symbols
                     such as "up", "down" Note that
                     interpretation is case insensitive
+        :look_dist: Max number of cells to look ahead and report
+                    default: 1
         """
         self.title = title
         control_prefix = "AudioDraw"
@@ -211,7 +216,7 @@ class AudioDrawWindow:
         self.turtle_screen.tracer(0)
         self.turtle.showturtle()
         self.turtle.penup()
-
+        self._cursor_item = None    # position cursor tag
         self.speak_text_lines = []  # pending speak lines (SpeakText)       
         self.escape_pressed = False # True -> interrupt/flush
         self.cells = {}         # Dictionary of cells by (ix,iy)
@@ -265,6 +270,7 @@ class AudioDrawWindow:
         self._pendown = False       # True - move marks
         self.blank_char = blank_char
         self.shift_to_edge = shift_to_edge
+        self.look_dist = look_dist
         self.menu_str = menu_str
         self.do_menu_str(menu_str)
         self.key_str = key_str
@@ -1136,8 +1142,8 @@ class AudioDrawWindow:
             if self._audio_beep and not with_voice:
                 self.audio_beep.announce_pcell((ix,iy))
                 if self.grid_path is not None:
-                    pcell = self.grid_path.get_next_position()
-                    self.audio_beep.announce_next_pcell(pc_ixy=pcell)
+                    pcells = self.grid_path.get_next_positions(max_len=self.look_dist)
+                    self.audio_beep.announce_next_pcells(pc_ixys=pcells)
             else:
                 if self.rept_at_loc or with_voice:
                     rep_str += f" at row{self.grid_height-iy} column{ix+1}"
@@ -1391,8 +1397,8 @@ class AudioDrawWindow:
             return
         
         self.canvas.bind('<Motion>', None)  # Disable motion events
-        self.turtle.showturtle()
         self.turtle.goto(x=x, y=y)
+        self.turtle.showturtle()
         win_x,win_y = self.get_point_win((x,y))
         self.pos_x,self.pos_y = win_x,win_y
         loc_ixiy = self.get_ixy_at()
@@ -1403,6 +1409,7 @@ class AudioDrawWindow:
             self.cell_history.append(cell_ixiy)
             if not self._drawing:   # If we're not drawing
                 self.mark_cell(cell_ixiy)   # Mark cell if one
+        self.cursor_update()
 
         ###self.turtle_screen.update()
         if not self.mw.winfo_exists():
@@ -1471,7 +1478,35 @@ class AudioDrawWindow:
         win_xc,win_yc = self.get_cell_center_win(ix,iy)
         self.move_to(win_xc,win_yc)
 
-                
+    def is_inbounds_ixy(self, *ixy):
+        """ Check if ixy pair is in bounds
+        :ixy: if tuple ix,iy pair default: current location
+              else ix,iy indexes
+            ix: cell x index default current location
+            iy: cell y index default current location
+        :returns: True iff in bounds else False
+        """
+        ix_cur,iy_cur = self.get_ixy_at()
+        if len(ixy) ==  0:
+            ix,iy = ix_cur,iy_cur
+        elif len(ixy) == 1 and isinstance(ixy[0], tuple):
+            ix,iy = ixy[0]
+        elif len(ixy) == 2:
+            ix,iy = ixy
+        else:
+            raise Exception(f"bad is_inbounds_ixy args: {ixy}")
+        if ix is None:
+            ix = ix_cur
+        if iy is None:
+            iy = iy_cur
+        if ix < 0 or ix >= self.cell_xs[-1]:
+            return False
+         
+        if iy < 0 or iy >= self.cell_ys[-1]:
+            return False
+        
+        return True 
+                       
     def set_cell_lims(self):
         """ create cell boundary values bottom through top
          so:
@@ -1612,7 +1647,16 @@ class AudioDrawWindow:
             for item_id in cell.canv_items:
                 self.canvas.delete(item_id)
         cell.canv_items = []
-        
+
+    def display_reposition_hack(self, cx1,cx2,cy1,cy2):
+        """ ###TFD HACK to reposition cell dispaly
+            move x1,x2,y1,y2
+        """
+        cx1 -= 400
+        cx2 -= 400
+        cy1 -= 400
+        cy2 -= 400
+        return cx1,cx2,cy1,cy2
     
     def display_cell(self, cell, show_points=False):
         """ Display cell
@@ -1932,6 +1976,22 @@ class AudioDrawWindow:
     def command_proc(self):
         """ Setup command processing options / action
         """
+
+    def cursor_update(self):
+        """ Update cursor (current position) display
+        """
+        if self._cursor_item is not None:
+            self.canvas.delete(self._cursor_item)
+            self._cursor_item = None
+        rd = 5
+        x0 = self.pos_x-rd
+        x1 = self.pos_x+rd
+        y0 = self.pos_y-rd
+        y1 = self.pos_y+rd
+        x0,x1,y0,y1 = self.display_reposition_hack(x0,x1,y0,y1)
+        self._cursor_item = self.canvas.create_oval(x0,y0,x1,y1,
+                                                    fill="red")
+        self.update()
 
     def on_alt_a(self, event):
         """ keep from key-press

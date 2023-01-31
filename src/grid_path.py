@@ -73,6 +73,32 @@ class GridPath:
                    , "pos_tracking")
         return (ix_new,iy_new)
         
+
+    def get_next_positions(self, max_len=1):
+        """ get likely next moves
+        :max_len: maximum length of look ahead default: 1
+        :returns: list of (ix,iy) of likely next move
+        """
+        pos_history = self.awin.pos_history
+        if len(pos_history) < 2:
+            return []      # Can't tell
+        
+        pos_now = pos_history[-1]
+        ix_now, iy_now = pos_now
+        pos_prev = pos_history[-2]
+        ix_prev, iy_prev = pos_prev
+        ix_chg = ix_now - ix_prev
+        iy_chg = iy_now - iy_prev
+        nexts = []
+        while len(nexts) < max_len:
+            ix_new = ix_now + ix_chg
+            iy_new = iy_now + iy_chg
+            pos_new = (ix_new,iy_new)
+            if not self.awin.is_inbounds_ixy(pos_new):
+                break
+            nexts.append(pos_new)
+            ix_now,iy_now = pos_new
+        return nexts
                 
     def find_predictive_list(self, pred_len=None, det_len=None, 
                              hv_len=None):
