@@ -1141,8 +1141,10 @@ class AudioDrawWindow:
                         "pos_tracking")
             if self._audio_beep and not with_voice:
                 self.audio_beep.announce_pcell((ix,iy))
+                self.update()
                 if self.grid_path is not None:
                     pcells = self.grid_path.get_next_positions(max_len=self.look_dist)
+                    self.update()
                     self.audio_beep.announce_next_pcells(pc_ixys=pcells)
             else:
                 if self.rept_at_loc or with_voice:
@@ -2348,6 +2350,11 @@ class AudioDrawWindow:
         """ Update display
         """
         self.mw.update()
+
+    def update_idle(self):
+        """ Update pending
+        """
+        self.mw.update_idletasks()
         
 if __name__ == "__main__":
     SlTrace.clearFlags()

@@ -299,7 +299,14 @@ class SlTrace:
         for flag in cls.getAllTraceFlags():
             cls.setTraceFlag(flag, level)
 
-    
+    @classmethod
+    def remove_non_ascii(cls, text, repl=""):
+        """ Remove non_ascii
+        :text: original text
+        :repl: replacement for non-ascii characters
+        """
+        msg_str = re.sub(r'[^\x00-\x7f]+',repl, text)
+        return msg_str
 
 
     @classmethod
@@ -343,19 +350,35 @@ class SlTrace:
             return
 
         if dp is None:
-            dp = cls.decpl 
+            if SlTrace.trace("decpl"):
+                dp = 3          # Set loging ts decimal places
+            else:
+                dp = cls.decpl 
         ts = cls.getTs(dp=dp)
         if to_stdout is None:
             to_stdout = cls.logToScreen
         if to_stdout:
             prefix = ""
-            if cls.stdOutHasTs:
+            if cls.stdOutHasTs or SlTrace.trace("stdOutHasTs"):
                 prefix += " " + ts
             try:
-                print(prefix + " " + msg)
+                msg_str = prefix + " " + msg
+                msg_str = cls.remove_non_ascii(msg_str, "???")
+                print(msg_str)
                 sys.stdout.flush()   # Force output
             except:
-                print("Unexpected error:", sys.exc_info()[0])
+                try:
+                    print("Unexpected error in", msg_str)
+                except:
+                    print("Unexpected error: - can't print msg_str")
+                    return
+                
+                info = sys.exc_info()[0]
+                try:
+                    print("Unexpected error:", info, "\n")
+                except:
+                    print("Can't print info\n")
+                pass
             
         if cls.closed:
             return
@@ -365,7 +388,8 @@ class SlTrace:
             return
 
         try:
-            print(" %s %s"  % (ts, msg),
+            msg_str = cls.remove_non_ascii(msg, "???")
+            print(" %s %s"  % (ts, msg_str),
                   file=cls.logWriter)
             cls.logWriter.flush()    # Force output
         except IOError as e:

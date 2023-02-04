@@ -9,43 +9,79 @@ except:
 class PlaySound:
     """ particular sound to be played
     """
-    def __init__(self, swb, pitch, dur=None, volume=None):
+    g_psid = 0          # Unique sound id generator
+    psid = g_psid       # unique id
+
+    @classmethod
+    def pskey(cls, pitch, volume):
+        """ Get unique resource key for possible reuse of SineWave
+        :pitch: sound pitch
+        :volume: sound volume decibel
+        :returns: unique resource key
+        """
+        return (pitch,volume)
+    
+    def __init__(self, swb, pitch, dur=None,
+                 volume=None, pskey=None):
         """ Setup sound to play
         :swb: calling instance of SineWaveBeep
         :pitch: pitch to play
         :dur: duration of play (msec) default:swb.dur_base
         :volume: volume to play (decibels) default:swb.volume_base
+        :pskey: unique key  for PlaySound resource default: see pskey()
         """
+        PlaySound.g_psid += 1        # Bump generator ??? Why not self.g_psid += q
+        self.psid = PlaySound.g_psid # Store unique id
+        
         self.swb = swb
         self.pitch = pitch
+        if dur is None:
+            dur = swb.dur
         self.dur = dur
         self.volume = volume
-        self.sinewave = SineWave(pitch=pitch)
-        
-    def play(self, dur=None, volume=None, dly=None):
+        self.sinewave = SineWave(pitch=pitch, decibels=volume)
+        if pskey is None:
+            pskey = self.pskey(pitch,volume)
+        self.pskey = pskey
+        SlTrace.lg(f"New PlaySound: {self}", "sound")
+
+    def __str__(self):
+        """ String instance for pretty printing
+        """
+        st = f"PlaySound[{self.psid}]:"
+        st += f" pitch:{self.pitch}" 
+        st += f" dur:{self.dur}"
+        st += f" volume:{self.volume}"
+        st += f" pskey:{self.pskey}"
+        return st 
+
+    def update_id(self):
+        """ Update id for reuse
+        """
+        PlaySound.g_psid += 1
+        self.psid = self.g_psid
+        SlTrace.lg(f"Reusing PlaySound: {self}")
+          
+    def play(self, dur=None, dly=None):
         """ Play/replay sound for duration
         :dur: play duration default: initial duration (msec)
         :dly: delay (silence) before sound
         """
+        self.update_pending()
+        if dur is None:     # Setup for delayed
+            dur = self.dur
+        self.dur = dur
+        self.is_active = True
         if dly is not None:
-            if dur is not None:     # Setup for delayed
-                self.dur = dur
-            if volume is not None:
-                self.volume = volume
-            SlTrace.lg(f"delayed: play(pitch: {self.pitch} dly:{dly}", "sound")
-            self.is_active = True
+            SlTrace.lg(f"delaying play: dly:{dly} {self}", "sound")
             self.swb.awin.canvas.after(dly, self.play_sound)
             return
-            
+        
         if dur is None:
             dur = self.dur
-        if volume is None:
-            volume = self.volume
-        self.sinewave.set_volume(volume)
+        SlTrace.lg(f"play( ps:{self}", "sound")
         self.sinewave.play()
-        self.is_active = True
-        SlTrace.lg(f"play(pitch:{self.pitch} dur={dur} volume:{volume}", "sound")
-        self.swb.awin.canvas.after(dur, self.play_stop)
+        self.swb.awin.canvas.after(int(dur), self.play_stop)
 
     def play_sound(self):
         """ Play sound now, possibly delayed
@@ -59,25 +95,32 @@ class PlaySound:
             return 
         
         self.sinewave.stop()
-        SlTrace.lg(f"play_stop pitch={self.pitch}", "sound")
-        self.is_active = False 
+        SlTrace.lg(f"play_stop ps:{self}", "sound")
+        self.swb.free_ps(self)     # Release resource - put on available list
+
+    def update(self):
+        self.swb.update()
+    
+    def update_pending(self):
+        """ Update pending events
+        """
+        self.swb.update_pending()
         
 class SineWaveBeep:
         
 
     cp = 0      # Base pitch
     cpsp = 3    #  pitch color spacing
-    dur_base = 200  # Base duration (msec)
-    dly_between = dur_base//3   # between cells
-    dur_blank = dur_base
-    pitch_blank = cp-1
+    volume_base = -10     # Base volume in decibles
+    dur_base = 100      # Base duration (msec)
+    dur_sep = dur_base//3   # between cells
+    volume_blank = volume_base - 70
+    dur_blank = dur_base//2
     pitch_on_edge = cp+12
     pitch_warning = cp+13
-    volume_base = 0     # Base volume in decibles
     
     color_pitches = {
-        "OTHER" : cp-2*cpsp,
-        "BLANK" : cp-2*cpsp,
+        "OTHER" : cp-3*cpsp,
         "red" : cp+1*cpsp,
         "orange" : cp+2*cpsp,
         "yellow" : cp+3*cpsp,
@@ -92,12 +135,15 @@ class SineWaveBeep:
 
 
 
-    def __init__(self, awin, silence_checker=None):
+    def __init__(self, awin, dur=None, silence_checker=None):
         self.awin = awin
+        if dur is None:
+            dur = self.dur_base
+        self.dur = dur
         self._silence_checker = silence_checker
         self.has_sinewave = has_sinewave
-        self.play_sound_running = {}     # currently playing
-        self.play_sound_available = {}   # stopped - avail
+        self.play_sound_running = {}     # currently playing by psid
+        self.play_sound_available = {}   # free/stopped by pskey - avail lists
         if not self.has_sinewave:
             SlTrace.lg("pysinewave not present - use winsound")
             return
@@ -151,24 +197,32 @@ class SineWaveBeep:
         if dur is None:
             dur = self.dur_base
         if dly is None:
-            dly = self.dly_between
+            dly = self.dur_sep
         self.announce_pcell(pc_ixy=pc_ixy,
                              dur=dur,
                              dly=dly)
 
-    def announce_next_pcells(self, pc_ixys, dur=None, dly=None):
+    def announce_next_pcells(self, pc_ixys, dur=None,
+                             dur_sep=None, delay_before=None,
+                             ):
         """ Announce next cell
         :pc_ixy: (ix,iy) of next cell
-        :dly: delay before each cell default: self.dly_between
+        :dur: length of sound per cell default: self.dur
+        :dur_sep: length of silence between cell default: self.dur_sep
+        :delay_before: delay before first cell's start(now) in series
+                     default: dur+dur_sep (assumes previous cell has same dur)
         """
         if dur is None:
             dur = self.dur_base
-        if dly is None:
-            dly = self.dly_between
-        for pc_ixy in pc_ixys:
-            self.announce_pcell(pc_ixy=pc_ixy,
-                                 dur=dur,
-                                 dly=dly)
+        if dur_sep is None:
+            dur_sep = self.dur_sep
+        if delay_before is None:
+            delay_before = dur + dur_sep
+
+                    
+        for idx, pc_ixy in enumerate(pc_ixys):
+            dly = delay_before if idx == 0 else dur + dur_sep
+            self.announce_pcell(pc_ixy=pc_ixy, dur=dur, dly=dly)
         
     def announce_pcell(self, pc_ixy, dur=None, dly=None):
         """ Announce cell
@@ -194,11 +248,10 @@ class SineWaveBeep:
         elif self.out_of_bounds_check(pc_ixy):
             SlTrace.lg(f"announce_pcell({pc_ixy}) out of bounds", "bounds")
         else:
-            self.play_sound(pitch=self.pitch_blank,
-                             dur=self.dur_blank,
-                             dly=dly)
-            SlTrace.lg(f"blank: play_sound({self.pitch_blank},{self.dur_blank})"
+            SlTrace.lg(f"announce blank: play_blank(dur={self.dur_blank})"
                        f" {cell} at {pc_ixy}", "pos_tracking")
+            self.play_blank(dur=self.dur_blank,
+                             dly=dly)
             
     def out_of_bounds_check(self, pc_ixy):
         """ Check for out of bounds / illegal location
@@ -226,6 +279,23 @@ class SineWaveBeep:
 
         return False        
 
+    def play_blank(self, dur=None, volume=None, dly=None):
+        """ Play sound indicating blank area - non-blocking
+        Treat a blank as white (combo of red, green, blue)
+        :dur: sound duration default:dur_blank (msec)
+        :volume: sound volume in decibels default: volume_blank
+        :dly: delay(silence) before sound
+        """
+        if dur is None:
+            dur = self.dur_blank
+        if volume is None:
+            volume = self.volume_blank
+        SlTrace.lg(f"play_blank:volume:{volume}", "sound")
+        pitches = []
+        for color in ["white","gray","black"]:
+            pitches.append(self.color_pitches[color])
+        self.play_sounds(pitches=pitches, dur=dur, volume=volume, dly=dly)
+
     def play_sound(self,pitch, dur=None, volume=None, dly=None):
         """ Play sound - non-blocking
         :pitch: sound pitch 
@@ -233,21 +303,87 @@ class SineWaveBeep:
         :volume: sound volume in decibels default: volume_base
         :dly: delay(silence) before sound
         """
-        ps = self.get_sound(pitch, dur=dur, volume=volume)
-        ps.play(dly=dly)
+        self.update_pending()
+        SlTrace.lg(f"play_sound:pitch:{pitch} dur:{dur} volume:{volume} ", "sound")
+        ps = self.get_sound(pitch, volume=volume)
+        SlTrace.lg(f"    ps:{ps}", "sound")
+        self.add_ps_to_run(ps)        # Show who's running
+        ps.play(dly=dly, dur=dur)
 
-    def get_sound(self, pitch, dur=None, volume=None):
+    def play_sounds(self,pitches, dur=None, volume=None, dly=None):
+        """ Play sound - non-blocking
+        :pitches: list of sound pitch 
+        :dur: sound duration default:dur_base (msec)
+        :volume: sound volume in decibels default: volume_base
+        :dly: delay(silence) before sound
+        """
+        self.update_pending()
+        SlTrace.lg(f"play_sounds:pitches:{pitches} dur:{dur} volume:{volume} ", "sound")
+        ps_list = []
+        for pitch in pitches:
+            ps = self.get_sound(pitch, volume=volume)
+            SlTrace.lg(f"    ps:{ps}", "sound")
+            ps_list.append(ps)
+        for ps in ps_list:
+            self.add_ps_to_run(ps)        # Show who's running
+            ps.play(dly=dly, dur=dur)
+
+    def add_ps_to_run(self, ps):
+        """ Add PlaySound instance to runing list
+        :ps: PlaySound instance
+        """
+        if ps.psid in self.play_sound_running:
+            SlTrace.lg(f"Attempted adding of running PlaySound[{ps.psid}] - {ps}")
+            return
+        
+        self.play_sound_running[ps.psid] = ps
+        
+
+    def free_ps(self, ps):
+        """ Free PlaySound resource for possible reuse
+        :ps: PlaySound instance
+        """
+        self.update_pending()
+        if ps.psid not in self.play_sound_running:
+            SlTrace.lg(f"Attempted freeing of non-running PlaySound[{ps.psid}] - {ps}")
+            return
+        
+        if ps.pskey in self.play_sound_available:
+            psavails = self.play_sound_available[ps.pskey]
+        else:
+            psavails = self.play_sound_available[ps.pskey] = []
+        psavails.append(ps)
+        del(self.play_sound_running[ps.psid])
+         
+        
+    def get_sound(self, pitch, volume=None):
         """ get or create PlaySound instance
-        :pitch, dur, volume: see PlaySound
+        :pitch, volume: see PlaySound
         :returns: PlaySound 
         """
-        if dur is None:
-            dur = self.dur_base
+        self.update_pending()
         if volume is None:
             volume = self.volume_base 
-        ps_key = (pitch,dur,volume)
-        if ps_key in self.play_sound_available:
-            return self.play_sound_available[ps_key]
+        pskey = PlaySound.pskey(pitch=pitch,volume=volume)
+        if pskey in self.play_sound_available:
+            psavails = self.play_sound_available[pskey]
+            psavail = psavails.pop()
+            SlTrace.lg(f"get_sound reusing: {psavail}", "sound")
+            if len(psavails) == 0:
+                del(self.play_sound_available[pskey]) 
+            return psavail
         
-        return PlaySound(self, pitch=pitch, dur=dur,
-                          volume=volume)
+        ps = PlaySound(self, pitch=pitch,
+                          volume=volume, pskey=pskey)
+        return ps
+       
+    def update(self):
+        """ Update pending events
+        """
+        self.awin.update()    
+
+    def update_pending(self):
+        """ Update pending events
+        """
+        self.awin.update_idle()
+     
