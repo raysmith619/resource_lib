@@ -33,16 +33,48 @@ Also the rectangles surrounding the dots are to further help the visual image.
         Down - Move down one row
         Left - Move left one column
         Right - Move right one column
-        a - Start reporting location
-        l - Start logging talk
-        m - Stop logging talk
-        s - Stop speech
-        t - Start speech
-        x - exit program
-        z - Stop reporting location
-        RETURN - Report location
+        DIGIT - direction (from center):
+           7-up left    8-up       9-up right
+           4-left       5-mark     6-right
+           1-down left  2-down     3-down right
+              0-erase
+        a - move to first(Left if Horizontal, Top if Vertical)
+        b - move to second(Right if Horizontal, Bottom if Vertical)
+        c<roygbiv> - set color red, orange, ...
+        d - pendown - mark when we move
+                
+        g - Go to closest figure
+        m - mark location
+        p - Report/Say current position
+        r - Horizontal position stuff to left, to Right
+        t - Vertical position stuff to Top, to bottom
+        u - penup - move with out marking 
+        w - write out braille
+        z - clear board
+        Escape - flush pending report output
 ```        
-
+## Navigation commands from Navigate pulldown menu
+```
+        Help - list navigate commands (Alt-n) commands
+        h - say this help message
+        a - Start reporting position
+        b - remove 
+        z - stop reporting position
+        e - echo input on
+        o - echo off
+        v - visible cells
+        i - invisible cells
+        r - redraw figure
+        s - silent speech
+        t - talking speech
+        l - log speech
+        m - show marked(even if invisible)
+        n - no log speech
+        p - report position
+        u - audio beep
+        d - no audio beep
+        Escape - flush pending report output
+```
 
 # Program text printout - targeted for the brailler machine
 
