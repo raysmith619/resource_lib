@@ -2,8 +2,11 @@
 #### Added to resource_lib because we thought it might become part of our basic general support
 We attempt to provide simple support for the novice blind programmer.   What is provided is a simple subset of the python turtle command set.  Our programming
 approach is to accept these turtle commands, passing them unmodified to turtle, but additionally producing the following:
+* A text printout which, if directed to a brailler will produce a physical display similar to the braille window.
+  * The "text picture" is also placed in the window clipboard to aid in placing the picture in the embosser program
 * A braille window which displays the expected braille - lower resolution(e.g. 40 x 25 braille cell) rendition of the turtle display
-* A text printout which, if directed to a brailler will produce a physical display similar to the braille window.  
+  * The braille window supports keyboard cursor movements plus audio feedback describing the current cursor position.
+  * The audio feedback can be in spoken text or audio tones to speed the figure contents.  
 
 ## Some recent improvements
 These changes were the results of experiences with and comments from some 8th grade students at the Perkins School for the Blind.
