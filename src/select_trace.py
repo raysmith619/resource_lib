@@ -348,7 +348,8 @@ class SlTrace:
         except:
             print("IOException in lg setupLogging")
             return
-
+        if SlTrace.trace("dbg_sound"):
+            cls.setFlags("stdOutHasTs=True,decpl=True,sound=True,pos_tracking=True")
         if dp is None:
             if SlTrace.trace("decpl"):
                 dp = 3          # Set loging ts decimal places

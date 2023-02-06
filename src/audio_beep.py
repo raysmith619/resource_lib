@@ -109,12 +109,17 @@ class AudioBeep:
             self.announce_pcell(pc_ixy=pc_ixy,
                                  dur=int(self.beep_dur*.5))
         
-    def announce_pcell(self, pc_ixy, dur=None):
+    def announce_pcell(self, pc_ixy, dur=None, dly=None):
+        """ Announce cell
+        :pc_ixy: ix,iy indexes
+        :dur: duration default: pass on down
+        :dly: delay before the sound default: pass on down
+        """
         if self.silence():
             return
         
         if self.has_sinewave:
-            self.sinewave_beep.announce_pcell(pc_ixy, dur=dur)
+            self.sinewave_beep.announce_pcell(pc_ixy, dur=dur, dly=dly)
         else:
             if dur is None:
                 dur = self.beep_dur

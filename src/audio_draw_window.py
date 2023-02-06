@@ -1140,7 +1140,7 @@ class AudioDrawWindow:
             SlTrace.lg(f"from get_ixy_at(): ix:{ix} iy:{iy}",
                         "pos_tracking")
             if self._audio_beep and not with_voice:
-                self.audio_beep.announce_pcell((ix,iy))
+                self.audio_beep.announce_pcell((ix,iy), dly=0)
                 self.update()
                 if self.grid_path is not None:
                     pcells = self.grid_path.get_next_positions(max_len=self.look_dist)
@@ -1905,6 +1905,7 @@ class AudioDrawWindow:
         if cell is not None:
             cell.color_cell(color=color)
             self.display_cell(cell)
+        self.update()
         return cell
                 
     def color_str(self, color=None):

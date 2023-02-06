@@ -1,5 +1,7 @@
 # sinewave_beep.py    26Jan2023  crs, encapsulate pysinewave
 from select_trace import SlTrace
+import datetime
+
 try:
     from pysinewave import SineWave
     has_sinewave = True 
@@ -35,6 +37,8 @@ class PlaySound:
         
         self.swb = swb
         self.pitch = pitch
+        self.time_play_start = None      # Play start time, if any 
+        self.time_play_stop = None       # Play stop time, if any
         if dur is None:
             dur = swb.dur
         self.dur = dur
@@ -67,22 +71,29 @@ class PlaySound:
         :dur: play duration default: initial duration (msec)
         :dly: delay (silence) before sound
         """
-        self.update_pending()
+        self.update()
         if dur is None:     # Setup for delayed
             dur = self.dur
         self.dur = dur
         self.is_active = True
-        if dly is not None:
+        if dly is not None and dly != 0:
             SlTrace.lg(f"delaying play: dly:{dly} {self}", "sound")
             self.swb.awin.canvas.after(dly, self.play_sound)
+            self.update()
             return
         
-        if dur is None:
-            dur = self.dur
+        self.play_it()
+        
+    def play_it(self):
+        """ direct play
+        """
         SlTrace.lg(f"play( ps:{self}", "sound")
+        self.time_play_start = datetime.datetime.now()
+        self.time_play_stop = None
         self.sinewave.play()
-        self.swb.awin.canvas.after(int(dur), self.play_stop)
-
+        self.swb.awin.canvas.after(int(self.dur), self.play_stop)
+        self.update()        
+        
     def play_sound(self):
         """ Play sound now, possibly delayed
         """
@@ -93,9 +104,10 @@ class PlaySound:
         """
         if not self.is_active:
             return 
-        
+        self.time_play_stop = datetime.datetime.now()
+        play_dur = (self.time_play_stop - self.time_play_start).total_seconds()
+        SlTrace.lg(f"play_stop play_dur:{play_dur:.3} ps:{self}", "sound")
         self.sinewave.stop()
-        SlTrace.lg(f"play_stop ps:{self}", "sound")
         self.swb.free_ps(self)     # Release resource - put on available list
 
     def update(self):
@@ -112,8 +124,9 @@ class SineWaveBeep:
     cp = 0      # Base pitch
     cpsp = 3    #  pitch color spacing
     volume_base = -10     # Base volume in decibles
-    dur_base = 100      # Base duration (msec)
+    dur_base = 500      # Base duration (msec)
     dur_sep = dur_base//3   # between cells
+    dur_sep = 50   # between cells
     volume_blank = volume_base - 70
     dur_blank = dur_base//2
     pitch_on_edge = cp+12
@@ -190,7 +203,7 @@ class SineWaveBeep:
             self.announce_pcell(pc_ixy, dur)
             ###dur //= 2
 
-    def announce_next_pcell(self, pc_ixy,dur=None, dly=None):
+    def announce_next_pcell(self, pc_ixy, volume=None, dur=None, dly=None):
         """ Announce next cell
         :pc_ixy: (ix,iy) of next cell
         """
@@ -202,16 +215,20 @@ class SineWaveBeep:
                              dur=dur,
                              dly=dly)
 
-    def announce_next_pcells(self, pc_ixys, dur=None,
+    def announce_next_pcells(self, pc_ixys, volume=None, dur=None,
                              dur_sep=None, delay_before=None,
                              ):
         """ Announce next cell
         :pc_ixy: (ix,iy) of next cell
+        :volume: sound volume default: self.volume_base
+                reduced by 10db each cell
         :dur: length of sound per cell default: self.dur
         :dur_sep: length of silence between cell default: self.dur_sep
         :delay_before: delay before first cell's start(now) in series
                      default: dur+dur_sep (assumes previous cell has same dur)
         """
+        if volume is None:
+            volume = self.volume_base
         if dur is None:
             dur = self.dur_base
         if dur_sep is None:
@@ -221,17 +238,23 @@ class SineWaveBeep:
 
                     
         for idx, pc_ixy in enumerate(pc_ixys):
-            dly = delay_before if idx == 0 else dur + dur_sep
-            self.announce_pcell(pc_ixy=pc_ixy, dur=dur, dly=dly)
+            ndx = idx+1
+            dly = delay_before if idx == 0 else delay_before + idx*(dur_sep+dur)
+            self.announce_pcell(pc_ixy=pc_ixy, volume=volume-ndx*10, dur=dur, dly=dly)
         
-    def announce_pcell(self, pc_ixy, dur=None, dly=None):
+    def announce_pcell(self, pc_ixy, volume=None, dur=None, dly=None):
         """ Announce cell
         :dly: delay before the sound
         """
         if self.silence():
             return
+        
+        if volume is None:
+            volume = self.volume_base
         if dur is None:
             dur = self.dur_base
+        self.update()
+        SlTrace.lg(f"announce_pcell({pc_ixy}, volume={volume} dur={dur}, dly={dly}", "sound")
         cell = self.awin.get_cell_at_ixy(pc_ixy)
         if cell is not None:
             color = cell._color
@@ -242,8 +265,8 @@ class SineWaveBeep:
                             "pos_tracking")
             else:
                 pitch = self.color_pitches[color]
-            self.play_sound(pitch=pitch, dur=dur, dly=dly)
-            SlTrace.lg(f"in cell: winsound.Beep({pitch},{dur})"
+            self.play_sound(pitch=pitch, volume=volume, dur=dur, dly=dly)
+            SlTrace.lg(f"in cell: play_sound(pitch={pitch}, dur={dur}, dly={dly})"
                        f" cell:{cell} at {pc_ixy}", "pos_tracking")
         elif self.out_of_bounds_check(pc_ixy):
             SlTrace.lg(f"announce_pcell({pc_ixy}) out of bounds", "bounds")
@@ -303,7 +326,7 @@ class SineWaveBeep:
         :volume: sound volume in decibels default: volume_base
         :dly: delay(silence) before sound
         """
-        self.update_pending()
+        self.update()
         SlTrace.lg(f"play_sound:pitch:{pitch} dur:{dur} volume:{volume} ", "sound")
         ps = self.get_sound(pitch, volume=volume)
         SlTrace.lg(f"    ps:{ps}", "sound")
@@ -317,7 +340,7 @@ class SineWaveBeep:
         :volume: sound volume in decibels default: volume_base
         :dly: delay(silence) before sound
         """
-        self.update_pending()
+        self.update()
         SlTrace.lg(f"play_sounds:pitches:{pitches} dur:{dur} volume:{volume} ", "sound")
         ps_list = []
         for pitch in pitches:
