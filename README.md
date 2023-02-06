@@ -20,13 +20,9 @@ characters, while not being "blank" are single dot braille constructs, and are e
 ![IDLE program window](Docs/braille_turtle_spokes_pgm.PNG)
 # turtle display window
 ![turtle screen shot](Docs/braille_turtle_spokes_td.PNG)
-# Braille Window - An implementation aid, providing the likely braille view
+# turtle display window - audio feedback
 Note that the color of the braille dots is for the implementer's view to empasize the color.
 Also the rectangles surrounding the dots are to further help the visual image.
-![braille window](Docs/braille_turtle_spokes_bw.PNG)
-
-
-# turtle display window - audio feedback
 ![turtle screen shot](Docs/braille_window_audio.PNG)
 # Braille Window - audio feedback - An implementation aid, providing the likely braille view
 ## Keyboard display/positioning commands
