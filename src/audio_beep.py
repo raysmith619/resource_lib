@@ -37,7 +37,7 @@ class AudioBeep:
         """
         self.awin = awin
         self._silence_checker = silence_checker
-        self.sinewave_beep = SineWaveBeep(awin, silence_checker)
+        self.sinewave_beep = SineWaveBeep(awin, silence_checker=silence_checker)
         self.has_sinewave = self.sinewave_beep.has_sinewave
 
     def announce_can_not_do(self, msg=None, val=None):

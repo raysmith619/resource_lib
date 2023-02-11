@@ -42,12 +42,15 @@ class PlaySound:
         if dur is None:
             dur = swb.dur
         self.dur = dur
+        if not isinstance(dur, (int, float)):
+            SlTrace.lg(f"bad type for dur {self.dur}:{type(self.dur)}")
+            pass
         self.volume = volume
         self.sinewave = SineWave(pitch=pitch, decibels=volume)
         if pskey is None:
             pskey = self.pskey(pitch,volume)
         self.pskey = pskey
-        SlTrace.lg(f"New PlaySound: {self}", "sound")
+        SlTrace.lg(f"New : {self}", "sound")
 
     def __str__(self):
         """ String instance for pretty printing
@@ -74,6 +77,10 @@ class PlaySound:
         self.update()
         if dur is None:     # Setup for delayed
             dur = self.dur
+        if not isinstance(dur, (int, float)):
+            self.sinewave.stop()
+            SlTrace.lg(f"bad type for dur {self.dur}:{type(self.dur)}")
+            pass
         self.dur = dur
         self.is_active = True
         if dly is not None and dly != 0:
@@ -91,13 +98,18 @@ class PlaySound:
         self.time_play_start = datetime.datetime.now()
         self.time_play_stop = None
         self.sinewave.play()
+        if not isinstance(self.dur, (int, float)):
+            SlTrace.lg(f"bad type for self.dur {self.dur}:{type(self.dur)}")
+            self.sinewave.stop()
+            return
+        
         self.swb.awin.canvas.after(int(self.dur), self.play_stop)
         self.update()        
         
     def play_sound(self):
         """ Play sound now, possibly delayed
         """
-        self.play()
+        self.play_it()
          
     def play_stop(self):
         """ Stop playing - called after duration of play
@@ -125,6 +137,7 @@ class SineWaveBeep:
     cpsp = 3    #  pitch color spacing
     volume_base = -10     # Base volume in decibles
     dur_base = 500      # Base duration (msec)
+    dur_other = dur_base*2
     dur_sep = dur_base//3   # between cells
     dur_sep = 50   # between cells
     volume_blank = volume_base - 70
@@ -142,8 +155,8 @@ class SineWaveBeep:
         "indigo" : cp+6*cpsp,
         "violet" : cp+7*cpsp,
         "black" : cp+8*cpsp,
-        "white" : cp+9*cpsp,
-        "gray" : cp+10*cpsp,
+        "gray" : cp+9*cpsp,
+        "white" : cp+10*cpsp,
         }
 
 

@@ -16,12 +16,10 @@ from datetime import datetime
 
 from select_trace import SlTrace
 from trace_control_window import TraceControlWindow
+from audio_beep import AudioBeep
 from grid_fill_gobble import GridFillGobble
 from grid_path import GridPath
 from braille_cell import BrailleCell
-from audio_beep import AudioBeep
-from Lib.pickle import NONE
-from pygments.lexers import rdf
 
 
 
