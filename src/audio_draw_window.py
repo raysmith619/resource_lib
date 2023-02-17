@@ -75,17 +75,13 @@ class AudioDrawWindow:
     NAV_COLOR_CHANGE = "color_change_cmd"
     
     
-    # direction for digit pad
-    digit_dir = {"7":(-1,1),  "8":(0,1),  "9":(1,1),
-                 "4":(-1,0),  "5":(0,0),  "6":(1,0),
-                 "1":(-1,-1), "2":(0,-1), "3":(1,-1)}
 
     # letter keys for color change
     color_letters = {"r": "red", "o": "orange", "y": "yellow",
                      "g": "green", "b": "blue", "i": "indigo",
                      "v": "violet"}
     
-    def __init__(self, title,
+    def __init__(self, title=None,
         win_width=800, win_height=800,
         grid_width=40, grid_height=25,
         x_min=None, y_min=None,
@@ -104,6 +100,7 @@ class AudioDrawWindow:
         look_dist=2,
         menu_str="",
         key_str="",
+        iy0_is_top=False,
                  ):
         """ Setup audio window
         :win_width: display window width in pixels
@@ -156,7 +153,21 @@ class AudioDrawWindow:
                     interpretation is case insensitive
         :look_dist: Max number of cells to look ahead and report
                     default: 1
+        :iy0_is_top: True->cell y index increases downward from top (0)
+                    default: False y index increases upward from bottom (0)
         """
+        
+        # direction for digit pad
+        self.iy0_is_top = iy0_is_top
+        y_up = -1 if self.iy0_is_top else 1
+        y_down = 1 if self.iy0_is_top else -1
+        self.digit_dir = {"7":(-1,y_up),   "8":(0,y_up),   "9":(1,y_up),
+                          "4":(-1,0),      "5":(0,0),      "6":(1,0),
+                          "1":(-1,y_down), "2":(0,y_down), "3":(1,y_down)}
+        
+        
+        if title is None:
+            title = "AudioDrawWindow"
         self.title = title
         control_prefix = "AudioDraw"
         self.win_width = win_width
@@ -412,6 +423,11 @@ class AudioDrawWindow:
         SlTrace.lg(f"motion x={x} y={y}", "aud_motion")
         self.move_to(x,y, quiet=True)
         cell = self.get_cell_at()
+        if SlTrace.trace("mouse_cell"):
+            SlTrace.lg(f"x:{x},y:{y} pos_xy:{self.pos_x}, {self.pos_y}"
+                       f" win x,y:{self.get_point_win()}"
+                       f" tur x,y:{self.get_point_tur()}"
+                       f" ixy:{self.get_ixy_at()}  cell: {cell}")
         if self._drawing:
             if cell is None:
                 new_cell = self.create_cell()
@@ -789,10 +805,12 @@ class AudioDrawWindow:
         self.speak_text(help_str)
         
     def key_up(self):
-        self.move_cursor(y_inc=1)
+        y_inc = -1 if self.iy0_is_top else 1
+        self.move_cursor(y_inc=y_inc)
     
     def key_down(self):
-        self.move_cursor(y_inc=-1)
+        y_inc = 1 if self.iy0_is_top else -1
+        self.move_cursor(y_inc=y_inc)
         
     def key_left(self):
         self.move_cursor(x_inc=-1)
@@ -1003,11 +1021,13 @@ class AudioDrawWindow:
                     N blanks of blank
         Currently left == neg x, right == pos x
         """
+        dir_up = (0,-1) if self.iy0_is_top else (0,1)
+        dir_down = (0,1) if self.iy0_is_top else (0,-1)
         pos_ixy = self.get_ixy_at()
         msg_top, loc_top_end = self.loc_list_target(pos_ixy,
-                                         name="above", dir=(0,1))
+                                         name="above", dir=dir_up)
         msg_bottom, loc_bottom_end = self.loc_list_target(pos_ixy,
-                                         name="below", dir=(0,-1))
+                                         name="below", dir=dir_down)
         self._loc_list_first = loc_top_end
         self._loc_list_second = loc_bottom_end
 
@@ -1263,11 +1283,16 @@ class AudioDrawWindow:
              
     def draw_cells(self, cells=None, show_points=False):
         """ Display braille cells on canvas
-        :cells: cells to draw
+        :cells: list or dictionary cells to draw
         :show_points: instead of braille, show sample points
         """
         if cells is None:
             cells = self.cells
+        if isinstance(cells,list):
+            cells_dict = {}     # Convert list to dictionary
+            for cell in cells:
+                cells_dict[(cell.ix,cell.iy)] = cell
+            cells = cells_dict
         self.cells = cells      # Copy
         for ix in range(self.grid_width):
             for iy in range(self.grid_height):
@@ -1499,10 +1524,10 @@ class AudioDrawWindow:
             ix = ix_cur
         if iy is None:
             iy = iy_cur
-        if ix < 0 or ix >= self.cell_xs[-1]:
+        if ix < 0 or ix >= len(self.cell_xs):
             return False
          
-        if iy < 0 or iy >= self.cell_ys[-1]:
+        if iy < 0 or iy >= len(self.cell_ys):
             return False
         
         return True 
@@ -1512,8 +1537,13 @@ class AudioDrawWindow:
          so:
              cell_xs[0] == left edge
              cell_xs[grid_width] == right edge
-             cell_ys[0] == bottom edge
-             cell_ys[grid_height] == top edge
+             if iy0_is_top:
+                 cell_ys[0] == top edge
+                 cell_ys[grid_height] == bottom edge
+             else:  Default
+                 cell_ys[0] == bottom edge
+                 cell_ys[grid_height] == top edge
+             
         """
          
         self.cell_xs = []
@@ -1522,10 +1552,15 @@ class AudioDrawWindow:
         for i in range(self.grid_width+1):
             x = int(self.x_min + i*self.win_width/self.grid_width)
             self.cell_xs.append(x)
-        for i in range(self.grid_height+1):
-            y = int(self.y_min + i*self.win_height/self.grid_height)
-            self.cell_ys.append(y)
-
+        if self.iy0_is_top:
+            for i in reversed(range(self.grid_height+1)):
+                y = int(self.y_min + i*self.win_height/self.grid_height)
+                self.cell_ys.append(y)
+        else:
+            for i in range(self.grid_height+1):
+                y = int(self.y_min + i*self.win_height/self.grid_height)
+                self.cell_ys.append(y)
+            
     def get_ix_min(self):
         """ get minimum ix on grid
         :returns: min ix
@@ -1587,14 +1622,14 @@ class AudioDrawWindow:
         min_dist_x = 0      # x,y offset at min dist
         min_dist_y = 0
         pt_ix, pt_iy = pt_ixiy 
-        for cell_ixiy in self.cells:
-            cell_ix, cell_iy = cell_ixiy
+        for cell_ixy in self.cells:
+            cell_ix, cell_iy = cell_ixy
             dist = sqrt((cell_ix-pt_ix)**2 + (cell_iy-pt_iy)**2)
             if min_dist is None or dist < min_dist:
                 min_dist = dist
                 min_dist_x = cell_ix - pt_ix
                 min_dist_y = cell_iy - pt_iy
-                cell_closest = self.cells[cell_ixiy]    # Closest so far
+                cell_closest = self.cells[cell_ixy]    # Closest so far
         if min_dist <= 0:
             min_dist = .001     # Saving 0 for in display element
         return min_dist, min_dist_x, min_dist_y, cell_closest
@@ -1612,17 +1647,24 @@ class AudioDrawWindow:
         _, _, max_x, min_y = self.get_cell_rect_tur(max_ix,min_iy)
         return min_x,max_y, max_x, min_y
     
-    def drawing_bounding_box_ci(self):
-        """ cell indexes which bound displayed figure
+    def drawing_bounding_box_ci(self, cells=None):
+        """ cell indexes which bound the list of cells
+        :cells: list of cells or (ix,iy) tuples
+                default: list of all cells in figure
         :returns: min_ix, max_iy, max_ix, min_iy  (upper left) (lower right)
                     None,None,None,None if no figure
         """
-        if not hasattr(self, "cells"):
-            return None,None,None,None         # Not yet setup
+        if cells is None:
+            if not hasattr(self, "cells"):
+                return None,None,None,None         # Not yet setup
+            cells = []
+            for cell in self.cells.items():
+                cells.append(cell)
+                 
         
         min_ix, max_iy, max_ix,min_iy = None,None,None,None
-        for cell_ixiy in self.cells:
-            cell_ix, cell_iy = cell_ixiy
+        for cell_ixy in self.cells:
+            cell_ix, cell_iy = cell_ixy
             if min_ix is None or cell_ix < min_ix:
                 min_ix = cell_ix
             if max_ix is None or cell_ix > max_ix:
@@ -1669,7 +1711,7 @@ class AudioDrawWindow:
         ix = cell.ix
         iy = cell.iy 
         cx1,cy1,cx2,cy2 = self.get_cell_rect_win(ix=ix, iy=iy)
-        ###TFD HACK to reposition cell dispaly
+        ###TFD HACK to reposition cell display
         cx1 -= 400
         cx2 -= 400
         cy1 -= 400
@@ -1780,9 +1822,14 @@ class AudioDrawWindow:
             iy = max_iy-1
         x1 = self.cell_xs[ix]
         x2 = self.cell_xs[ix+1]
-        y1 = self.cell_ys[iy]
-        #SlTrace.lg(f"get_cell_rect_tur:iy={iy} {len(self.cell_ys)}")
-        y2 = self.cell_ys[iy+1]
+        if self.iy0_is_top:
+            y1 = self.cell_ys[iy+1]
+            y2 = self.cell_ys[iy]
+        else:
+            y1 = self.cell_ys[iy]
+            #SlTrace.lg(f"get_cell_rect_tur:iy={iy} {len(self.cell_ys)}")
+            y2 = self.cell_ys[iy+1]
+            
         return (x1,y1,x2,y2)
         
         
@@ -1799,7 +1846,11 @@ class AudioDrawWindow:
             pt = self.get_point_tur()
         tu_x,tu_y = pt
         ix = int((tu_x-self.x_min)/self.win_width*self.grid_width)
-        iy = int((tu_y-self.y_min)/self.win_height*self.grid_height)
+        if self.iy0_is_top:
+            iy = int((self.y_max-tu_y)/self.win_height*self.grid_height)
+        else:
+            iy = int((tu_y-self.y_min)/self.win_height*self.grid_height)
+            
         if ix < self.get_ix_min():
             ix = self.get_ix_min()
         if ix > self.get_ix_max():
@@ -1999,6 +2050,11 @@ class AudioDrawWindow:
         """
         SlTrace.lg("on_alt_a")
 
+    def on_alt_m(self, event):
+        """ keep from key-press
+        """
+        SlTrace.lg("on_alt_m")
+
     def on_alt_n(self, event):
         """ keep from key-press
         """
@@ -2018,7 +2074,10 @@ class AudioDrawWindow:
         self.mw.bind('<Alt-d>', self.on_alt_f)  # Keep this from key cmds
         self.mw.bind('<Alt-f>', self.on_alt_f)  # Keep this from key cmds
         self.mw.bind('<Alt-n>', self.on_alt_n)  # Keep this from key cmds
+        self.mw.bind('<Alt-M>', self.on_alt_m)  # Keep this from key cmds
+        self.mw.bind('<Alt-m>', self.on_alt_m)  # Keep this from key cmds
         self.mw.bind('<Alt-N>', self.on_alt_n)  # Keep this from key cmds
+        self.mw.bind('<Alt-n>', self.on_alt_n)  # Keep this from key cmds
         
         menubar = tk.Menu(self.mw)
         self.menubar = menubar      # Save for future reference
@@ -2037,6 +2096,10 @@ class AudioDrawWindow:
         filemenu.add_separator()
         filemenu.add_command(label="Exit", command=self.pgm_exit, underline=1)
         menubar.add_cascade(label="File", menu=filemenu)
+        
+        mag_menu = tk.Menu(menubar, tearoff=0)
+        self.mag_menu_setup(mag_menu)
+        menubar.add_cascade(label="Magnify", menu=mag_menu)
         
         nav_menu = tk.Menu(menubar, tearoff=0)
         self.nav_menu_setup(nav_menu)
@@ -2105,6 +2168,90 @@ class AudioDrawWindow:
         """ Stop/disable drawing
         """
         self._drawing = False 
+
+    """ Magnify support package
+    """
+        
+    def mag_menu_setup(self, mag_menu):
+        self.mag_menu = mag_menu
+        self.mag_dispatch = {}
+        self.mag_menu_add_command(label="Help", command=self.mag_help,
+                             underline=0)
+        self.mag_menu_add_command(label="Select", command=self.mag_select,
+                             underline=0)
+        self.mag_menu_add_command(label="Expand Right", command=self.mag_expand_right,
+                             underline=7)
+        self.mag_menu_add_command(label="Expand Top", command=self.mag_expand_top,
+                             underline=7)
+        self.mag_menu_add_command(label="View", command=self.mag_view_select,
+                             underline=0)
+         
+    def mag_menu_add_command(self, label, command, underline):
+        """ Setup menu commands, setup dispatch for direct call
+        :label: add_command label
+        :command: command to call
+        :underline: short-cut index in label
+        """
+        self.mag_menu.add_command(label=label, command=command,
+                                  underline=underline)
+        menu_de = MenuDisp(label=label, command=command,
+                              underline=underline)
+        
+        self.mag_dispatch[menu_de.shortcut] = menu_de
+
+    def mag_direct_call(self, short_cut):
+        """ Short-cut call direct to option
+        :short_cut: one letter option for call 
+        """
+        if short_cut not in self.mag_dispatch:
+            raise Exception(f"mag option:{short_cut} not recognized")
+        magde = self.mag_dispatch[short_cut]
+        magde.command()
+
+    """ Magnify menu commands
+    """
+                           
+    def mag_help(self):
+        """ Help for Alt-m commands
+        """
+        """ Help - list command (Alt-m) commands
+        """
+        help_str = """
+        Help - list magnify commands (Alt-m) commands
+        h - say this help message
+        t - expand magnify selected region left/right
+        s - select/mark magnify region
+        t - expand magnify selected region up/down top/bottom
+        v - view region (make new window)
+        """
+        self.speak_text(help_str)
+        
+    def mag_select(self):
+        """ Select magnification region
+            -rectangle including all figure cells traveled so far
+        """
+        
+
+    def mag_expand_right(self):
+        """ Expand selection region right and left by 20%
+        """
+    
+    def mag_expand_top(self):
+        """ Expand selection region top and bottom by 20%
+        """
+        
+    def mag_view_select(self):
+        """ View selected region, creating a new AudioDrawWindow
+        """
+        
+        
+    """ End of Magnify support
+    """
+
+
+
+    """ Navigate support package
+    """
         
     def nav_menu_setup(self, nav_menu):
         self.nav_menu = nav_menu
@@ -2174,6 +2321,7 @@ class AudioDrawWindow:
         navde = self.nav_dispatch[short_cut]
         navde.command()
                            
+                           
     def nav_help(self):
         """ Help for Alt-n commands
         """
@@ -2201,17 +2349,6 @@ class AudioDrawWindow:
         Escape - flush pending report output
         """
         self.speak_text(help_str)
-
-    def announce_can_not_do(self, msg=None, val=None):
-        """ Announce we can't do something
-        """
-        if self.audio_beep:
-            self.audio_beep.announce_can_not_do(msg=msg, val=val)
-
-    def announce_location(self):
-        """ Announce current / cursor location
-        """
-        self.pos_check(force_output=True, with_voice=True) 
         
     def nav_enable_mouse(self):
         self._enable_mouse = True 
@@ -2285,6 +2422,16 @@ class AudioDrawWindow:
         """ Show marked "invisible" cells
         """
         self._show_marked = val
+
+    """ End of Navigate support
+    """
+
+    def announce_can_not_do(self, msg=None, val=None):
+        """ Announce we can't do something
+        """
+        if self.audio_beep:
+            self.audio_beep.announce_can_not_do(msg=msg, val=val)
+
     
     def braille_for_color(self, color):
         """ Return dot list for color
