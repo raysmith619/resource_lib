@@ -86,7 +86,7 @@ class BrailleCell:
         if mtype is None:
             mtype = BrailleCell.MARK_SELECTED
         self.mtype = mtype
-        if color is None:
+        if color is None or len(color)==0:
             color = "black"
         if dots is None:
             char = color[0]

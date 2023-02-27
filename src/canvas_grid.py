@@ -12,10 +12,13 @@ Provide list of canvas items overlapping a region (display cell rectangle).
 
 """
 import tkinter as tk
+import sys
+import os
 
 from select_trace import SlTrace
 from braille_error import BrailleError
 from braille_cell import BrailleCell
+from magnify_info import MagnifySelect, MagnifyInfo, MagnifyDisplayRegion
 from audio_draw_window import AudioDrawWindow
     
 class CanvasGrid(tk.Canvas):
@@ -32,9 +35,9 @@ class CanvasGrid(tk.Canvas):
         :g_ncols: Number of columns default: 40
         """
         self.item_samples = {}      # For incremental presentation  via show_item
-        
+        self.audio_wins = []        # window list for access
         super(CanvasGrid,self).__init__(master=master, **kwargs)
-        self.pack()
+        self.pack(expand=True, fill=tk.BOTH)
         self.master.update()
         if g_xmin is None:
             g_xmin = 0
@@ -110,25 +113,54 @@ class CanvasGrid(tk.Canvas):
         """
         self.grid_xs, self.grid_ys = self.get_grid_lims()
 
-    def create_audio_window(self, xmin=None, xmax=None, ymin=None, ymax=None,
-                 nrows=None, ncols=None):
+    def create_audio_window(self, title=None, xmin=None, xmax=None, ymin=None, ymax=None,
+                 nrows=None, ncols=None, mag_info=None, pgmExit=None):
         """ Create AudioDrawWindow to navigate canvas from the section
+        :title: optinal title
                 region (xmin,ymin, xmax,ymax) with nrows, ncols
-        :xmin,xmax,ymin,ymax, ncols, nrows: see get_grid_lims()
+        :xmin,xmax,ymin,ymax,: see get_grid_lims()
                         default: CanvasGrid instance values
+        :nrows,ncols: grid size for scanning
+                default: if mag_info present: mag_info.mag_nrows, .mag_ncols
+        :mag_info: magnification info (MagnifyInfo)
+                    default: None
+        :pgm_exit: function to call upon exit request 
         :returns: AudioDrawWindow instance
         """
+        if pgmExit is None:
+            pgmExit= self.exit 
+
+        if mag_info is None:
+            mag_info = self.create_magnify_info(x_min=xmin, y_min=ymin,
+                                          x_max=xmax, y_max=ymax,
+                                          ncols=ncols, nrows=nrows)
+            
+        if nrows is None:
+            nrows = mag_info.mag_nrows
+        if ncols is None:
+            ncols = mag_info.mag_ncols    
         ixy_items = self.get_canvas_items(xmin=xmin, xmax=xmax,
                                           ymin=ymin,ymax=ymax,
                                           ncols=ncols,nrows=nrows)
+        # For debugging / analysis
+        xs,ys = self.get_grid_lims(xmin=xmin, xmax=xmax, ymin=ymin,ymax=ymax,
+                                   ncols=ncols,nrows=nrows)
+        
         braille_cells = []
         for ixy_item in ixy_items:
             (ix,iy), ids = ixy_item
+            if SlTrace.trace("win_items"):
+                SlTrace.lg(f"create_audio_window:{ix},{iy}: ids:{ids}")
+                for canvas_id in ids:
+                    self.show_canvas_item(canvas_id)
             color = self.item_to_color(item_ids=ids)
             bcell = BrailleCell(ix=ix, iy=iy, color=color)
-            braille_cells.append(bcell)    
-        adw = AudioDrawWindow(iy0_is_top=True)
+            braille_cells.append(bcell)
+        adw = AudioDrawWindow(title=title, iy0_is_top=True, mag_info=mag_info, pgmExit=pgmExit,
+                              win_x_min=self.g_xmin, win_y_min=self.g_ymin)
         adw.draw_cells(cells=braille_cells)
+        self.audio_wins.append(adw)     # Store list for access
+        return adw
 
     def item_to_color(self, item_ids):
         """ Get color string given item id
@@ -196,45 +228,6 @@ class CanvasGrid(tk.Canvas):
             self.grid_tag = None
             self.update()
 
-
-    def item_desc(self, item, all_options=False):
-        """ REPLACED with show_canvas_item
-            display changing values for canvas item
-            incremental for each item type, that is unless all_options is True,
-            only changes to an option for the item type are displayed
-            A running dictionary of type based option values is kept
-            for each instance of CanvasGrid
-        :item: item id
-        :all_options: True - absolute - all options are displayed
-                    default: False - show only changed options
-        :returns: string describing canvas item
-        """
-        item_desc = ""
-        iopts = self.itemconfig(item)
-        itype = self.type(item)
-        coords = self.coords(item)
-        if itype in self.item_samples:
-            item_sample_iopts = self.item_samples[itype]
-        else:
-            item_sample_iopts = None
-        item_desc = "{item}: {itype} {coords}"
-        for key in iopts:
-            val = iopts[key]
-            is_changed = True     # assume entry option changed
-            if item_sample_iopts is not None:
-                is_equal = True # Check for equal item option
-                sample_val = item_sample_iopts[key]
-                if len(val) == len(sample_val):
-                    for i in range(len(val)):
-                        if val[i] != sample_val[i]:
-                            is_equal = False
-                            break
-                    if is_equal:
-                        is_changed = False
-            if is_changed or all_options: 
-                item_desc += f"    {key} {val}"
-        self.item_samples[itype] = iopts
-
                        
     def get_grid_ullr(self, ix, iy, xs=None, ys=None):
         """ Get cell's canvas rectangle x, y  upper left, x,  y lower right
@@ -295,9 +288,10 @@ class CanvasGrid(tk.Canvas):
         :returns: list of overlapping canvas entries
                 list entry format: tuple:
                                 (ix,iy) - rectangle x index,  y index
-                                list of entry info
                                     get_color==True: color
+                                        list of entry info
                                     get_color==False: canvas item id
+                                        color string
         """
                         # Get grid limites - defaulting to self.values
         xs,ys = self.get_grid_lims(xmin=xmin, xmax=xmax, ymin=ymin,ymax=ymax,
@@ -322,10 +316,22 @@ class CanvasGrid(tk.Canvas):
             if not isinstance(ex_tags, list):
                 ex_tags = [ex_tags]
         
-        for ix in range(self.g_width):
-            for iy in range(self.g_height):
+        SlTrace.lg(f"get_canvas_items"
+                   f" xmin={xmin}, xmax={xmax}, ymin={ymin}, ymax={ymax}", "get_items")
+        for ix in range(len(xs)-1):
+            for iy in range(len(ys)-1):
                 cx1,cy1,cx2,cy2 = self.get_grid_ullr(ix=ix, iy=iy, xs=xs, ys=ys)
                 item_ids_over_raw = self.find_overlapping(cx1,cy1,cx2,cy2)
+                if SlTrace.trace("get_items"):
+                    if len(item_ids_over_raw) > 0:
+                        color = self.item_to_color(item_ids=item_ids_over_raw)
+                    else:
+                        color = ""
+                    SlTrace.lg(f"    {ix},{iy}: cx1,cy1,cx2,cy2 {cx1},{cy1},{cx2},{cy2}"
+                               f" item_ids: {item_ids_over_raw} {color}")
+                if len(item_ids_over_raw) == 0:
+                    continue    # Skip if none to check
+                
                 if (types is None and ex_types is None 
                         and tags is None and ex_tags is None):
                     item_ids_over = item_ids_over_raw     # Everything
@@ -363,32 +369,48 @@ class CanvasGrid(tk.Canvas):
                             item_ids_over.append(item_id)
                 if len(item_ids_over) > 0:
                     if get_color:
-                        item_infos_over = []
-                        for item_id in item_ids_over:
-                            color = self.canvas_1.itemcget(item_id, "fill")
+                        color = self.item_to_color(item_ids=item_ids_over)
+                        item_infos_over = color         # color string
                     else:
-                        item_infos_over = item_ids_over
+                        item_infos_over = item_ids_over # list of ids
                     ixy_ids_list.append(((ix,iy), item_infos_over))
         return ixy_ids_list
 
-    def show_canvas_items(self, types=None, ex_types=None,
+    def show_canvas_items(self, title=None, types=None, ex_types=None,
                   tags=None, ex_tags=None, get_color=False,
                   always_list=None,
+                  xmin=None,ymin=None, xmax=None,ymax=None,
+                  ncols=None,nrows=None,
                   prefix=None):
         """ Show canvas items
         Args are those of get_canvas_items plus
+        :title: title default: generated
         :always_list: list of options always listed
                     default: show_canvas_items default
         :prefix: prefix to output, used by show_canvas_item
+        :xmin,...: default: self.xmin...
         """
+        if title is not None:
+            SlTrace.lg(title)
         ixy_ids_list = self.get_canvas_items(types=types,
                                 ex_types=ex_types,
                                 tags=tags, ex_tags=ex_tags,
-                                get_color=get_color)
+                                get_color=get_color,
+                                xmin=None,ymin=None, xmax=None,ymax=None,
+                                ncols=None,nrows=None,
+                                )
+        xs,ys = self.get_grid_lims(xmin=None,ymin=None, xmax=None,ymax=None,
+                                ncols=None,nrows=None)
+        ixy_item_prefix = "" if prefix is None else prefix
+        SlTrace.lg(f"{ixy_item_prefix} xs: {xs}")
+        SlTrace.lg(f"{ixy_item_prefix} ys: {ys}")
         for ixy_item in ixy_ids_list:
             (ix,iy), ids = ixy_item
             ixy_item_prefix = "" if prefix is None else prefix
-            ixy_item_prefix += f" {ix},{iy}: "
+            w_left_x,w_upper_y, w_right_x,w_lower_y = self.get_grid_ullr(ix, iy,
+                                                                     xs=xs,ys=ys)
+            ixy_item_prefix += f" {ix},{iy}:"
+            ixy_item_prefix +=  f" [{w_left_x},{w_upper_y}, {w_right_x},{w_lower_y}]"
             if len(ids) > 1:
                 SlTrace.lg("")
             for item_id in ids:
@@ -436,10 +458,74 @@ class CanvasGrid(tk.Canvas):
             if is_changed: 
                 SlTrace.lg(f"    {key} {val}")
             self.item_samples[itype] = iopts
+
+    def create_magnify_info(self, x_min=None,y_min=None,
+                    x_max=None,y_max=None,
+                    ncols=None, nrows=None):
+        """ Create a MagnifyInfo, using our values as defaults
+        :x_min: minimum x value - left side 
+        :y_min: minimum y value - top side
+        :x_max: maximum x value - right side
+        :y_max: maximum  y value - bottom side
+        :ncols: number of grid columns
+        :nrows: number of grid rows
+        """
+        if x_min is None:
+            x_min = self.g_xmin
+        if y_min is None:
+            y_min = self.g_ymin
+        if x_max is None:
+            x_max = self.g_xmax
+        if y_max is None:
+            y_max = self.g_ymax
+        if ncols is None:
+            ncols = self.g_ncols
+        if nrows is None:
+            nrows = self.g_nrows
         
+        top_region = MagnifyDisplayRegion(x_min=x_min, y_min=y_min,
+                                          x_max=x_max, y_max=y_max,
+                                          ncols=ncols, nrows=nrows)
+        mag_info = MagnifyInfo(top_region=top_region,
+                               base_canvas=self)
+        return mag_info
+    
+    def create_magnification_window(self, mag_info):
+        """ Create magnification
+        :mag_info: MagnificationInfo containing info
+        :returns: instance of AudioDrawWinfow
+        """
+        select = mag_info.select
+        disp_region = mag_info.display_region
+        disp_x_cell = (disp_region.x_max-disp_region.x_min)/disp_region.ncols
+        disp_y_cell = (disp_region.y_max-disp_region.y_min)/disp_region.nrows
+        xmin = select.ix_min*disp_x_cell + disp_region.x_min
+        ymin = select.iy_min*disp_y_cell + disp_region.y_min
+        xmax = (select.ix_max+1)*disp_x_cell + disp_region.x_min
+        ymin = select.iy_min*disp_y_cell + disp_region.y_min
+        ymax = (select.iy_max+1)*disp_y_cell + disp_region.y_min
+        SlTrace.lg(f"create_magnification_window:"
+                   f" xmin:{xmin} ymin:{ymin} xmax:{xmax} ymax:{ymax}"
+                   f" nrows:{disp_region.nrows} ncols:{disp_region.ncols}")
+        child_info = mag_info.make_child()
+        child_info.display_region = MagnifyDisplayRegion(x_min=xmin, x_max=xmax,
+                                        y_min=ymin, y_max=ymax)
+        child_info.description = (f"region minimum x: {xmin:.0f}, minimum y: {ymin:.0f},"
+                                  + f" maximum x: {xmax:.0f}, maximum y: {ymax:.0f}")
+        adw = self.create_audio_window(xmin=xmin, xmax=xmax,
+                                        ymin=ymin, ymax=ymax,
+                                        nrows=disp_region.nrows,
+                                        ncols=disp_region.ncols,
+                                        mag_info=child_info)            
+        return adw 
 
-         
-
+    def exit(self):
+        """ Main exit if creating magnifications
+        """
+        SlTrace.lg("CanvasGrid.exit")
+        SlTrace.onexit()    # Force logging quit
+        os._exit(0)
+        
 if __name__ == "__main__":
     import sys
     import time
@@ -535,11 +621,32 @@ if __name__ == "__main__":
         cvg.create_line(200,300,400,400, width=10, fill="green", tags=["green1","green2"])
         cvg.create_rectangle(200,200,300,300, fill="red")
         cvg.create_oval(150,250,350,350, fill="orange", tags="orange_tag")
+        mag_info = MagnifyInfo(base_canvas=cvg)
         SlTrace.lg("Create a AudioDrawWindow")
         adw1 = cvg.create_audio_window()
         SlTrace.lg("After create_audio_window()")
 
         root.mainloop()
+            
+    def test4b():    
+        """ Create a AudioDrawWindow from a selection - default whole canvas
+        """
+        SlTrace.lg("Start test4b")
+        root = tk.Tk()
+        height = 800
+        width = height
+        cvg = CanvasGrid(root, height=800, width=800)
+        cvg.create_line(0,0,200,300, width=10, fill="blue", tags="blue_tag")
+        cvg.create_line(200,300,400,400, width=10, fill="green", tags=["green1","green2"])
+        cvg.create_rectangle(200,200,300,300, fill="red")
+        cvg.create_oval(150,250,350,350, fill="orange", tags="orange_tag")
+        #mag_info = MagnifyInfo(base_canvas=cvg)
+        SlTrace.lg("Create a AudioDrawWindow")
+        cvg.create_audio_window(xmin=0,ymin=0, xmax=width, ymax=height)
+        SlTrace.lg("After create_audio_window()")
+
+        root.mainloop()
+    
     #test1()
     #test2()
     #test3()
