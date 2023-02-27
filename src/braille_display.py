@@ -22,60 +22,6 @@ from braille_cell import BrailleCell
 from canvas_grid import CanvasGrid
 from magnify_info import MagnifyInfo
 
-def pl(point_list):
-    """ display routine for point list
-    Convert points to integer, or .2f
-    :point_list: list of points
-    :returns s string of (x,y) ...
-    """
-    if not isinstance(point_list, list):
-        point_list = [point_list]
-    st = ""
-    for point in point_list:
-        st += "("
-        for i in range(len(point)):
-            p = point[i]
-            if i > 0:
-                st += ","
-            if isinstance(p, float):
-                st += f"{int(p)}"
-            else:
-                st += f"{p}"
-        st += ")"
-    return st 
-
-
-    def color_str(self, color=None):
-        """ Return color string
-        :color: color specification str or tuple
-        """
-        color_str = color
-        if (color_str is None
-             or (isinstance(color_str, tuple)
-                  and len(color_str) == 0)
-             ):
-            color_str = self._color
-        if isinstance(color_str,tuple):
-            if len(color_str) == 1:
-                color_str = color_str[0]
-            else:
-                color_str = "pink"  # TBD - color tuple work
-        return color_str
-        
-
-class P12LineVals:
-    """ p1,p2 line function data
-    """
-    def __init__(self,p1,p2,horz,vert,
-                 my,cy,mx,cx):
-        self.p1 = p1
-        self.p2 = p2
-        self.horz = horz
-        self.vert = vert
-        self.my = my
-        self.cy = cy 
-        self.mx = mx
-        self.cx = cx
         
 class BrailleDisplay:
     """ Create and display graphics using Braille
@@ -96,7 +42,8 @@ class BrailleDisplay:
                  shift_to_edge=True,
                  braille_print=True,
                  braille_window=True,
-                 print_cells=False
+                 print_cells=False,
+                 tk_items=False
                  ):
         """ Setup display
         :title: display screen title
@@ -136,6 +83,13 @@ class BrailleDisplay:
         :shift_to_edge: shift picture to edge/top
                     to aid in finding
                     default: True - shift
+        :braille_print:  Print text picture targeted for embosser
+                    default: True
+        :braille_window: Create interactive braille_window
+                    default: True
+        :print_cells: Print text representation of display cells
+                    default: False,
+        :tk_items: Print list of tkinter canvas items default: False
         """
         if title is None:
             title = "Braille Display"
