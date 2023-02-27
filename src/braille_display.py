@@ -1,8 +1,9 @@
-# braille_display.py     26Feb2023  crs, add self.x_min, self.y_min
-#                        21Feb2023  crs, From braille_display.py
-#                        19Apr2022  crs  Author
+# braille_display_cscan.py   27Feb2023  crs, from braille_display.py
+#                            26Feb2023  crs, add self.x_min, self.y_min
+#                            21Feb2023  crs, From braille_display.py
+#                            19Apr2022  crs  Author
 """
-Display graphics on window
+Display graphics on window    Uses tk.Canvas scanning
 Supports simple graphical point, line specification
 Supports display of 6-point cells
 on grid_width by grid_height grid
@@ -29,7 +30,7 @@ class BrailleDisplay:
     
     
     def __init__(self, title="Braille Display",
-                 tu=None,
+                 tu=None,       # Not used
                  win_width=800, win_height=800,
                  grid_width=40, grid_height=25,
                  use_full_cells= True,
@@ -47,7 +48,7 @@ class BrailleDisplay:
                  ):
         """ Setup display
         :title: display screen title
-        :tu: turtle instance
+        :tu: turtle instance    NOT USED
             default: create one
         :win_width: display window width in pixels
             default: 800
@@ -116,28 +117,11 @@ class BrailleDisplay:
         self._braille_window = braille_window
         self._braille_print = braille_print
         self._print_cells = print_cells
-        if tu is None:
-            mw = tk.Tk()
-            geometry = f"{self.win_width}x{self.win_width}"
-            mw.geometry(geometry)
-            canvas_grid = CanvasGrid(master=mw, width=win_width, height=win_height,
-                                g_xmin = self.x_min,g_ymin=self.y_min,
-                                g_nrows=self.grid_height,
-                                g_ncols=self.grid_width)
-            tu = tur.RawTurtle(canvas_grid)
-            self.screen = tur.TurtleScreen(canvas_grid)
-            self.screensize(win_width,win_height)
-            self.canvas_grid = canvas_grid
-            canvas = self.screen.getcanvas()
-            assert(canvas is canvas_grid)
-        else:
-            self.self.screen = tur.Screen()
-        self.tu = tu          # For turtle screen
-        
+        self.tu_screen = tur.Screen()
         self.blank_char = blank_char
         shift_to_edge = False               # TFD
         self.shift_to_edge = shift_to_edge
-        self.goto(0,0)      # Force initialization
+        #tur.goto(0,0)      # Force initialization
 
     def color_str(self, color):
         """ convert turtle colors arg(s) to color string
@@ -178,16 +162,30 @@ class BrailleDisplay:
         if username is not None and username != "":
             self.braille_title += f"  User: {username}"
         SlTrace.lg(f"braille_title: {self.braille_title}")
-        if braille_print or braille_window:
-            if self.braille_title is not None:
-                title = self.braille_title
-            if title is None:
-                title = "Audio Feedback -"
-            tib = title
-            if tib is not None and tib.endswith("-"):
-                tib += " Braille Window"
-            self.aud_win = self.canvas_grid.create_audio_window(title=tib)
+        if self.braille_title is not None:
+            title = self.braille_title
+        if title is None:
+            title = "Audio Feedback -"
+        tib = title
+        if tib is not None and tib.endswith("-"):
+            tib += " Braille Window"
+
+        """ Create CanvasGrid from turtle screen canvas
+        """
+        mw = tk.Tk()
+        geometry = f"{self.win_width}x{self.win_width}"
+        mw.geometry(geometry)
+        tu_canvas = self.tu_screen.getcanvas()
+        self.canvas_grid = CanvasGrid(master=mw, base=tu_canvas,
+                            width=self.win_width, height=self.win_height,
+                            g_xmin = self.x_min,g_ymin=self.y_min,
+                            g_nrows=self.grid_height,
+                            g_ncols=self.grid_width)
+        #mw.withdraw()
+        self.aud_win = self.canvas_grid.create_audio_window(title=tib)
         self.aud_win.find_edges()
+
+        
         if braille_print:
             if self.braille_title is not None:
                 tib = self.braille_title
@@ -214,9 +212,37 @@ class BrailleDisplay:
         :title: title of snapshot
         :clear_after: clear braille screen after snapshot
         """
-        
-    
+
     """ Turtle "Shaddow" Functions
+    """
+
+    
+    def mainloop(self):
+        title = self.title
+        if title is None:
+            title = "Braille Display -"
+        self.display(title=title,
+                   braille_window=self._braille_window,
+                   braille_print=self._braille_print,
+                   print_cells=self._print_cells)
+        tur.mainloop()
+        
+    def done(self):
+        self.mainloop()
+
+    # Special functions
+    def set_blank(self, blank_char):
+        """ Set blank replacement
+        :blank_char: blank replacement char
+        :returns: previous blank char
+        """
+        ret = self.blank_char
+        self.blank_char = blank_char
+        return ret
+
+        
+'''    
+    """ Turtle "Shaddow" Functions No longer needed
     """
     
     
@@ -298,34 +324,14 @@ class BrailleDisplay:
     
     def update(self):
         self.mw.update()
-    
-    def mainloop(self):
-        title = self.title
-        if title is None:
-            title = "Braille Display -"
-        self.display(title=title,
-                   braille_window=self._braille_window,
-                   braille_print=self._braille_print,
-                   print_cells=self._print_cells)
-        return self.screen.mainloop()
-    def done(self):
-        return self.mainloop()
 
     # screen functions
     def screensize(self, canvwidth=None, canvheight=None, bg=None):
         return self.screen.screensize(canvwidth=None,
                                        canvheight=None, bg=None)
-
-    # Special functions
-    def set_blank(self, blank_char):
-        """ Set blank replacement
-        :blank_char: blank replacement char
-        :returns: previous blank char
-        """
-        ret = self.blank_char
-        self.blank_char = blank_char
-        return ret
+    '''    
         
 if __name__ == "__main__":
-    import braille_display_test2
+    import square_loop_colors
+    #import braille_display_test2
 

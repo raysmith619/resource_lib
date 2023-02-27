@@ -1,5 +1,6 @@
-#turtle_braille_link.py   21Feb2023  crs, From turtle_braille_link.py
-#                           25Apr2022  crs, Author
+#turtle_braille_link.py         27Feb2023  crs, using canvas scan
+#                               21Feb2023  crs, From turtle_braille_link.py
+#                               25Apr2022  crs, Author
 """ link to braille turtle
 Turtle Braill support is in files found in lib/src_dir/
         default: resource_lib_proj/src/

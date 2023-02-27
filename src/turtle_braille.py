@@ -1,6 +1,8 @@
-#turtle_braille.py    21Feb2023    crs  From turtle_braille.py
-#                       16Apr2022    crs  Author
+#turtle_braille.py          27Feb2023  crs from turtle_braille.py
+#                           21Feb2023  crs  From turtle_braille.py
+#                           16Apr2022  crs  Author
 """
+# Using tk.Canvas scanning
 Turtle augmented with braille graphics output
 turtle commands create Turtle output plus approximate braille
 output
@@ -54,89 +56,10 @@ def y_max():
     return bd.y_max
 
 
-""" Link to turtle functions
-"""
-
-def filling():
-    return bd.filling()
-
-def begin_fill():
-    return bd.begin_fill()
-
-def end_fill():
-    return bd.end_fill()
-    
-def dot(size=None, *color):
-    return bd.dot(size, *color)
-                    
-def forward(length):
-    return bd.forward(length)
-def fd(length):
-    return bd.forward(length)
-
-def goto(x, y=None):
-    return bd.goto(x, y=y)
-def setpos(x, y=None):
-    return bd.goto(x, y=None)
-def setposition(x,  y=None):
-    return bd.goto(x, y=None)
-
-
-def setheading(angle): 
-    return bd.setheading(angle)   
-def seth(self, angle): 
-    return setheading(angle)   
-    
-def backward(length):
-    return bd.backward(length)                
-def bk(length):
-    return bd.backward(length)    
-def back(length):
-    return bd.backward(length)
-
-def circle(radius, extent=None, steps=None):
-    return bd.circle(radius, extent=extent, steps=steps)
-
-def right(angle):
-    return bd.right(angle)
-def rt(angle):
-    return bd.right(angle)
-
-def pendown():
-    return bd.pendown()
-
-def penup():
-    return bd.penup()
-    
-def speed(speed):
-    return bd.speed(speed)    
-
-def left(angle):
-    return bd.left(angle)
-
-def lt(angle):
-    return bd.left(angle)
-
-def color(*args):
-    return bd.color(*args)
-
-def pensize(width=None):
-    return bd.pensize(width=width)
-def width(width=None):
-    return bd.pensize(width=width)
-
-    # screen functions
-    
-def screensize(canvwidth=None, canvheight=None, bg=None):
-    return bd.screensize(canvwidth=canvwidth,
-                          canvheight=canvheight, bg=bg)
-
-
-
 
     
 if __name__ == '__main__':
-    from turtle_braille_link_2 import *
+    from turtle_braille_link import *
     #from turtle_braille import *    # Get graphics stuff
     #tum.points_window = True
     #tum.print_cells = True

@@ -122,7 +122,6 @@ class SpeechMaker(Singleton):
             cmd = self.sm_speech_queue.get()
             SlTrace.lg(f"speech queue: cmd: {cmd}", "speech")
             if cmd.cmd_type == "CLEAR":
-                pyttsx3_engine.stop()
                 continue
             elif cmd.cmd_type == "QUIT":
                 pyttsx3_engine.stop()
@@ -153,6 +152,7 @@ class SpeechMaker(Singleton):
         with self.speech_lock:
             if pyttsx3_engine._inLoop:
                 SlTrace.lg("speak_text - in run loop - ignored")
+                pyttsx3_engine.endLoop()
                 return
             
             if msg_type == 'REPORT':

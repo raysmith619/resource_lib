@@ -10,8 +10,10 @@ len = 300
 dot_size = 20
 dot_radius = dot_size/2
 colors = ["red","orange","yellow","green"]
-color("red")
+penup()
 goto(-len+dot_radius,len-dot_radius)
+pendown()
+color("red")
 dot(dot_size)
 width(10)
 color("blue")

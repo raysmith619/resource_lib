@@ -146,6 +146,8 @@ class AudioDrawWindow:
         
         if title is None:
             title = "AudioDrawWindow"
+        else:
+            self.speak_text(title)
         self.title = title
         control_prefix = "AudioDraw"
         self.win_width = win_width
@@ -840,9 +842,9 @@ class AudioDrawWindow:
         """
         self.speak_text("Showing window")
         root = self.mw
+        root.focus_force()
         root.lift()
         root.attributes('-topmost', 1)
-        root.focus_force()
         
     def key_talk(self, val=True):
         """ Enable / Disable talking
@@ -2475,10 +2477,11 @@ class AudioDrawWindow:
         if self.mag_info is None or self.mag_info.base_canvas is None:
             SlTrace.lg("Magnification is not enabled")
             return
-        if not self.is_selected or self.mag_info.select.ix_min is None:
-            if not self.mag_select():
-                self.speak_text("No history to select")
-                return
+        
+        # Select again, in case of change.  Doesn't hurt.
+        if not self.mag_select():
+            self.speak_text("No history to select")
+            return
         
         display_region = self.mag_info.display_region
         if display_region.ncols is None:
