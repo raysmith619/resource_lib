@@ -315,4 +315,5 @@ if "diamond" in tests:
             bw.end_fill()
         if do_snapshots:
             do_snapshot()
-bw.mainloop()      
+SlTrace.lg("End of Test")
+#bw.mainloop()      

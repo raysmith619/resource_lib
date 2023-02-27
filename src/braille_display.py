@@ -1,4 +1,4 @@
-# braille_display_new    26Feb2023  crs, add self.x_min, self.y_min
+# braille_display.py     26Feb2023  crs, add self.x_min, self.y_min
 #                        21Feb2023  crs, From braille_display.py
 #                        19Apr2022  crs  Author
 """
@@ -183,6 +183,7 @@ class BrailleDisplay:
         self.blank_char = blank_char
         shift_to_edge = False               # TFD
         self.shift_to_edge = shift_to_edge
+        self.goto(0,0)      # Force initialization
 
     def color_str(self, color):
         """ convert turtle colors arg(s) to color string

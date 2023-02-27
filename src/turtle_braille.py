@@ -1,4 +1,4 @@
-#turtle_braille_new.py    21Feb2023    crs  From turtle_braille.py
+#turtle_braille.py    21Feb2023    crs  From turtle_braille.py
 #                       16Apr2022    crs  Author
 """
 Turtle augmented with braille graphics output
@@ -10,7 +10,7 @@ from turtle import *
 
 from select_trace import SlTrace
 SlTrace.clearFlags()
-from braille_display_2 import BrailleDisplay
+from braille_display import BrailleDisplay
 
 
 bd = BrailleDisplay(win_width=None,

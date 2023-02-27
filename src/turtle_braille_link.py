@@ -1,4 +1,5 @@
-#turtle_braille_link.py   25Apr2022  crs, Author
+#turtle_braille_link.py   21Feb2023  crs, From turtle_braille_link.py
+#                           25Apr2022  crs, Author
 """ link to braille turtle
 Turtle Braill support is in files found in lib/src_dir/
         default: resource_lib_proj/src/
@@ -17,6 +18,8 @@ The working files expected include:
 
 HACK to add additional sister directory to lib_dir
 We add sister to lib_dir
+
+Using CanvasGrid for canvas scanning
 """
 import sys
 import os
