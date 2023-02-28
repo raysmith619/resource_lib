@@ -52,7 +52,7 @@ class BaseAccess():
 
 class CanvasGrid(tk.Canvas):
         
-    def __init__(self, master, base=None,
+    def __init__(self, master, base=None, speech_maker=None,
                  g_xmin=None, g_xmax=None, g_ymin=None, g_ymax=None,
                  g_nrows=25, g_ncols=40,
                  **kwargs):
@@ -60,6 +60,8 @@ class CanvasGrid(tk.Canvas):
         :base: tk.Canvas, if present, from which we get
                 canvas item contents
                 default: self
+        :speech_maker: (SpeechMakerLocal) local access to speech facility
+                        REQUIRED
         :g_xmin: Grid minimum canvas coordinate value default: left edge
         :g_xmax: Grid maximum canvas coordinate value default: right edge
         :g_ymin: Grid minimum canvas coordinate value default: top edge
@@ -70,6 +72,10 @@ class CanvasGrid(tk.Canvas):
         if base is None:
             base = self 
         self.base = base
+        if speech_maker is None:
+            raise Exception("CanvasGrid has no speech_maker")
+        
+        self.speech_maker = speech_maker
         self.item_samples = {}      # For incremental presentation  via show_item
         self.audio_wins = []        # window list for access
         super(CanvasGrid,self).__init__(master=master, **kwargs)
@@ -150,11 +156,13 @@ class CanvasGrid(tk.Canvas):
         """
         self.grid_xs, self.grid_ys = self.get_grid_lims()
 
-    def create_audio_window(self, title=None, xmin=None, xmax=None, ymin=None, ymax=None,
+    def create_audio_window(self, title=None,
+                 xmin=None, xmax=None, ymin=None, ymax=None,
                  nrows=None, ncols=None, mag_info=None, pgmExit=None):
         """ Create AudioDrawWindow to navigate canvas from the section
         :title: optinal title
                 region (xmin,ymin, xmax,ymax) with nrows, ncols
+        :speech_maker: (SpeechMakerLocal) local access to centralized speech facility
         :xmin,xmax,ymin,ymax,: see get_grid_lims()
                         default: CanvasGrid instance values
         :nrows,ncols: grid size for scanning
@@ -193,7 +201,8 @@ class CanvasGrid(tk.Canvas):
             color = self.item_to_color(item_ids=ids)
             bcell = BrailleCell(ix=ix, iy=iy, color=color)
             braille_cells.append(bcell)
-        adw = AudioDrawWindow(title=title, iy0_is_top=True, mag_info=mag_info, pgmExit=pgmExit,
+        adw = AudioDrawWindow(title=title, speech_maker=self.speech_maker,
+                              iy0_is_top=True, mag_info=mag_info, pgmExit=pgmExit,
                               win_x_min=self.g_xmin, win_y_min=self.g_ymin)
         adw.draw_cells(cells=braille_cells)
         adw.key_goto()      # Might as well go to figure
@@ -551,10 +560,10 @@ class CanvasGrid(tk.Canvas):
         child_info.description = (f"region minimum x: {xmin:.0f}, minimum y: {ymin:.0f},"
                                   + f" maximum x: {xmax:.0f}, maximum y: {ymax:.0f}")
         adw = self.create_audio_window(xmin=xmin, xmax=xmax,
-                                        ymin=ymin, ymax=ymax,
-                                        nrows=disp_region.nrows,
-                                        ncols=disp_region.ncols,
-                                        mag_info=child_info)            
+                                       ymin=ymin, ymax=ymax,
+                                       nrows=disp_region.nrows,
+                                       ncols=disp_region.ncols,
+                                       mag_info=child_info)            
         return adw 
 
     def exit(self):

@@ -1,4 +1,4 @@
-# braille_display_cscan.py   27Feb2023  crs, from braille_display.py
+# braille_display.py         27Feb2023  crs, from braille_display.py
 #                            26Feb2023  crs, add self.x_min, self.y_min
 #                            21Feb2023  crs, From braille_display.py
 #                            19Apr2022  crs  Author
@@ -19,6 +19,7 @@ import turtle as tur
 import tkinter as tk            # Best approach
 
 from select_trace import SlTrace
+from speech_maker import SpeechMakerLocal
 from braille_cell import BrailleCell
 from canvas_grid import CanvasGrid
 from magnify_info import MagnifyInfo
@@ -28,7 +29,7 @@ class BrailleDisplay:
     """ Create and display graphics using Braille
     """
     
-    
+
     def __init__(self, title="Braille Display",
                  tu=None,       # Not used
                  win_width=800, win_height=800,
@@ -121,7 +122,7 @@ class BrailleDisplay:
         self.blank_char = blank_char
         shift_to_edge = False               # TFD
         self.shift_to_edge = shift_to_edge
-        #tur.goto(0,0)      # Force initialization
+        self.speech_maker = SpeechMakerLocal()   # local access to speech engine
 
     def color_str(self, color):
         """ convert turtle colors arg(s) to color string
@@ -177,6 +178,7 @@ class BrailleDisplay:
         mw.geometry(geometry)
         tu_canvas = self.tu_screen.getcanvas()
         self.canvas_grid = CanvasGrid(master=mw, base=tu_canvas,
+                            speech_maker = self.speech_maker,
                             width=self.win_width, height=self.win_height,
                             g_xmin = self.x_min,g_ymin=self.y_min,
                             g_nrows=self.grid_height,

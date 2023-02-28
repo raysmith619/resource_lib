@@ -55,7 +55,7 @@ class AudioDrawWindow:
                      "v": "violet"}
     
     def __init__(self,
-        title=None,
+        title=None, speech_maker=None,
         win_width=800, win_height=800,
         grid_width=40, grid_height=25,
         x_min=None, y_min=None,
@@ -79,6 +79,7 @@ class AudioDrawWindow:
         iy0_is_top=False,
                  ):
         """ Setup audio window
+        :speech_maker: (SpeechMakerLocal) local access to centralized speech making
         :win_width: display window width in pixels
             default: 800
         :win_height: display window height in pixels
@@ -134,8 +135,10 @@ class AudioDrawWindow:
         :iy0_is_top: True->cell y index increases downward from top (0)
                     default: False y index increases upward from bottom (0)
         """
-        self.speech_maker = SpeechMakerLocal()  # Singleton access to pyttsx3
+        if speech_maker is None:
+            raise Exception("AudioDrawWindow with no speech_maker")
         
+        self.speech_maker = speech_maker
         # direction for digit pad
         self.iy0_is_top = iy0_is_top
         y_up = -1 if self.iy0_is_top else 1
@@ -144,6 +147,7 @@ class AudioDrawWindow:
                           "4":(-1,0),      "5":(0,0),      "6":(1,0),
                           "1":(-1,y_down), "2":(0,y_down), "3":(1,y_down)}
         
+        self.speech_maker = speech_maker
         if title is None:
             title = "AudioDrawWindow"
         else:
@@ -484,7 +488,7 @@ class AudioDrawWindow:
         """ Echo key, if appropriate
         :keysym; key symbol
         """
-        self.key_flush(keysym=keysym)
+        #self.key_flush(keysym=keysym)
         if self._echo_input:
             self.speech_maker.speak_text(keysym, msg_type='ECHO')
 
@@ -1414,8 +1418,7 @@ class AudioDrawWindow:
                 default:False
         """
         if not self.iy0_is_top:
-            tu_x,tu_y = self.get_point_tur((x,y))
-            self.set_cursor_pos_tu(x=tu_x, y=tu_y, quiet=quiet)
+            self.cursor_update()
             return
 
         """ Set mouse cursor position in turtle coordinates
@@ -2250,7 +2253,7 @@ class AudioDrawWindow:
         x1 = pos_x+rd
         y0 = pos_y-rd
         y1 = pos_y+rd
-        x0,x1,y0,y1 = self.display_reposition_hack(x0,x1,y0,y1,force=True)
+        x0,x1,y0,y1 = self.display_reposition_hack(x0,x1,y0,y1)
         self._cursor_item = self.canvas.create_oval(x0,y0,x1,y1,
                                                     fill="red")
         self.update()

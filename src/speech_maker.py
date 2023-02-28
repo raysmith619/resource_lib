@@ -162,6 +162,11 @@ class SpeechMaker(Singleton):
                 pyttsx3_engine.runAndWait()
                 SlTrace.lg(f"speak_text  msg: {msg} AFTER runAndWait", "speech")
             elif msg_type == "ECHO":
+                if pyttsx3_engine._inLoop:
+                    SlTrace.lg("speak_text ECHO - in run loop - ignored")
+                    pyttsx3_engine.endLoop()
+                    return
+                
                 pyttsx3_engine.say(msg)
                 pyttsx3_engine.setProperty('rate', 240)
                 pyttsx3_engine.setProperty('volume', 0.9)
