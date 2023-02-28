@@ -680,7 +680,7 @@ class AudioDrawWindow:
         if dist is None:
             return              # Nowhere
         
-        if dist > 0:
+        if dist > 0 and cell is not None:
             self.goto_cell(ix=cell.ix, iy=cell.iy)
             self.goto_cell_list = []
             start_cell = (cell.ix,cell.iy)
@@ -2493,7 +2493,17 @@ class AudioDrawWindow:
             display_region.nrows = self.grid_height
            
         SlTrace.lg(f"view select: {self.mag_info}")    
-        self.mag_info.base_canvas.create_magnification_window(self.mag_info)
+        adw = self.mag_info.base_canvas.create_magnification_window(
+                self.mag_info)
+        n_cells_created = self.mag_info.base_canvas.n_cells_created
+        if adw is None:
+            self.speak_text("No magnification created because"
+                            f" it would containe {n_cells_created} cell"
+                            "s" if n_cells_created != 1 else "")
+            
+        else:
+            self.speak_text(f"Magnification has {n_cells_created} cell"
+                            "s" if n_cells_created != 1 else "")
 
     def show_selection(self, mag_info):
         """ Display selected region

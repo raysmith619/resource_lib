@@ -78,6 +78,7 @@ class CanvasGrid(tk.Canvas):
         self.speech_maker = speech_maker
         self.item_samples = {}      # For incremental presentation  via show_item
         self.audio_wins = []        # window list for access
+        self.n_cells_created = 0    # Number of cells in recent window
         super(CanvasGrid,self).__init__(master=master, **kwargs)
         self.pack(expand=True, fill=tk.BOTH)
         self.master.update()
@@ -138,10 +139,10 @@ class CanvasGrid(tk.Canvas):
         grid_ys = []
 
         for i in range(ncols+1):
-            x = int(xmin + i*g_width/ncols)
+            x = xmin + i*g_width/ncols
             grid_xs.append(x)
         for i in range(nrows+1):
-            y = int(ymin + i*g_height/nrows)
+            y = ymin + i*g_height/nrows
             grid_ys.append(y)
         return grid_xs,grid_ys
         
@@ -158,7 +159,8 @@ class CanvasGrid(tk.Canvas):
 
     def create_audio_window(self, title=None,
                  xmin=None, xmax=None, ymin=None, ymax=None,
-                 nrows=None, ncols=None, mag_info=None, pgmExit=None):
+                 nrows=None, ncols=None, mag_info=None, pgmExit=None,
+                 require_cells=False):
         """ Create AudioDrawWindow to navigate canvas from the section
         :title: optinal title
                 region (xmin,ymin, xmax,ymax) with nrows, ncols
@@ -169,8 +171,12 @@ class CanvasGrid(tk.Canvas):
                 default: if mag_info present: mag_info.mag_nrows, .mag_ncols
         :mag_info: magnification info (MagnifyInfo)
                     default: None
-        :pgm_exit: function to call upon exit request 
-        :returns: AudioDrawWindow instance
+        :pgm_exit: function to call upon exit request
+        :require_cells: Require at least some display cells to 
+                    create window
+                    default: False - allow empty picture
+        :returns: AudioDrawWindow instance or None if no cells
+                Stores number of cells found in self.n_cells_created
         """
         if pgmExit is None:
             pgmExit= self.exit 
@@ -190,7 +196,6 @@ class CanvasGrid(tk.Canvas):
         # For debugging / analysis
         xs,ys = self.get_grid_lims(xmin=xmin, xmax=xmax, ymin=ymin,ymax=ymax,
                                    ncols=ncols,nrows=nrows)
-        
         braille_cells = []
         for ixy_item in ixy_items:
             (ix,iy), ids = ixy_item
@@ -201,6 +206,11 @@ class CanvasGrid(tk.Canvas):
             color = self.item_to_color(item_ids=ids)
             bcell = BrailleCell(ix=ix, iy=iy, color=color)
             braille_cells.append(bcell)
+        self.n_cells_created = len(braille_cells)
+        if self.n_cells_created == 0:
+            if require_cells:
+                return None
+                
         adw = AudioDrawWindow(title=title, speech_maker=self.speech_maker,
                               iy0_is_top=True, mag_info=mag_info, pgmExit=pgmExit,
                               win_x_min=self.g_xmin, win_y_min=self.g_ymin)
@@ -540,7 +550,7 @@ class CanvasGrid(tk.Canvas):
     def create_magnification_window(self, mag_info):
         """ Create magnification
         :mag_info: MagnificationInfo containing info
-        :returns: instance of AudioDrawWinfow
+        :returns: instance of AudioDrawWinfow or None if none was created
         """
         select = mag_info.select
         disp_region = mag_info.display_region
@@ -563,7 +573,8 @@ class CanvasGrid(tk.Canvas):
                                        ymin=ymin, ymax=ymax,
                                        nrows=disp_region.nrows,
                                        ncols=disp_region.ncols,
-                                       mag_info=child_info)            
+                                       mag_info=child_info,
+                                       require_cells=True)            
         return adw 
 
     def exit(self):
