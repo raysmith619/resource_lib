@@ -20,35 +20,13 @@ from braille_error import BrailleError
 from braille_cell import BrailleCell
 from magnify_info import MagnifySelect, MagnifyInfo, MagnifyDisplayRegion
 from audio_draw_window import AudioDrawWindow
-from pip._vendor.typing_extensions import Self
+from speech_maker import SpeechMakerLocal
 
-class BaseAccess():
-    """ Access from base object, if present, else ourselves
-    """
-    def __init__(self, base=None):
-        """ Link to base canvas
-        :base: canvas for internal data access
-                default: use ourself
-        """
-        if base is None:
-            base = self     # Use ourself
-        self.base = base
-
-
-    def find_overlapping(self,cx1,cy1,cx2,cy2):
-        """ from base or ourself
-        """
-        return self.base.find_overlapping(cx1,cy1,cx2,cy2)
-    
-    def gettags(self, item_id):
-        return self.base.gettags(item_id)
-    
-    def itemconfigure(self, item_id, attr):
-        return self.base.itemconfigure(item_id, attr)
-    
-    def type(self, item_id):
-        return self.base.type(item_id)
-
+"""
+We now think explicit .base.fn_name is better
+for indirect call of tk.Canvas calls:
+    find_overlapping, gettags, itemconfigure, type
+"""
 
 class CanvasGrid(tk.Canvas):
         
@@ -73,7 +51,8 @@ class CanvasGrid(tk.Canvas):
             base = self 
         self.base = base
         if speech_maker is None:
-            raise Exception("CanvasGrid has no speech_maker")
+            SlTrace.lg("Creating local SpeechMaker copy")
+            speech_maker = SpeechMakerLocal()   # local access to speech engine
         
         self.speech_maker = speech_maker
         self.item_samples = {}      # For incremental presentation  via show_item
@@ -410,14 +389,14 @@ class CanvasGrid(tk.Canvas):
                                 chosen = True     
                         if chosen and tags:
                             chosen = False      # Set True if found
-                            tag_list = self.gettags(item_id)
+                            tag_list = self.base.gettags(item_id)
                             for tag in tag_list:
                                 if tag in tags:
                                     chosen = True   # Has requisite flag 
                                     break
                         if chosen and ex_tags:
                             chosen = True      # Set False if found
-                            tag_list = self.gettags(item_id)
+                            tag_list = self.base.gettags(item_id)
                             for tag in tag_list:
                                 if tag in ex_tags:
                                     chosen = False  # Has an excluded tag 
@@ -433,6 +412,26 @@ class CanvasGrid(tk.Canvas):
                     ixy_ids_list.append(((ix,iy), item_infos_over))
         return ixy_ids_list
 
+    def show_canvas(self, title=None, types=None, ex_types=None,
+                  tags=None, ex_tags=None, get_color=False,
+                  always_list=None,
+                  xmin=None,ymin=None, xmax=None,ymax=None,
+                  ncols=1,nrows=1,
+                  prefix=None):
+        """ Show whole canvas
+            see show_canvas_items for args
+        """
+        if title is not None:
+            SlTrace.lg(title)
+        canvas_items = self.base.find_all()
+        if len(canvas_items) == 0:
+            SlTrace.lg("No canvas items")
+            return
+        
+        for item_id in canvas_items:
+            self.show_canvas_item(item_id=item_id, prefix=prefix)
+        SlTrace.lg()
+        
     def show_canvas_items(self, title=None, types=None, ex_types=None,
                   tags=None, ex_tags=None, get_color=False,
                   always_list=None,
@@ -453,11 +452,11 @@ class CanvasGrid(tk.Canvas):
                                 ex_types=ex_types,
                                 tags=tags, ex_tags=ex_tags,
                                 get_color=get_color,
-                                xmin=None,ymin=None, xmax=None,ymax=None,
-                                ncols=None,nrows=None,
+                                xmin=xmin,ymin=ymin, xmax=xmax,ymax=ymax,
+                                ncols=ncols,nrows=nrows,
                                 )
-        xs,ys = self.get_grid_lims(xmin=None,ymin=None, xmax=None,ymax=None,
-                                ncols=None,nrows=None)
+        xs,ys = self.get_grid_lims(xmin=xmin,ymin=ymin, xmax=xmax,ymax=ymax,
+                                ncols=ncols,nrows=nrows)
         ixy_item_prefix = "" if prefix is None else prefix
         SlTrace.lg(f"{ixy_item_prefix} xs: {xs}")
         SlTrace.lg(f"{ixy_item_prefix} ys: {ys}")
@@ -487,9 +486,9 @@ class CanvasGrid(tk.Canvas):
             prefix += " "       # leave some space
         if always_list is None:
             always_list = ['fill', 'width']  # Check always list
-        iopts = self.itemconfig(item_id)
+        iopts = self.base.itemconfig(item_id)
         itype = self.base.type(item_id)
-        coords = self.coords(item_id)
+        coords = self.base.coords(item_id)
         if itype in self.item_samples:
             item_sample_iopts = self.item_samples[itype]
         else:
@@ -587,6 +586,7 @@ class CanvasGrid(tk.Canvas):
 if __name__ == "__main__":
     import sys
     import time
+
     
     def test1():
         

@@ -61,15 +61,22 @@ class SpeechMakerCmd:
 
         
 class SpeechMaker(Singleton):
-    CMDS_SIZE = 10
-    SPEECH_SIZE = 10
+    CMDS_SIZE = 20
+    SPEECH_SIZE = 20
 
     def __init__(self, cmds_size=CMDS_SIZE, speech_size=SPEECH_SIZE):
         self.cmds_size = cmds_size
         self.speech_size = speech_size
         self._running = True        # Thread functions exit when cleared
 
-        self.speech_lock = threading.RLock()
+        try:
+            import pyttsx3
+            self.pyttsx3_engine = pyttsx3.init()
+        except:
+            self.pyttsx3_engine = None 
+
+
+        self.speech_lock = threading.Lock()
         self.sm_cmd_queue = queue.Queue(cmds_size)  # Command queue of SpeechMakerCmd
         self.sm_cmd_thread = threading.Thread(target=self.sm_cmd_proc_thread)
         self.sm_speech_queue = queue.Queue(speech_size)  # speech queue of SpeechMakerCmd 
@@ -106,31 +113,48 @@ class SpeechMaker(Singleton):
         with self.sm_speech_queue.mutex:
             self.sm_speech_queue.queue.clear()
         SlTrace.lg(f"self.sm_speech_queue.qsize(): {self.sm_speech_queue.qsize()}")
-        
+
+    def clear_cmd_queue(self):
+        while self.sm_cmd_queue.qsize() > 0:
+            cmd = self.sm_cmd_queue.get()
+            SlTrace.lg(f"removing cmd entry: {cmd}")
+
+    def clear_speech_queue(self):
+        while self.sm_speech_queue.qsize() > 0:
+            cmd = self.sm_speech_queue.get()
+            SlTrace.lg(f"removing speech queue entry: {cmd}")
+            
+    def force_clear(self):
+        """ force Clear queue
+        """
+        SlTrace.lg("force speech clearing")
+        self.clear_cmd_queue()
+        SlTrace.lg(f"self.sm_cmd_queue.qsize(): {self.sm_cmd_queue.qsize()}")
+        self.clear_speech_queue()
+        SlTrace.lg(f"self.sm_speech_queue.qsize(): {self.sm_speech_queue.qsize()}")
+        #if self.pyttsx3_engine.isBusy():
+        #    self.pyttsx3_engine.stop()
+
+        #if self.pyttsx3_engine._inLoop:
+        #    self.pyttsx3_engine.endLoop()
+        #self.speech_lock.release()
         
     def sm_speech_proc_thread(self):
         """ Process pending speech requests (SpeechMakerCmd)
         """
-        try:
-            import pyttsx3
-            pyttsx3_engine = pyttsx3.init()
-        except:
-            pyttsx3_engine = None 
         
-        lock = threading.RLock()
         while self._running:
             cmd = self.sm_speech_queue.get()
             SlTrace.lg(f"speech queue: cmd: {cmd}", "speech")
             if cmd.cmd_type == "CLEAR":
                 continue
             elif cmd.cmd_type == "QUIT":
-                pyttsx3_engine.stop()
+                self.pyttsx3_engine.stop()
                 break
             
             msg = cmd.msg
             msg_type = cmd.msg_type
-            with lock:
-                self.speak_text(msg, msg_type=msg_type, pyttsx3_engine=pyttsx3_engine)
+            self.speak_text(msg, msg_type=msg_type)
             SlTrace.lg(f"speech queue: cmd: {cmd} AFTER speak_text", "speech")
         SlTrace.lg("sm_speech_proc_thread returning")
             
@@ -144,36 +168,38 @@ class SpeechMaker(Singleton):
         #self.sm_speech_thread.join()
         #self.sm_cmd_thread.join()
                 
-    def speak_text(self, msg, msg_type=None, pyttsx3_engine=None):
+    def speak_text(self, msg, msg_type=None):
         """ Called to speak pending line
         
         """
-                        
-        with self.speech_lock:
-            if pyttsx3_engine._inLoop:
-                SlTrace.lg("speak_text - in run loop - ignored")
-                pyttsx3_engine.endLoop()
-                return
-            
-            if msg_type == 'REPORT':
-                pyttsx3_engine.say(msg)
-                pyttsx3_engine.setProperty('rate', 240)
-                pyttsx3_engine.setProperty('volume', 0.9)
-                pyttsx3_engine.runAndWait()
-                SlTrace.lg(f"speak_text  msg: {msg} AFTER runAndWait", "speech")
-            elif msg_type == "ECHO":
-                if pyttsx3_engine._inLoop:
-                    SlTrace.lg("speak_text ECHO - in run loop - ignored")
-                    pyttsx3_engine.endLoop()
+        try:                
+            with self.speech_lock:
+                if self.pyttsx3_engine._inLoop:
+                    SlTrace.lg("speak_text - in run loop - ignored")
+                    self.pyttsx3_engine.endLoop()
                     return
                 
-                pyttsx3_engine.say(msg)
-                pyttsx3_engine.setProperty('rate', 240)
-                pyttsx3_engine.setProperty('volume', 0.9)
-                pyttsx3_engine.runAndWait()
-            else:
-                raise SpeechMakerError(f"Unrecognized speech_type"
-                                f" {msg_type} {msg}")
+                if msg_type == 'REPORT':
+                    self.pyttsx3_engine.say(msg)
+                    self.pyttsx3_engine.setProperty('rate', 240)
+                    self.pyttsx3_engine.setProperty('volume', 0.9)
+                    self.pyttsx3_engine.runAndWait()
+                    SlTrace.lg(f"speak_text  msg: {msg} AFTER runAndWait", "speech")
+                elif msg_type == "ECHO":
+                    if self.pyttsx3_engine._inLoop:
+                        SlTrace.lg("speak_text ECHO - in run loop - ignored")
+                        self.pyttsx3_engine.endLoop()
+                        return
+                    
+                    self.pyttsx3_engine.say(msg)
+                    self.pyttsx3_engine.setProperty('rate', 240)
+                    self.pyttsx3_engine.setProperty('volume', 0.9)
+                    self.pyttsx3_engine.runAndWait()
+                else:
+                    raise SpeechMakerError(f"Unrecognized speech_type"
+                                    f" {msg_type} {msg}")
+        except:
+            SlTrace.lg("Bust out of speak_text")
 
     def send_cmd(self, cmd_type='speak', msg=None, msg_type=None):
         """ Send cmd to speach engine
@@ -237,7 +263,7 @@ class SpeechMakerLocal:
     def speak_text_stop(self):
         """ Stop pending speech
         """
-        self.sm.send_cmd(cmd_type="CLEAR")
+        self.sm.force_clear()
         
             
 if __name__ == "__main__":

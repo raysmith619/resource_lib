@@ -45,7 +45,8 @@ class BrailleDisplay:
                  braille_print=True,
                  braille_window=True,
                  print_cells=False,
-                 tk_items=False
+                 tk_items=False,
+                 canvas_items=False
                  ):
         """ Setup display
         :title: display screen title
@@ -92,6 +93,7 @@ class BrailleDisplay:
         :print_cells: Print text representation of display cells
                     default: False,
         :tk_items: Print list of tkinter canvas items default: False
+        :canvas_items: print whole canvas item info default: False
         """
         if title is None:
             title = "Braille Display"
@@ -123,6 +125,8 @@ class BrailleDisplay:
         shift_to_edge = False               # TFD
         self.shift_to_edge = shift_to_edge
         self.speech_maker = SpeechMakerLocal()   # local access to speech engine
+        self.tk_items = tk_items
+        self.canvas_items = canvas_items
 
     def color_str(self, color):
         """ convert turtle colors arg(s) to color string
@@ -134,7 +138,8 @@ class BrailleDisplay:
                braille_title=None,
                print_cells=False, title=None,
                points_window=False,
-               tk_items=False):
+               tk_items=False,
+               canvas_items=False):
         """ display grid
         :braille_window: True - make window display of braille
                         default:True
@@ -150,7 +155,9 @@ class BrailleDisplay:
                         instead of braille dots
                     default: False - display dots
         :tk_items: True - display tkinter obj in cell
-                    default: False
+                    default: self.tk_items - False
+        :canvas_items: print whole canvas item info
+                    default: self.canvas_items - False
         """
         file_base_name = os.path.basename(__main__.__file__)
         current_time = str(datetime.datetime.now())
@@ -203,11 +210,16 @@ class BrailleDisplay:
             if tib is not None and tib.endswith("-"):
                 tib += " Braille Cells"
             self.aud_win.print_cells(title=tib)
-        if tk_items or True:
+        if tk_items:
             tib = "tk_items - " + title
             if tib is not None and tib.endswith("-"):
                 tib += " Tk Cells"
             self.canvas_grid.show_canvas_items(title=tib)
+        if canvas_items:
+            tib = "canvas_items - " + title
+            if tib is not None and tib.endswith("-"):
+                tib += " Canvas items"
+            self.canvas_grid.show_canvas(title=tib)
 
     def snapshot(self, title=None, clear_after=False):
         """ Take snapshot of current braille_screen
@@ -223,10 +235,14 @@ class BrailleDisplay:
         title = self.title
         if title is None:
             title = "Braille Display -"
+        canvas_items = False
+        if SlTrace.trace("show_canvas_items"):
+            canvas_items = True
         self.display(title=title,
                    braille_window=self._braille_window,
                    braille_print=self._braille_print,
-                   print_cells=self._print_cells)
+                   print_cells=self._print_cells,
+                   canvas_items=canvas_items)
         tur.mainloop()
         
     def done(self):
