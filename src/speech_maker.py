@@ -10,6 +10,15 @@ import time
 
 from select_trace import SlTrace, SelectError
 
+got_pyttsx3 = False
+try:
+    import pyttsx3
+    got_pyttsx3 = True
+except:
+    SlTrace.lg("No pyttsx3 to be had")
+
+
+
 
 class SpeechMakerError(SelectError):
     pass
@@ -61,20 +70,19 @@ class SpeechMakerCmd:
 
         
 class SpeechMaker(Singleton):
-    CMDS_SIZE = 20
-    SPEECH_SIZE = 20
+    CMDS_SIZE = 30
+    SPEECH_SIZE = 150
+    #SPEECH_SIZE = 30        # To force filling
 
     def __init__(self, cmds_size=CMDS_SIZE, speech_size=SPEECH_SIZE):
         self.cmds_size = cmds_size
         self.speech_size = speech_size
         self._running = True        # Thread functions exit when cleared
 
-        try:
-            import pyttsx3
+        if got_pyttsx3:
             self.pyttsx3_engine = pyttsx3.init()
-        except:
-            self.pyttsx3_engine = None 
-
+        else:
+            SlTrace.lg("Can't init pyttsx3")
 
         self.speech_lock = threading.Lock()
         self.sm_cmd_queue = queue.Queue(cmds_size)  # Command queue of SpeechMakerCmd
@@ -88,6 +96,7 @@ class SpeechMaker(Singleton):
         """ speech maker command processing thread function
         """
         while self._running:
+            
             cmd = self.sm_cmd_queue.get()
             SlTrace.lg(f"cmd: {cmd}", "speech")
             if cmd.cmd_type == "MSG":
@@ -103,6 +112,18 @@ class SpeechMaker(Singleton):
                 raise SpeechMakerError(f"Unrecognized SpeechMaker command {cmd}")
         SlTrace.lg("sm_cmd_proc_thread returning")
 
+    def get_cmd_queue_size(self):
+        """ Get current number of entries
+        :returns: number of entries
+        """
+        return self.sm_cmd_queue.qsize()
+
+    def get_speech_queue_size(self):
+        """ Get current number of entries
+        :returns: number of entries
+        """
+        return self.sm_speech_queue.qsize()
+        
     def clear(self):
         """ Clear queue
         """
@@ -132,11 +153,13 @@ class SpeechMaker(Singleton):
         SlTrace.lg(f"self.sm_cmd_queue.qsize(): {self.sm_cmd_queue.qsize()}")
         self.clear_speech_queue()
         SlTrace.lg(f"self.sm_speech_queue.qsize(): {self.sm_speech_queue.qsize()}")
+        
         #if self.pyttsx3_engine.isBusy():
-        #    self.pyttsx3_engine.stop()
-
+        #self.pyttsx3_engine.stop()
         #if self.pyttsx3_engine._inLoop:
         #    self.pyttsx3_engine.endLoop()
+        #self.pyttsx3_engine = pyttsx3.init()
+
         #self.speech_lock.release()
         
     def sm_speech_proc_thread(self):
@@ -144,6 +167,22 @@ class SpeechMaker(Singleton):
         """
         
         while self._running:
+            SlTrace.lg(f"speech queue: BEFORE sm_speech_queue.get()", "speech")
+            buffer = 10
+            qsize = self.sm_speech_queue.qsize()
+            space_left = self.speech_size - qsize
+            if space_left < buffer:
+                SlTrace.lg(f"Speech queue filling qsize:{qsize}"
+                           f" of {self.speech_size}")
+                while True:
+                    qsize = self.sm_speech_queue.qsize()
+                    space_left = self.speech_size - qsize
+                    if space_left < 2*buffer:
+                        cmd = self.sm_speech_queue.get()
+                        SlTrace.lg(f"dropping {cmd}")
+                    else:
+                        break
+                    
             cmd = self.sm_speech_queue.get()
             SlTrace.lg(f"speech queue: cmd: {cmd}", "speech")
             if cmd.cmd_type == "CLEAR":
@@ -172,6 +211,8 @@ class SpeechMaker(Singleton):
         """ Called to speak pending line
         
         """
+        SlTrace.lg(f"speek_text: qsize: {self.get_speech_queue_size()}",
+                    "speech")
         try:                
             with self.speech_lock:
                 if self.pyttsx3_engine._inLoop:
@@ -212,7 +253,7 @@ class SpeechMaker(Singleton):
                 'report'  - standard report
                 'command' - a command
         """
-        SlTrace.lg(f"send_cmd:{cmd_type} msg: {msg}")
+        SlTrace.lg(f"send_cmd:{cmd_type} msg: {msg}", "speech")
         cmd = SpeechMakerCmd(cmd_type=cmd_type, msg=msg, msg_type=msg_type)
         self.sm_cmd_queue.put(cmd)
 
@@ -234,6 +275,18 @@ class SpeechMakerLocal:
         """ Clear pending output
         """
         self.sm.clear()
+
+    def get_cmd_queue_size(self):
+        """ Get current number of entries
+        :returns: number of entries
+        """
+        return self.sm.get_cmd_queue_size()
+
+    def get_speech_queue_size(self):
+        """ Get current number of entries
+        :returns: number of entries
+        """
+        return self.sm.get_speech_queue_size()
         
     def quit(self):    
         self.sm.quit()

@@ -1,0 +1,6 @@
+#tb_test_list.tests	09Mar2023  crs, Author
+# TurtleBraille test file list
+tb_test_goto.py		# First one
+tb_test_keyboard.py
+tb_test_placement.py
+tb_test_magnify.py

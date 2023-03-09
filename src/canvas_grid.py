@@ -139,7 +139,8 @@ class CanvasGrid(tk.Canvas):
     def create_audio_window(self, title=None,
                  xmin=None, xmax=None, ymin=None, ymax=None,
                  nrows=None, ncols=None, mag_info=None, pgmExit=None,
-                 require_cells=False):
+                 require_cells=False,
+                 silent=False):
         """ Create AudioDrawWindow to navigate canvas from the section
         :title: optinal title
                 region (xmin,ymin, xmax,ymax) with nrows, ncols
@@ -154,6 +155,7 @@ class CanvasGrid(tk.Canvas):
         :require_cells: Require at least some display cells to 
                     create window
                     default: False - allow empty picture
+        :silent: quiet mode default: False
         :returns: AudioDrawWindow instance or None if no cells
                 Stores number of cells found in self.n_cells_created
         """
@@ -192,7 +194,8 @@ class CanvasGrid(tk.Canvas):
                 
         adw = AudioDrawWindow(title=title, speech_maker=self.speech_maker,
                               iy0_is_top=True, mag_info=mag_info, pgmExit=pgmExit,
-                              win_x_min=self.g_xmin, win_y_min=self.g_ymin)
+                              x_min=self.g_xmin, y_min=self.g_ymin,
+                              silent=silent)
         adw.draw_cells(cells=braille_cells)
         adw.key_goto()      # Might as well go to figure
         self.audio_wins.append(adw)     # Store list for access
@@ -364,7 +367,8 @@ class CanvasGrid(tk.Canvas):
                     else:
                         color = ""
                     SlTrace.lg(f"    {ix},{iy}: cx1,cy1,cx2,cy2 {cx1},{cy1},{cx2},{cy2}"
-                               f" item_ids: {item_ids_over_raw} {color}")
+                               f" item_ids: {item_ids_over_raw} {color}",
+                               "get_items")
                 if len(item_ids_over_raw) == 0:
                     continue    # Skip if none to check
                 
@@ -430,7 +434,6 @@ class CanvasGrid(tk.Canvas):
         
         for item_id in canvas_items:
             self.show_canvas_item(item_id=item_id, prefix=prefix)
-        SlTrace.lg()
         
     def show_canvas_items(self, title=None, types=None, ex_types=None,
                   tags=None, ex_tags=None, get_color=False,
@@ -511,8 +514,11 @@ class CanvasGrid(tk.Canvas):
                                 break
                         if is_equal:
                             is_changed = False
-            if is_changed: 
-                SlTrace.lg(f"    {key} {val}")
+            if is_changed:
+                if isinstance(val, float):
+                    SlTrace.lg(f"    {key} {val:.2f}")
+                else:                     
+                    SlTrace.lg(f"    {key} {val}")
             self.item_samples[itype] = iopts
 
     def create_magnify_info(self, x_min=None,y_min=None,

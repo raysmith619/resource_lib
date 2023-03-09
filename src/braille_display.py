@@ -46,7 +46,8 @@ class BrailleDisplay:
                  braille_window=True,
                  print_cells=False,
                  tk_items=False,
-                 canvas_items=False
+                 canvas_items=False,
+                 silent=False,
                  ):
         """ Setup display
         :title: display screen title
@@ -94,6 +95,7 @@ class BrailleDisplay:
                     default: False,
         :tk_items: Print list of tkinter canvas items default: False
         :canvas_items: print whole canvas item info default: False
+        :silent: starting val default: False
         """
         if title is None:
             title = "Braille Display"
@@ -139,7 +141,8 @@ class BrailleDisplay:
                print_cells=False, title=None,
                points_window=False,
                tk_items=False,
-               canvas_items=False):
+               canvas_items=False,
+               silent=False):
         """ display grid
         :braille_window: True - make window display of braille
                         default:True
@@ -158,6 +161,7 @@ class BrailleDisplay:
                     default: self.tk_items - False
         :canvas_items: print whole canvas item info
                     default: self.canvas_items - False
+        :silent: quiet mode default: False
         """
         file_base_name = os.path.basename(__main__.__file__)
         current_time = str(datetime.datetime.now())
@@ -191,7 +195,8 @@ class BrailleDisplay:
                             g_nrows=self.grid_height,
                             g_ncols=self.grid_width)
         #mw.withdraw()
-        self.aud_win = self.canvas_grid.create_audio_window(title=tib)
+        self.aud_win = self.canvas_grid.create_audio_window(title=tib,
+                                                            silent=silent)
         self.aud_win.find_edges()
 
         
