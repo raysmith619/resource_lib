@@ -16,7 +16,7 @@ test = os.path.basename(__file__)
 bd = BrailleDisplay(title=f"Test: {test}")
 bd.display()
 aw = bd.aud_win
-fte = aw.ftend        # menu/keyboard/mouse control
+fte = aw.fte        # menu/keyboard/mouse control
 
 try:
     

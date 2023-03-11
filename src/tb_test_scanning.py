@@ -1,6 +1,6 @@
-# tb_test_magnify.py
+# tb_test_scanning.py
 # AudoDrawWindow Tests
-# Test Magnify commands
+# Test Scan commands
 
 import os
 import time
@@ -29,19 +29,14 @@ try:
         right(90)
     #done()            # Complete drawing
     bd.display()        # So we get control
-    a_bit = 5
+    a_bit = 2
     fte = bd.aud_win.fte
+    fte.speak_text("Scanning")
     fte.pause(a_bit)
-    fte.speak_text("Select some squares")
-    fte.pause(a_bit)
-    fte.do_key_str("3;3;3")
-    fte.pause(a_bit)
-    fte.speak_text("Magnify view")
-    fte.do_menu_str("m:v")
-    fte.pause(a_bit)
-    fte.speak_text_stop() 
-    fte.speak_text("Exiting via File|Exit")
-    fte.do_menu_str("f:x")
+    fte.do_menu_str("s:s")
+    pt_time = 60
+    fte.speak_text(f"Pausing {pt_time} seconds")
+    fte.pause(30)
     SlTrace.lg("Testing Passed")
 
 

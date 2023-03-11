@@ -6,6 +6,7 @@ from select_trace import SlTrace
 from trace_control_window import TraceControlWindow
 
 
+
 class MenuDisp:
     """ Menu dispatch table entry
     Supporting multiple mode dispatch (e.g, Dropdown item plus command mode)
@@ -48,6 +49,11 @@ class AdwMenus:
         """
         SlTrace.lg("on_alt_f")
 
+    def on_alt_s(self, _):
+        """ keep from key-press
+        """
+        SlTrace.lg("on_alt_s")
+
             
     def menu_setup(self):
         """ Setup menu system
@@ -61,6 +67,8 @@ class AdwMenus:
         self.mw.bind('<Alt-m>', self.on_alt_m)  # Keep this from key cmds
         self.mw.bind('<Alt-N>', self.on_alt_n)  # Keep this from key cmds
         self.mw.bind('<Alt-n>', self.on_alt_n)  # Keep this from key cmds
+        self.mw.bind('<Alt-S>', self.on_alt_s)  # Keep this from key cmds
+        self.mw.bind('<Alt-s>', self.on_alt_s)  # Keep this from key cmds
         
         menubar = tk.Menu(self.mw)
         self.menubar = menubar      # Save for future reference
@@ -84,6 +92,10 @@ class AdwMenus:
         draw_menu = tk.Menu(menubar, tearoff=0)
         self.draw_menu_setup(draw_menu)
         menubar.add_cascade(label="Draw", menu=draw_menu)
+        
+        scan_menu = tk.Menu(menubar, tearoff=0)
+        self.scan_menu_setup(scan_menu)
+        menubar.add_cascade(label="Scanning", menu=scan_menu)
         
         aux_menu = tk.Menu(menubar,tearoff=0)
         aux_menu.add_command(label="Trace", command=self.trace_menu,
@@ -190,6 +202,22 @@ class AdwMenus:
 
     """ Magnify support package
     """
+
+    """ Magnify menu commands  """                          
+    def mag_help(self):
+        """ Help for Alt-m commands
+        """
+        """ Help - list command (Alt-m) commands
+        """
+        help_str = """
+        Help - list magnify commands (Alt-m) commands
+        h - say this help message
+        t - expand magnify selected region left/right
+        s - select/mark magnify region
+        t - expand magnify selected region up/down top/bottom
+        v - view region (make new window)
+        """
+        self.speak_text(help_str)
         
     def mag_menu_setup(self, mag_menu):
         self.mag_menu = mag_menu
@@ -228,30 +256,63 @@ class AdwMenus:
             raise Exception(f"mag option:{short_cut} not recognized")
         magde = self.mag_dispatch[short_cut]
         magde.command()
-
-    """ Magnify menu commands
-    """
-                           
-    def mag_help(self):
-        """ Help for Alt-m commands
-        """
-        """ Help - list command (Alt-m) commands
-        """
-        help_str = """
-        Help - list magnify commands (Alt-m) commands
-        h - say this help message
-        t - expand magnify selected region left/right
-        s - select/mark magnify region
-        t - expand magnify selected region up/down top/bottom
-        v - view region (make new window)
-        """
-        self.speak_text(help_str)
-
-
         
     """ End of Magnify support
     """
 
+  
+
+    """ Scanning support package
+    """
+
+    """ Scanning menu commands  """                          
+    def scan_help(self):
+        """ Help for Alt-s commands
+        """
+        """ Help - list command (Alt-s) commands
+        """
+        help_str = """
+        Help - list scanning commands (Alt-s) commands
+        h - say this help message
+        s - Start scanning mode
+        t - Stop scanning mode
+        """
+        self.speak_text(help_str)
+        
+    def scan_menu_setup(self, scan_menu):
+        self.scan_menu = scan_menu
+        self.scan_dispatch = {}
+        self.scan_menu_add_command(label="Help", command=self.scan_help,
+                             underline=0)
+        self.scan_menu_add_command(label="Start scanning", command=self.start_scanning,
+                             underline=0)
+        self.scan_menu_add_command(label="Stop scanning", command=self.stop_scanning,
+                             underline=1)
+         
+    def scan_menu_add_command(self, label, command, underline):
+        """ Setup menu commands, setup dispatch for direct call
+        :label: add_command label
+        :command: command to call
+        :underline: short-cut index in label
+        """
+        self.scan_menu.add_command(label=label, command=command,
+                                  underline=underline)
+        menu_de = MenuDisp(label=label, command=command,
+                              underline=underline)
+        
+        self.scan_dispatch[menu_de.shortcut] = menu_de
+
+    def scan_direct_call(self, short_cut):
+        """ Short-cut call direct to option
+        :short_cut: one letter option for call 
+        """
+        if short_cut not in self.scan_dispatch:
+            raise Exception(f"scan option:{short_cut} not recognized")
+        scande = self.scan_dispatch[short_cut]
+        scande.command()
+        
+    """ End of Magnify support
+    """
 
 
     """ Navigate support package
@@ -485,3 +546,15 @@ class AdwMenus:
     def nav_disable_mouse(self):
         self.fte.nav_disable_mouse()
     """ End of Navigation links """
+
+    """
+    Scanning support
+    """
+    def start_scanning(self):
+        self.fte.start_scanning()
+
+     
+    def stop_scanning(self):
+        self.fte.stop_scanning()
+        
+

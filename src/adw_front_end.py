@@ -18,7 +18,7 @@ from grid_fill_gobble import GridFillGobble
 
 from magnify_info import MagnifyInfo, MagnifySelect, MagnifyDisplayRegion
 from adw_menus import AdwMenus
-
+from adw_scanner import AdwScanner
 
 class AdwFrontEnd:
     
@@ -112,7 +112,7 @@ class AdwFrontEnd:
         self.digit_dir = {"7":(-1,y_up),   "8":(0,y_up),   "9":(1,y_up),
                           "4":(-1,0),      "5":(0,0),      "6":(1,0),
                           "1":(-1,y_down), "2":(0,y_down), "3":(1,y_down)}
-
+        self.scanner = AdwScanner(self)
         self.menus = AdwMenus(self)
 
     def add_to_goto_cell_list(self, ixy):
@@ -416,6 +416,9 @@ class AdwFrontEnd:
             elif cmd_type == 'm':
                 for c in cmd_letters:
                     self.mag_direct_call(c)
+            elif cmd_type == 's':
+                for c in cmd_letters:
+                    self.scan_direct_call(c)
 
     def do_key_str(self, key_str=None):
         """ Execute initial key string, if any
@@ -437,26 +440,6 @@ class AdwFrontEnd:
                 self.speak_text_stop() 
                     
 
-
-    def on_alt_a(self, event):
-        """ keep from key-press
-        """
-        SlTrace.lg("on_alt_a")
-
-    def on_alt_m(self, event):
-        """ keep from key-press
-        """
-        SlTrace.lg("on_alt_m")
-
-    def on_alt_n(self, event):
-        """ keep from key-press
-        """
-        SlTrace.lg("on_alt_n")
-
-    def on_alt_f(self, event):
-        """ keep from key-press
-        """
-        SlTrace.lg("on_alt_f")
 
     def pause(self, time_sec):
         """ Pause for time (sec) while allowing update events
@@ -511,11 +494,15 @@ class AdwFrontEnd:
         """
         return self.x, self.y 
 
-    def get_xy_canvas(self):
+    def get_xy_canvas(self, xy=None):
         """ Get current xy pair on canvas (0-max)
+        :xy: xy tuple default: current xy
         :returns: (x,y) tuple
         """
-        return self.x-self.x_min, self.y-self.y_min 
+        if xy is None:
+            xy = self.get_xy()
+        x,y = xy
+        return x-self.x_min, y-self.y_min 
 
     def set_x_min(self, val):
         """ Set min
@@ -1548,6 +1535,20 @@ class AdwFrontEnd:
         self._cursor_item = self.canvas.create_oval(x0,y0,x1,y1,
                                                     fill="red")
         self.update()
+
+        
+    """
+    ############################################################
+                       Links to scanner
+    ############################################################
+    """
+    def start_scanning(self):
+        self.scanner.start_scanning()
+
+     
+    def stop_scanning(self):
+        self.scanner.stop_scanning()
+
         
     """
     ############################################################
@@ -1579,6 +1580,12 @@ class AdwFrontEnd:
         :short_cut: one letter option for call 
         """
         self.menus.nav_direct_call(short_cut)
+
+    def scan_direct_call(self, short_cut):
+        """ Short-cut call direct to option
+        :short_cut: one letter option for call 
+        """
+        self.menus.scan_direct_call(short_cut)
 
     """ End of menus links """
             

@@ -19,7 +19,7 @@ try:
     bd = BrailleDisplay(title=f"Test: {test}")
     bd.display()
     aw = bd.aud_win
-    fte = aw.ftend        # menu/keyboard/mouse control
+    fte = aw.fte        # menu/keyboard/mouse control
     
     test_desc = "move_to"
     x,y = fte.get_x_min(),fte.get_y_min()

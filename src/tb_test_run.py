@@ -12,6 +12,15 @@ import re
 import os
 
 from select_trace import SlTrace
+from Lib.pickle import FALSE, TRUE
+
+"""
+test list files
+    1. support single line comments starting with # going to end of line
+    2. support triple single quote (''') starting with zero or more white space
+        ending on a line containing ''' anywhere in the line.  The complete line
+        is ignored
+"""
 
 test_list_file = "tb_test_list.tests"
 test_out_dir = "../tests"
@@ -26,14 +35,24 @@ timeout = 180
 tlf_lines = None
 with open(test_list_file) as tlfp:
     tlf_lines = tlfp.readlines()
-
+in_triple_single_quote  = False
 with open(out_file, "w") as outfp:
     # Process input test file
     for line in tlf_lines:
+        if in_triple_single_quote:
+            if re.match(r"'''", line):   # Anywhere in line
+                in_triple_single_quote = False  # End it 
+            continue            # Ignore all lines, including end
+            
         line = re.sub(r'\n$', '', line)     # remove eol if one
         line = re.sub(r'\s*#.*', '', line)
         if re.match(r'^\s*$', line):
             continue
+        
+        if re.match(r"'''", line):
+            in_triple_single_quote = True 
+            continue            # Ignore current line
+        
         print(line, file=outfp)
         print(line)
         out_str = None
@@ -50,7 +69,7 @@ with open(out_file, "w") as outfp:
                 print(f"Failure returncode:{ret_code}")
                 print(f"Failure returncode:{ret_code}", file=outfp)
         except subprocess.TimeoutExpired as e:
-            print(f"{line} timedout")
+            print(f"{line} time dout")
             out_str = e.stdout
             err_str = e.stderr
         if out_str is not None:

@@ -144,7 +144,7 @@ class AudioDrawWindow:
         SlTrace.lg(f"canvas width: {canvas.winfo_width()}")
         SlTrace.lg(f"canvas height: {canvas.winfo_height()}")
         self.visible_figure = visible_figure
-        self.ftend = AdwFrontEnd(self, title=title, silent=silent, color=color)
+        self.fte = AdwFrontEnd(self, title=title, silent=silent, color=color)
         self.set_x_min(x_min)
         self.set_y_min(y_min)
         self.set_x_max(x_min + win_width)
@@ -197,14 +197,14 @@ class AudioDrawWindow:
         self.shift_to_edge = shift_to_edge
         self.look_dist = look_dist
 
-        self.ftend.do_complete(menu_str=menu_str, key_str=key_str)
+        self.fte.do_complete(menu_str=menu_str, key_str=key_str)
         self.pos_check()            # Startup possition check loop
         self.update()     # Make visible
 
     def silence(self):
         """ Check if silent mode
         """
-        return self.ftend.silence()
+        return self.fte.silence()
             
                 
     def speak_text(self, msg, dup_stdout=True,
@@ -825,6 +825,7 @@ class AudioDrawWindow:
     def get_win_ullr_at_ixy(self, ixy):
         """ Get window rectangle for cell at ixy
         :ixy: cell index tupple (ix,iy)
+        :returns: (x_left,y_top, x_right,y_bottom)
         """
         ix,iy = ixy
         x_min = self.get_x_min()
@@ -838,6 +839,7 @@ class AudioDrawWindow:
     def get_win_ullr_at_ixy_canvas(self, ixy):
         """ Get window rectangle for cell at ixy
         :ixy: cell index tupple (ix,iy)
+        :returns: (x_left,y_top, x_right,y_bottom) canvas coords
         """
         x_l,y_t, x_r,y_b = self.get_win_ullr_at_ixy(ixy)
         x_left,y_top = self.win_to_canvas((x_l,y_t))
@@ -935,7 +937,7 @@ class AudioDrawWindow:
         :cell: figure cell
         :val: set visible Default: True
         """
-        self.ftend.set_visible_cell(cell)
+        self.fte.set_visible_cell(cell)
 
     def announce_can_not_do(self, msg=None, val=None):
         """ Announce we can't do something
@@ -1018,13 +1020,13 @@ class AudioDrawWindow:
         self.mw.update_idletasks()
 
     """
-         Links to menus functions
+         Links to front end functions
     """
 
     def cursor_update(self):
         """ Update cursor (current position) display
         """
-        self.ftend.cursor_update()
+        self.fte.cursor_update()
         
     def mark_cell(self, cell,
                   mtype=BrailleCell.MARK_SELECTED):
@@ -1032,24 +1034,24 @@ class AudioDrawWindow:
         :cell: Cell(BrailleCell) or (ix,iy) of cell
         :mtype: Mark type default: MARK_SELECTED
         """
-        self.ftend.mark_cell(cell=cell, mtype=mtype)
+        self.fte.mark_cell(cell=cell, mtype=mtype)
 
     def set_color(self, color):
         """ Set current color
         """
-        self.ftend.set_color(color=color)
+        self.fte.set_color(color=color)
         
     def get_color(self):
         """ Get current color
         """
-        return self.ftend.get_color()
+        return self.fte.get_color()
         
     def set_drawing(self, val=True):        
-        self.ftend.set_drawing(val=val)
+        self.fte.set_drawing(val=val)
         return val
     
     def is_drawing(self):
-        return self.ftend.is_drawing()
+        return self.fte.is_drawing()
 
         
     def key_goto(self):
@@ -1058,40 +1060,47 @@ class AudioDrawWindow:
             else go one step within current figure, toward
             longest inside path
         """
-        self.ftend.key_goto()
+        self.fte.key_goto()
 
     def set_xy(self, xy):
         """ Set our internal win x,y
         :xy: x,y tuple as new win coordinates
         :returs: (x,y) tuple
         """
-        return self.ftend.set_xy(xy)
+        return self.fte.set_xy(xy)
 
     def get_xy(self):
         """ Get current xy pair
         :returns: (x,y) tuple
         """
-        return self.ftend.get_xy() 
+        return self.fte.get_xy() 
 
+    def get_xy_canvas(self, xy=None):
+        """ Get current xy pair on canvas (0-max)
+        :xy: xy tuple default: current xy
+        :returns: (x,y) tuple
+        """
+        return self.fte.get_xy_canvas(xy=xy)
+    
     def set_x_min(self, val):
         """ Set min
         :val: new x_min
         :returns: new x_min
         """
-        return self.ftend.set_x_min(val)
+        return self.fte.set_x_min(val)
 
     def get_x_min(self):
-        return self.ftend.get_x_min()
+        return self.fte.get_x_min()
 
     def set_x_max(self, val):
         """ Set max
         :val: new x_max
         :returns: new x_min
         """
-        return self.ftend.set_x_max(val)
+        return self.fte.set_x_max(val)
 
     def get_x_max(self):
-        return self.ftend.get_x_max()
+        return self.fte.get_x_max()
         
  
     def set_y_min(self, val):
@@ -1099,20 +1108,20 @@ class AudioDrawWindow:
         :val: new x_min
         :returns: new x_min
         """
-        return self.ftend.set_y_min(val)
+        return self.fte.set_y_min(val)
 
     def get_y_min(self):
-        return self.ftend.get_y_min()
+        return self.fte.get_y_min()
 
     def set_y_max(self, val):
         """ Set max
         :val: new y_max
         :returns: new x_min
         """
-        return self.ftend.set_y_max(val)
+        return self.fte.set_y_max(val)
 
     def get_y_max(self):
-        return self.ftend.get_x_max()
+        return self.fte.get_x_max()
 
                 
     def pos_check(self, x=None, y=None, force_output=False, with_voice=False):
@@ -1122,11 +1131,11 @@ class AudioDrawWindow:
         :force_output: force output, flushing current queue
         :with_voice: say if, even if beep enable
         """
-        self.ftend.pos_check(x=x, y=y, force_output=force_output,
+        self.fte.pos_check(x=x, y=y, force_output=force_output,
                              with_voice=with_voice)
 
     def is_silent(self):
-        return self.ftend.is_silent()
+        return self.fte.is_silent()
 if __name__ == "__main__":
     SlTrace.clearFlags()
     menu_str = "n:sh;d:d"
