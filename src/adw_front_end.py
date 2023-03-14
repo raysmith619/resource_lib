@@ -94,10 +94,9 @@ class AdwFrontEnd:
         self._loc_list_first = None     # a,b horiz/vert move targets
         self._loc_list_second = None
         self.x,self.y = (0,0)
-        self._audio_beep = False
-        self.audio_beep = AudioBeep(self, self.silence)
         self._silent = silent           # So prev=self._silent  doesn't fail
-        self.set_silent(silent)
+        self.set_silent(silent) # Start with speaking
+        self.set_using_audio_beep(False)
         self._track_goto_cell = True    # True -> mark cells where we have gone
         self.clear_goto_cell_list()
         self._show_marked = show_marked
@@ -105,7 +104,8 @@ class AdwFrontEnd:
         self._pendown = False       # True - move marks
         self._cursor_item = None    # position cursor tag
         self.set_color(color)
-
+        self.setup_beep()
+        
         # direction for digit pad
         y_up = -1
         y_down = 1
@@ -128,7 +128,9 @@ class AdwFrontEnd:
         return self.goto_cell_list
     
     def silence(self):
-        return self.is_silent
+        """ Function to check for silent mode
+        """
+        return self.is_silent()
     
     def is_silent(self):
         return self._silent
@@ -304,6 +306,7 @@ class AdwFrontEnd:
     def announce_can_not_do(self, msg=None, val=None):
         """ Announce we can't do something
         """
+        audio_beep = self.get_audio_beep()
         if self.audio_beep:
             self.audio_beep.announce_can_not_do(msg=msg, val=val)
 
@@ -334,19 +337,13 @@ class AdwFrontEnd:
     def nav_audio_beep(self):
         """ Use audio beeps to aid positioning
         """
-        self.set_audio_beep()
+        self.set_using_audio_beep()
         self.nav_echo_off()
         
     def nav_no_audio_beep(self):
         """ Use audio beeps to aid positioning
         """
-        self.set_audio_beep(False)
-
-    def set_audio_beep(self, set=True): 
-        """ Set/Clear use audio_beep to aid positioning
-        :set: True set flag
-        """
-        self._audio_beep = set
+        self.set_using_audio_beep(False)
                
     def nav_no_add_loc(self):
         """ Remove At location info to report
@@ -798,31 +795,6 @@ class AdwFrontEnd:
                     canvas.itemconfigure(item_id, fill='dark gray')
                 else:
                     canvas.itemconfigure(item_id, fill='')            
-
-    def key_digit(self, keyslow):
-        """ Process digit key as direction
-        :keyslow: 1-9 move in direction
-                    with 0,5 dependent on self._drawing
-                    If drawing: self._drawing == True
-                        5 - Mark position with new cell
-                        0 - Remove cell at position
-                    else:
-                        5,0 - announce current location
-        """
-        if keyslow == "5":
-            if self._drawing:
-                self.key_mark()
-            else:
-                self.announce_location()
-        elif keyslow == "0":
-            if self._drawing:
-                self.key_mark(False)
-            else:
-                self.announce_location()
-        elif keyslow in "123456789":
-            self.key_direction(keyslow)
-        else:
-            self.key_unrecognized(keyslow)
         
 
     def key_help(self):
@@ -951,7 +923,8 @@ class AdwFrontEnd:
         elif end_pos == "second":
             self.move_to_ixy(*self._loc_list_second)
         else:
-            self.audio_beep.announce_can_not_do()          
+            audio_beep = self.get_audio_beep()
+            audio_beep.announce_can_not_do()          
 
 
     def key_report_pos(self):
@@ -1391,13 +1364,15 @@ class AdwFrontEnd:
             ix,iy = self.get_ixy_at()
             SlTrace.lg(f"from get_ixy_at(): ix:{ix} iy:{iy}",
                         "pos_tracking")
-            if self._audio_beep and not with_voice:
-                self.audio_beep.announce_pcell((ix,iy), dly=0)
+            if self.is_using_audio_beep() and not with_voice:
+                audio_beep = self.get_audio_beep()
+                audio_beep.announce_pcell((ix,iy), dly=0)
                 self.update()
-                if self.grid_path is not None:
-                    pcells = self.grid_path.get_next_positions(max_len=self.look_dist)
+                grid_path = self.get_grid_path()
+                if grid_path is not None:
+                    pcells = grid_path.get_next_positions(max_len=self.get_look_dist())
                     self.update()
-                    self.audio_beep.announce_next_pcells(pc_ixys=pcells)
+                    audio_beep.announce_next_pcells(pc_ixys=pcells)
             else:
                 if self.rept_at_loc or with_voice:
                     rep_str += f" at row {iy+1} column {ix+1}"
@@ -1536,6 +1511,32 @@ class AdwFrontEnd:
                                                     fill="red")
         self.update()
 
+    def is_using_audio_beep(self):
+        return self._using_audio_beep
+
+    def set_using_audio_beep(self, using=True):
+        self._using_audio_beep = using
+    
+    def get_audio_beep(self):
+        """ Get access to audio tone feedback for location
+        """
+        return self.audio_beep
+    
+    def setup_beep(self):
+        """ Setup audio beep location reporting
+        """
+        self.audio_beep = AudioBeep(self, self.silence)
+
+    def update(self):
+        """ Update display
+        """
+        self.adw.update()
+        
+    def update_idle(self):
+        """ Update pending
+        """
+        self.adw.update_idle()
+
         
     """
     ############################################################
@@ -1594,6 +1595,18 @@ class AdwFrontEnd:
                        Links to adw
     ############################################################
     """
+
+    def set_grid_path(self):
+        self.adw.set_grid_path()
+        
+    def get_grid_path(self):
+        return self.adw.get_grid_path()
+
+    def set_look_dist(self, look_dist):
+        self.adw.set_look_dist(look_dist=look_dist)
+
+    def get_look_dist(self):
+        return self.adw.get_look_dist()
             
     def get_ix_min(self):
         """ get minimum ix on grid
@@ -1611,7 +1624,7 @@ class AdwFrontEnd:
         """ get minimum iy on grid
         :returns: min iy
         """
-        return self.adw.get_iy_min(())
+        return self.adw.get_iy_min()
 
     def get_iy_max(self):
         """ get maximum ix on grid
@@ -1802,11 +1815,6 @@ class AdwFrontEnd:
                 default:False
         """
         self.adw.move_to(x=x, y=y, quiet=quiet)
-
-    def update(self):
-        """ Update display
-        """
-        self.adw.update()
 
 
 if __name__ == '__main__':

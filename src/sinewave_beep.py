@@ -159,7 +159,15 @@ class SineWaveBeep:
         "white" : cp+10*cpsp,
         }
 
-
+    @classmethod
+    def color2pitch(cls, color):
+        """ Convert color string into pitch
+        :color: color string
+        """
+        if color not in cls.color_pitches:
+            return cls.color_pitches["OTHER"]
+        
+        return cls.color_pitches[color]
 
     def __init__(self, awin, dur=None, silence_checker=None):
         self.awin = awin

@@ -190,12 +190,12 @@ class AudioDrawWindow:
         self.goto_travel_list = []    # Memory of where we have gone
         self.goto_travel_list_index = None
         self.cell_history = []          # History of all movement
-        self.grid_path = GridPath(self)
+        self.set_grid_path()
         self.running = True         # Set False to stop
         self.mw.focus_force()
         self.blank_char = blank_char
         self.shift_to_edge = shift_to_edge
-        self.look_dist = look_dist
+        self.set_look_dist(look_dist)
 
         self.fte.do_complete(menu_str=menu_str, key_str=key_str)
         self.pos_check()            # Startup possition check loop
@@ -305,7 +305,7 @@ class AudioDrawWindow:
             self.set_xy((min_x,min_y))
             x,y = self.get_xy()
             self.pos_check(x=x,  y=y)
-        self.grid_path = GridPath(self)
+        self.set_grid_path()
         self.pos_history = []       # Clear history
         self.update()
         #self.turtle.penup()
@@ -822,6 +822,12 @@ class AudioDrawWindow:
         
         return None
 
+    def set_grid_path(self):
+        self.grid_path = GridPath(self)
+        
+    def get_grid_path(self):
+        return self.grid_path
+    
     def get_win_ullr_at_ixy(self, ixy):
         """ Get window rectangle for cell at ixy
         :ixy: cell index tupple (ix,iy)
@@ -942,8 +948,9 @@ class AudioDrawWindow:
     def announce_can_not_do(self, msg=None, val=None):
         """ Announce we can't do something
         """
-        if self.audio_beep:
-            self.audio_beep.announce_can_not_do(msg=msg, val=val)
+        audio_beep = self.get_audio_beep()
+        if audio_beep:
+            audio_beep.announce_can_not_do(msg=msg, val=val)
         else:
             self.say_text(msg)
     
@@ -1023,6 +1030,11 @@ class AudioDrawWindow:
          Links to front end functions
     """
 
+    def get_audio_beep(self):
+        """ Get access to audio beep
+        """
+        return self.fte.get_audio_beep()
+
     def cursor_update(self):
         """ Update cursor (current position) display
         """
@@ -1061,6 +1073,12 @@ class AudioDrawWindow:
             longest inside path
         """
         self.fte.key_goto()
+
+    def set_look_dist(self, look_dist):
+        self.look_dist = look_dist
+
+    def get_look_dist(self):
+        return self.look_dist
 
     def set_xy(self, xy):
         """ Set our internal win x,y
