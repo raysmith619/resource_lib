@@ -274,6 +274,7 @@ class AdwMenus:
         help_str = """
         Help - list scanning commands (Alt-s) commands
         h - say this help message
+        k - toggle skip space
         s - Start scanning mode
         t - Stop scanning mode
         """
@@ -283,6 +284,10 @@ class AdwMenus:
         self.scan_menu = scan_menu
         self.scan_dispatch = {}
         self.scan_menu_add_command(label="Help", command=self.scan_help,
+                             underline=0)
+        self.scan_menu_add_command(label="f - flip skip space", command=self.flip_skip_space,
+                             underline=0)
+        self.scan_menu_add_command(label="r - flip skip run", command=self.flip_skip_run,
                              underline=0)
         self.scan_menu_add_command(label="Start scanning", command=self.start_scanning,
                              underline=0)
@@ -310,8 +315,8 @@ class AdwMenus:
             raise Exception(f"scan option:{short_cut} not recognized")
         scande = self.scan_dispatch[short_cut]
         scande.command()
-        
-    """ End of Magnify support
+                
+    """ End of Scanning support
     """
 
 
@@ -342,7 +347,7 @@ class AdwMenus:
         p - report position
         u - audio beep
         d - no audio beep
-        Escape - flush pending report output
+         Escape - flush pending report output
         """
         self.speak_text(help_str)
         
@@ -550,6 +555,17 @@ class AdwMenus:
     """
     Scanning support
     """
+
+    def flip_skip_space(self):
+        """ Flip skipping spaces
+        """
+        self.fte.flip_skip_space()
+
+    def flip_skip_run(self):
+        """ Flip skipping run of equals
+        """
+        self.fte.flip_skip_run()
+        
     def start_scanning(self):
         self.fte.start_scanning()
 

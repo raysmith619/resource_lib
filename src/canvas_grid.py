@@ -14,6 +14,7 @@ Provide list of canvas items overlapping a region (display cell rectangle).
 import tkinter as tk
 import sys
 import os
+import copy
 
 from select_trace import SlTrace
 from braille_error import BrailleError
@@ -203,12 +204,15 @@ class CanvasGrid(tk.Canvas):
 
     def item_to_color(self, item_ids):
         """ Get color string given item id
+            Ignore items with fill tuple ending with ''
         :item_ids: list of canvas ids for item
         :returns: color str
         """
-        top_id = item_ids[-1]
-        color_tuple = self.base.itemconfigure(top_id, "fill")
-        color = color_tuple[-1]
+        for top_id in reversed(item_ids):
+            color_tuple = self.base.itemconfigure(top_id, "fill")
+            color = color_tuple[-1]
+            if color != '':
+                break       # Take first that has a color  not ''
         return color
         
     def display_cell(self, ixy_item, mark_type=None):
@@ -551,7 +555,49 @@ class CanvasGrid(tk.Canvas):
         mag_info = MagnifyInfo(top_region=top_region,
                                base_canvas=self)
         return mag_info
-    
+
+    def get_mag_info_ullr(self, mag_info):
+        """ Get boundaries from mag_info
+        :mag_info: (MagnifyDisplayRegion)
+        :returns: (left_x,upper_y,
+                                    right_x,lower_y)
+        """ 
+        select = mag_info.select
+        disp_region = mag_info.display_region
+        if disp_region.ncols is None:
+            disp_region.ncols = self.g_ncols
+        if disp_region.nrows is None:
+            disp_region.nrows = self.g_nrows
+        disp_x_cell = (disp_region.x_max-disp_region.x_min)/disp_region.ncols
+        disp_y_cell = (disp_region.y_max-disp_region.y_min)/disp_region.nrows
+        xmin = select.ix_min*disp_x_cell + disp_region.x_min
+        ymin = select.iy_min*disp_y_cell + disp_region.y_min
+        xmax = (select.ix_max+1)*disp_x_cell + disp_region.x_min
+        ymax = (select.iy_max+1)*disp_y_cell + disp_region.y_min
+        return (xmin,ymin, xmax,ymax)   # left, top, right, bottom
+
+    def show_mag_info_items(self, mag_info, ix, iy,
+                            title=None, types=None, ex_types=None,
+                  tags=None, ex_tags=None, get_color=False,
+                  always_list=None,
+                  prefix=None):
+        """ Display canvas items for display
+        :mag_info: (MagnifyDisplayRegion)
+        :ix: ix index in mag_info
+        :iy: iy index in mag_info
+        """
+        mag_info_copy = copy.copy(mag_info)     # Don't modify original
+        mag_info_copy.select = MagnifySelect(ix_min=ix,ix_max=ix,
+                                              iy_min=iy,iy_max=iy)
+        xmin,ymin,xmax,ymax = self.get_mag_info_ullr(mag_info=mag_info_copy)
+        self.show_canvas_items(title=title, types=types, ex_types=ex_types,
+                  tags=tags, ex_tags=ex_tags, get_color=get_color,
+                  always_list=always_list,
+                  xmin=xmin,ymin=ymin, xmax=xmax,ymax=ymax,
+                  ncols=1,nrows=1,
+                  prefix=prefix)
+
+                   
     def create_magnification_window(self, mag_info):
         """ Create magnification
         :mag_info: MagnificationInfo containing info
@@ -564,7 +610,6 @@ class CanvasGrid(tk.Canvas):
         xmin = select.ix_min*disp_x_cell + disp_region.x_min
         ymin = select.iy_min*disp_y_cell + disp_region.y_min
         xmax = (select.ix_max+1)*disp_x_cell + disp_region.x_min
-        ymin = select.iy_min*disp_y_cell + disp_region.y_min
         ymax = (select.iy_max+1)*disp_y_cell + disp_region.y_min
         SlTrace.lg(f"create_magnification_window:"
                    f" xmin:{xmin} ymin:{ymin} xmax:{xmax} ymax:{ymax}"

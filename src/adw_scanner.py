@@ -30,9 +30,22 @@ class ScanPathItem:
         self.sinewave_left = sinewave_left
         self.sinewave_right = sinewave_right
 
+    def __str__(self):
+        st = f"ScanPathItem: {self.ix},{self.iy}"
+        st += f" {self.cell}" if self.cell is not None else " space"
+        return st
+    
 class AdwScanner:
     
-    def __init__(self, fte, cell_time=.05, space_time=.01):
+    def __init__(self, fte, cell_time=.05, space_time=.01,
+                 skip_space=True, skip_run=True, scan_len=10):
+        """ Setup scanning
+        :cell_time: time (seconds) to beep cell
+        :space_time: time (seconds) to beep space
+        :skip_space: True - skip space default: True
+        :skip_run: True - skip run of equals default: True
+        :scan_len: number of items to add to scan list
+        """
         self.fte = fte
         self.adw = fte.adw
         self.mw = self.adw.mw
@@ -43,7 +56,39 @@ class AdwScanner:
         self._scan_item_tag = None             # Scanning item tag
         self._report_item = None        # Latest scanning report item
         self._scanning = False          # Currently scanning
-        
+        self.set_skip_space(skip_space)
+        self.set_skip_run(skip_run)
+        self.scan_len = scan_len
+        self.skip_color = None          # color of run if any
+        self._display_item = None
+
+
+    def flip_skip_space(self):
+        """ Flip skipping spaces
+        """
+        skip_space = self.get_skip_space()
+        self.set_skip_space(not skip_space)
+
+
+    def get_skip_space(self):
+        return self.skip_space 
+    
+    def set_skip_space(self, val):
+        self.skip_space = val
+
+
+    def get_skip_run(self):
+        return self.skip_run 
+    
+    def set_skip_run(self, val):
+        self.skip_run = val
+
+    def flip_skip_run(self):
+        """ Flip skipping runs
+        """
+        skip_run = self.get_skip_run()
+        self.set_skip_run(not skip_run)
+                
     def start_scanning(self, cells=None):
         """ Start scanning process
         eye(center) is bottom / middle
@@ -51,7 +96,7 @@ class AdwScanner:
         SlTrace.lg("start_scanning")
         if cells is None:
             cells  = self.get_cells()
-        self.cells = cells
+        self.scan_cells = cells
         eye_sep_half = 15    # Half separation
         eye_ix = (self.get_ix_min() + self.get_ix_max())//2
         if eye_ix > self.get_ix_min() - eye_sep_half:
@@ -69,38 +114,118 @@ class AdwScanner:
         fig_x_ul,fig_y_ul,fig_x_lr,fig_y_lr = self.bounding_box_ci()
         self.view_left = fig_x_ul if fig_x_ul <= eye_ix_l else eye_ix_l
         self.view_right  = fig_x_lr if fig_x_lr >= eye_ix_r else eye_ix_r
-        
-        self.forward_path = self.get_scan_path(cells=cells)
-        self.reverse_path = list(reversed(self.forward_path))
+        SlTrace.lg("Calculating scan_items")
+        ###self.forward_path = self.get_scan_path(cells=self.scan_cells)
+        ###self.reverse_path = list(reversed(self.forward_path))
+        self.setup_get_scan_path()
+        self.more_to_get = True
+        SlTrace.lg(f"start_scan ")
         self.start_scan()
 
-    def get_scan_path(self, cells=None):
-        """ Get ordered list of scanning locations
+
+    def setup_get_scan_path(self, cells=None):
+        """ Setup getting path in parts
+        :cells: cells to scan
+        """
+        self.scan_items = self.get_scan_items(cells=cells)
+        self.scan_items_index = 0
+        self.scan_items_end = len(self.scan_items)      # < end
+
+    def get_scan_items(self, cells=None):
+        """ Get ordered list of scanning locations, skipping based
+        on settings self.skip_space, self.skip_run
+        :cells: cells dictionary by ix,iy default: self.cells
+        :returns: Rqw list of ScanPathItem in the order to scan
+        """
+        scan_items_raw = self.get_scan_items_raw(cells=cells)
+        items_raw_left = scan_items_raw[:]    # Depleated as we go
+        scan_items = []         # Populated with used scan items
+        
+        max_run_skip = 10               # Maximum to run skip at a time
+        max_space_skip = 50             # Maximum to space skip at a time     
+        run_color = None                # color in run
+        while len(items_raw_left) > 0:              # Loop over raw items
+            n_skip = 0                              # avoid too long a skip
+            while len(items_raw_left) > 0:          # In skipping loop
+                item = items_raw_left.pop(0)
+                if self.skip_space and item.cell is None:
+                    n_skip += 1
+                    if n_skip > max_space_skip:
+                        break
+                    continue
+                
+                elif self.skip_run and item.cell is not None:
+                    if len(items_raw_left) == 0:
+                        break               # Don't skip end of path
+                    color = item.cell.color_string()
+                    if run_color is None or run_color != color:
+                        run_color = color
+                        break                   # Starting run
+                    next_item = items_raw_left[0]
+                    if next_item.cell is None or next_item.cell.color_string() != color:
+                        break       # Include end of run
+                    if next_item.cell.iy != item.cell.iy:
+                        break       # Include new row
+                    n_skip += 1
+                    if n_skip > max_run_skip:
+                        break
+                else:
+                    break
+                SlTrace.lg(f"skipping {item}")
+            SlTrace.lg(f"scanning {item}")
+            if item.cell is None:
+                SlTrace.lg(f"None: scanning {item}")
+                
+            scan_items.append(item)
+        return scan_items
+                
+    def get_scan_items_raw(self, cells=None):
+        """ Get ordered list of scanning locations, no skipping
             Scanning order is bottom to top, with alternating
             left-to-right then right-to-left so as to make a contiguous
             path
         :cells: cells dictionary by ix,iy default: self.cells
-        :returns: list of ScanPathItem in the order to scan
+        :returns: Rqw list of ScanPathItem in the order to scan
         """
         if cells is None:
             cells = self.get_cells()
         ix_ul, iy_ul, ix_lr, iy_lr = self.bounding_box_ci(cells=cells)
-        scan_path = []
+        scan_items = []
         left_to_right = True    # Start going left to right
         for iy in range(iy_lr, iy_ul-1, -1):    # bottom to top
             if left_to_right:
                 for ix in range(ix_ul, ix_lr+1):
                     cell = cells[(ix,iy)] if (ix,iy) in cells else None
-                    scan_path.append(ScanPathItem(ix=ix, iy=iy, cell=cell))
+                    scan_items.append(ScanPathItem(ix=ix, iy=iy, cell=cell))
             else:
                 for ix in reversed(range(ix_ul, ix_lr+1)):
                     cell = cells[(ix,iy)] if (ix,iy) in cells else None
-                    scan_path.append(ScanPathItem(ix=ix, iy=iy, cell=cell))
+                    scan_items.append(ScanPathItem(ix=ix, iy=iy, cell=cell))
             left_to_right = not left_to_right
+        return scan_items
+
+    def get_more_scan_path(self, nitem=10):
+        """ Get ordered list of scanning locations
+            Scanning order is bottom to top, with alternating
+            left-to-right then right-to-left so as to make a contiguous
+            path
+        :cells: cells dictionary by ix,iy default: self.cells
+        :nitem; number of items to return
+        :returns: list of ScanPathItem in the order to scan at most
+                    nitem per call
+                    Last return len < nitem
+        """
         """ Populate with sinewave appropriate with locations
         We assume we can hold enough pysinewave instances each set for stereo.
         """
-        for sp_ent in scan_path:
+        SlTrace.lg(f"Populate {nitem} items at {self.scan_items_index} with sound")
+        next_items = []
+        for _ in range(nitem):
+            if self.scan_items_index >= self.scan_items_end:
+                return next_items
+            sp_ent = self.scan_items[self.scan_items_index]
+            next_items.append(sp_ent)
+            self.scan_items_index += 1
             ix,iy = sp_ent.ix,sp_ent.iy
             vol_left, vol_right = self.get_vol(ix=ix, iy=iy,
                                                eye_ixy_l=self.eye_ixy_l,
@@ -129,9 +254,8 @@ class AdwScanner:
 
             sp_ent.sinewave_left = sinewave_left
             sp_ent.sinewave_right = sinewave_right
-            
-        return scan_path
-
+        return next_items
+    
     def get_pitch(self, ix, iy):
         """ Get pitch for cell (color)
         :ix: cell ix
@@ -174,9 +298,11 @@ class AdwScanner:
             vol_l = SILENT
         vol_l,vol_r = vol_r,vol_l   # HACK - got things reversed!
         '''
-        SlTrace.lg(f"\nl-r: {vol_l-vol_r:.2f}")
-        SlTrace.lg(f"{ix},{iy} left vol:{vol_l:.2f}  dist:{dist:.2f} eye_ixy_l:{eye_ixy_l}")
-        SlTrace.lg(f"{ix},{iy} right vol:{vol_r:.2f}  dist:{dist:.2f} eye_ixy_r:{eye_ixy_r}")
+        SlTrace.lg(f"\nl-r: {vol_l-vol_r:.2f}", "sound_volume")
+        SlTrace.lg(f"{ix},{iy} left vol:{vol_l:.2f}  dist:{dist:.2f} eye_ixy_l:{eye_ixy_l}",
+                   "sound_volume")
+        SlTrace.lg(f"{ix},{iy} right vol:{vol_r:.2f}  dist:{dist:.2f} eye_ixy_r:{eye_ixy_r}",
+                   "sound_volume")
         return vol_l,vol_r
         
     
@@ -187,7 +313,8 @@ class AdwScanner:
         and forward_path
         """
         self._scanning = True
-        self.using_forward_path = True 
+        self.using_forward_path = True
+        self.forward_path = [] 
         self.current_scan_path = []     # let scan_path_item setup 
         self.mw.after(0,self.scan_path_item)
 
@@ -206,17 +333,25 @@ class AdwScanner:
         """
         if not self._scanning:
             return
-        
+        self.more_to_get = True if (
+                self.scan_items_index < self.scan_items_end) else False
+        n_skip = 0            # avoid too long
         if len(self.current_scan_path) == 0:
+            if self.more_to_get:
+                new_items = self.get_more_scan_path(nitem=self.scan_len)
+                self.forward_path.extend(new_items)
+                self.reverse_path = list(reversed(self.forward_path))
             if self.using_forward_path:
                 self.current_scan_path = self.forward_path[:]   # used up
                 self.using_forward_path = False 
             else:
                 self.current_scan_path = self.reverse_path[:]   # used up
-                self.using_forward_path = True 
-        item = self.current_scan_path.pop(0)
-        self.display_item(item)
-        self.report_item(item)
+                self.using_forward_path = True
+        if len(self.current_scan_path) > 0: 
+            item = self.current_scan_path.pop(0)
+            self._display_item = item    
+            self.display_item(item)
+            self.report_item(item)
         if item.cell is None:
             self.mw.after(int(self.space_time*1000), self.scan_path_item_complete)
         else:
@@ -284,6 +419,7 @@ class AdwScanner:
         SlTrace.lg("stop_scanning - TBD")
         self.stop_scan()
         
+
 
     """
     ############################################################

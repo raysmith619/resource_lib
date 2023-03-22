@@ -91,6 +91,7 @@ class AdwFrontEnd:
         self.pos_rep_str_prev = None    # previous position report
         self.pos_check_interval = pos_check_interval
         self._echo_input = True     # True -> speak input
+        self._loc_list_original = None
         self._loc_list_first = None     # a,b horiz/vert move targets
         self._loc_list_second = None
         self.x,self.y = (0,0)
@@ -269,6 +270,7 @@ class AdwFrontEnd:
                             "s" if n_cells_created != 1 else "")
             
         else:
+            self.stop_scanning()    # Stop old scanning - possible confusion
             self.speak_text(f"Magnification has {n_cells_created} cell"
                             "s" if n_cells_created != 1 else "")
 
@@ -558,8 +560,12 @@ class AdwFrontEnd:
         self.move_to(x,y, quiet=True)
         cell = self.get_cell_at()
         if SlTrace.trace("mouse_cell"):
+            mag_info = self.get_mag_info()
+            ix,iy  = self.get_ixy_at()
             SlTrace.lg(f"x:{x},y:{y}"
-                       f" ixy:{self.get_ixy_at()}  cell: {cell}")
+                       f" ixy:{(ix,iy)}  cell: {cell}")
+            mag_info.base_canvas.show_mag_info_items(mag_info, ix=ix, iy=iy)
+
         if self._drawing:
             if cell is None:
                 new_cell = self.create_cell()
@@ -637,6 +643,8 @@ class AdwFrontEnd:
             self.key_report_pos_horz()       # Report horizontal position
         elif keyslow == "t":
             self.key_report_pos_vert()       # Report vertical position
+        elif keyslow == "x":
+            self.key_to_hv_move("original")
         elif keyslow == "z": 
             self.key_clear_display()     # Clear display
         elif keyslow == "w":
@@ -825,6 +833,7 @@ class AdwFrontEnd:
         t - Vertical position stuff to Top, to bottom
         u - penup - move with out marking 
         w - write out braille
+        x - move to original cell (after a/b Horizontal/Vertical)
         z - clear board
         Escape - flush pending report output
         """
@@ -913,6 +922,7 @@ class AdwFrontEnd:
         report
         :end_pos: "first" - first end (horizontal-left, vertical-top)
                   "second" - second end(horizontal-right, vertical-bottom)
+                  "original" - original position
                   default: first
         """
         if self._loc_list_first is None:
@@ -922,6 +932,8 @@ class AdwFrontEnd:
             self.move_to_ixy(*self._loc_list_first)
         elif end_pos == "second":
             self.move_to_ixy(*self._loc_list_second)
+        elif end_pos == "original":
+            self.move_to_ixy(*self._loc_list_original)
         else:
             audio_beep = self.get_audio_beep()
             audio_beep.announce_can_not_do()          
@@ -1083,6 +1095,7 @@ class AdwFrontEnd:
                                              name="left", dir=(-1,0))
         msg_right, loc_right_end = self.loc_list_target(pos_ixy,
                                              name="right", dir=(1,0))
+        self._loc_list_original = pos_ixy
         self._loc_list_first = loc_left_end
         self._loc_list_second = loc_right_end
         self.speak_text(msg_left)
@@ -1105,6 +1118,7 @@ class AdwFrontEnd:
                                          name="above", dir=dir_up)
         msg_bottom, loc_bottom_end = self.loc_list_target(pos_ixy,
                                          name="below", dir=dir_down)
+        self._loc_list_original = pos_ixy
         self._loc_list_first = loc_top_end
         self._loc_list_second = loc_bottom_end
 
@@ -1543,6 +1557,17 @@ class AdwFrontEnd:
                        Links to scanner
     ############################################################
     """
+
+    def flip_skip_run(self):
+        """ Flip skipping run of equals
+        """
+        self.scanner.flip_skip_run()
+
+    def flip_skip_space(self):
+        """ Flip skipping spaces
+        """
+        self.scanner.flip_skip_space()
+    
     def start_scanning(self):
         self.scanner.start_scanning()
 
