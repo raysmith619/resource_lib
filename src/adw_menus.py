@@ -495,8 +495,20 @@ class AdwMenus:
     """ End of Magnification links """
 
     """
-     Navigation links
-     """   
+     Navigation / Front End links
+     """
+      
+    def set_enable_mouse(self, val=True):
+        """ Enable/Disable mouse dragging operation
+        :val: value to set default: True - enable
+        """
+        self.fte.set_enable_mouse(val=val)
+
+    def is_enable_mouse(self):
+        """ Check if mouse dragging enabled
+        """
+        return self.fte.is_enable_mouse()
+   
     def nav_add_loc(self):
         self.fte.nav_add_loc()
         
@@ -546,10 +558,10 @@ class AdwMenus:
         self.fte.nav_no_audio_beep()
         
     def nav_enable_mouse(self):
-        self.fte.nav_enable_mouse()
+        self.set_enable_mouse()
         
     def nav_disable_mouse(self):
-        self.fte.nav_disable_mouse()
+        self.set_enable_mouse(False)
     """ End of Navigation links """
 
     """

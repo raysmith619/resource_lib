@@ -101,7 +101,7 @@ class AdwFrontEnd:
         self._track_goto_cell = True    # True -> mark cells where we have gone
         self.clear_goto_cell_list()
         self._show_marked = show_marked
-        self._enable_mouse = enable_mouse
+        self.set_enable_mouse(enable_mouse)
         self._pendown = False       # True - move marks
         self._cursor_item = None    # position cursor tag
         self.set_color(color)
@@ -319,11 +319,21 @@ class AdwFrontEnd:
                            
         
     def nav_enable_mouse(self):
-        self.adw._enable_mouse = True 
+        self.set_enable_mouse()
     
     def nav_disable_mouse(self):
-        self.adw._enable_mouse = False 
-                
+        self.set_enable_mouse(False) 
+ 
+    def set_enable_mouse(self, val=True):
+        """ Enable/Disable mouse dragging operation
+        :val: value to set default: True - enable
+        """
+        self._enable_mouse = val
+
+    def is_enable_mouse(self):
+        """ Check if mouse dragging enabled
+        """
+        return self._enable_mouse
         
     def nav_echo_on(self):
         self._echo_input = True 
@@ -457,7 +467,7 @@ class AdwFrontEnd:
     def motion(self, event):
         """ Mouse motion in  window
         """
-        if not self._enable_mouse:
+        if not self.is_enable_mouse():
             return      # Ignore mouse motion 
         
         if self.motion_level > 1:
@@ -580,7 +590,7 @@ class AdwFrontEnd:
         """ Motion will button down is
         treated as mouse click at point
         """
-        if self._enable_mouse:
+        if self.is_enable_mouse():
             self.on_button_1(event)
         
     def on_key_press(self, event):
@@ -748,12 +758,7 @@ class AdwFrontEnd:
     def key_clear_display(self):
         """ Clear display figure
         """
-        for cell in list(self.cells.values()):
-            self.erase_cell(cell)
-        del self.cells
-        self.cells = {}
-        self.pos_history = []
-        self.draw_cells(cells=self.cells)
+        self.clear_cells()
         
     def mark_cell(self, cell,
                   mtype=BrailleCell.MARK_SELECTED):
@@ -1621,6 +1626,9 @@ class AdwFrontEnd:
     ############################################################
     """
 
+    def clear_cells(self):
+        self.adw.clear_cells()
+        
     def set_grid_path(self):
         self.adw.set_grid_path()
         

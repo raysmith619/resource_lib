@@ -8,7 +8,6 @@ Adapted from audio_window to concentrate on figure drawing
 as well as presentation.
 """
 import tkinter as tk
-import turtle as tu
 
 from select_trace import SlTrace
 from speech_maker import SpeechMakerLocal
@@ -152,13 +151,6 @@ class AudioDrawWindow:
         self.set_drawing(drawing)
         self.speak_text(title)
 
-        """
-        Turtle usage support
-        Turtle is used to support cursor movement
-        animation is disabled
-        pen is up
-        turtle is hidden
-        """
         self.escape_pressed = False # True -> interrupt/flush
         self.cells = {}         # Dictionary of cells by (ix,iy)
         self.set_cell_lims()
@@ -308,7 +300,6 @@ class AudioDrawWindow:
         self.set_grid_path()
         self.pos_history = []       # Clear history
         self.update()
-        #self.turtle.penup()
                     
     def print_braille(self, title=None, shift_to_edge=None):
         """ Output braille display
@@ -405,7 +396,7 @@ class AudioDrawWindow:
         :quiet: Don't announce legal moves
                 default:False
         """
-        """ Set mouse cursor position in turtle coordinates
+        """ Set mouse cursor position in canvas coordinates
         :x: x-coordinate (canvas win)
         :y: y-coordinate (canvas win)
         :quiet: Don't announce legal moves
@@ -425,7 +416,6 @@ class AudioDrawWindow:
                 self.mark_cell(cell_ixiy)   # Mark cell if one
         self.cursor_update()
 
-        ###self.turtle_screen.update()
         if not self.mw.winfo_exists():
             return 
         
@@ -434,43 +424,6 @@ class AudioDrawWindow:
             self.pos_check(force_output=True)
 
 
-
-    def set_cursor_pos_tu(self, x=0, y=0, quiet=False):
-        """ Set mouse cursor position in turtle coordinates
-        :x: x-coordinate (turtle)
-        :y: y-coordinate (turtle)
-        :quiet: Don't announce legal moves
-                default: False
-        """
-        if not self.running:
-            return
-        
-        self.canvas.bind('<Motion>', None)  # Disable motion events
-        self.turtle.goto(x=x, y=y)
-        self.turtle.showturtle()
-        win_x,win_y = self.get_point_win((x,y))
-        self.pos_x,self.pos_y = win_x,win_y
-        loc_ixiy = self.get_ixy_at()
-        self.pos_history.append(loc_ixiy)   # location history
-        SlTrace.lg(f"pos_history:{loc_ixiy}", "pos_tracking")
-        cell_ixiy = self.get_cell_at()
-        if cell_ixiy is not None:
-            self.cell_history.append(cell_ixiy)
-            if not self.is_drawing():   # If we're not drawing
-                self.mark_cell(cell_ixiy)   # Mark cell if one
-        self.cursor_update()
-
-        ###self.turtle_screen.update()
-        if not self.mw.winfo_exists():
-            return 
-        
-        self.update()
-        if not quiet:
-            self.pos_check(force_output=True)
-        self.canvas.bind('<Motion>', self.motion)   # Reenable
-
-
-        
 
     def move_to(self, x,y, quiet=False):
         """ Move to window loc
@@ -567,7 +520,7 @@ class AudioDrawWindow:
         
 
     def bounding_box(self):
-        """ turtle coordinates which bound displayed figure
+        """ canvas coordinates which bound displayed figure
         :returns: min_x, max_y, max_x, min_y  (upper left) (lower right)
                     None,None,None,None if no figure
         """
@@ -977,6 +930,17 @@ class AudioDrawWindow:
         """
         return BrailleCell.braille_for_letter(c)
 
+    def clear_cells(self):
+        """ remove all cells - clearing board
+        Initialize empty board
+        """
+        cells = self.get_cells()
+        for cell in list(cells.values()):
+            self.erase_cell(cell)
+        del self.cells
+        self.cells = {}
+        self.draw_cells(cells=self.cells)
+        
     def create_cell(self, cell_ixy=None, color=None,
                     show=True):
         """ Create new cell ad cell_xy
