@@ -1563,10 +1563,35 @@ class AdwFrontEnd:
     ############################################################
     """
 
+    def set_profile_running(self, val=True):
+        """ Set/clear profiler running
+        :val: True set profiling default: True
+        """
+        self.scanner.set_profile_running(val=val)
+
+    def set_scan_len(self, scan_len):
+        """ Set number of items to current scan list
+        :scan_len: number of items to add each trip
+        """
+        self.scanner.set_scan_len(scan_len=scan_len)
+
     def flip_skip_run(self):
         """ Flip skipping run of equals
         """
         self.scanner.flip_skip_run()
+
+    def get_skip_space(self):
+        return self.scanner.get_skip_space() 
+    
+    def set_skip_space(self, val):
+        self.scanner.set_skip_space(val=val)
+
+
+    def get_skip_run(self):
+        return self.scanner.get_skip_run() 
+    
+    def set_skip_run(self, val):
+        self.scanner.set_skip_run(val=val)
 
     def flip_skip_space(self):
         """ Flip skipping spaces

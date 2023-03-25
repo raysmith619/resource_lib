@@ -5,11 +5,14 @@ The idea is to rapidly scan the grid giving audio tonal feedback as to the
 contents
 """
 import math
+import time
+import cProfile, pstats, io         # profiling support
 
 from sinewave import SineWave
 
 from select_trace import SlTrace
 from sinewave_beep import SineWaveBeep
+from Lib.pickle import TRUE
 
 """
 scan path item to facilitate fast display, sound and operation
@@ -58,10 +61,17 @@ class AdwScanner:
         self._scanning = False          # Currently scanning
         self.set_skip_space(skip_space)
         self.set_skip_run(skip_run)
-        self.scan_len = scan_len
+        self.set_scan_len(scan_len)
         self.skip_color = None          # color of run if any
         self._display_item = None
+        self.profile_running = False    # Setup disabled profiling
 
+
+    def set_scan_len(self, scan_len):
+        """ Set number of items to current scan list
+        :scan_len: number of items to add each trip
+        """
+        self.scan_len = scan_len
 
     def flip_skip_space(self):
         """ Flip skipping spaces
@@ -171,8 +181,8 @@ class AdwScanner:
                         break
                 else:
                     break
-                SlTrace.lg(f"skipping {item}")
-            SlTrace.lg(f"scanning {item}")
+                SlTrace.lg(f"skipping {item}", "scanning")
+            SlTrace.lg(f"scanning {item}", "scanning")
             if item.cell is None:
                 SlTrace.lg(f"None: scanning {item}")
                 
@@ -189,6 +199,8 @@ class AdwScanner:
         """
         if cells is None:
             cells = self.get_cells()
+        if len(cells) == 0:
+            return []       # No cells to scann
         ix_ul, iy_ul, ix_lr, iy_lr = self.bounding_box_ci(cells=cells)
         scan_items = []
         left_to_right = True    # Start going left to right
@@ -218,7 +230,11 @@ class AdwScanner:
         """ Populate with sinewave appropriate with locations
         We assume we can hold enough pysinewave instances each set for stereo.
         """
-        SlTrace.lg(f"Populate {nitem} items at {self.scan_items_index} with sound")
+        SlTrace.lg(f"Add {nitem} new items at {self.scan_items_index} with sound")
+        if self.profile_running:
+            self.pr = cProfile.Profile()
+            self.pr.enable()
+        begin_time = time.time()
         next_items = []
         for _ in range(nitem):
             if self.scan_items_index >= self.scan_items_end:
@@ -254,6 +270,17 @@ class AdwScanner:
 
             sp_ent.sinewave_left = sinewave_left
             sp_ent.sinewave_right = sinewave_right
+        end_time = time.time()
+        dur_time = end_time-begin_time
+        if self.profile_running:
+            self.pr.disable()
+            s = io.StringIO()
+            sortby = 'cumulative'
+            ps = pstats.Stats(self.pr, stream=s).sort_stats(sortby)
+            ps.print_stats()
+            SlTrace.lg(s.getvalue())
+        
+        SlTrace.lg(f"{nitem} cells: time: {dur_time:.3f} seconds")
         return next_items
     
     def get_pitch(self, ix, iy):
@@ -314,7 +341,8 @@ class AdwScanner:
         """
         self._scanning = True
         self.using_forward_path = True
-        self.forward_path = [] 
+        self.forward_path = []
+        self.reverse_path = [] 
         self.current_scan_path = []     # let scan_path_item setup 
         self.mw.after(0,self.scan_path_item)
 
@@ -336,23 +364,27 @@ class AdwScanner:
         self.more_to_get = True if (
                 self.scan_items_index < self.scan_items_end) else False
         n_skip = 0            # avoid too long
+        item = None             # Set iff found
         if len(self.current_scan_path) == 0:
             if self.more_to_get:
                 new_items = self.get_more_scan_path(nitem=self.scan_len)
                 self.forward_path.extend(new_items)
                 self.reverse_path = list(reversed(self.forward_path))
-            if self.using_forward_path:
-                self.current_scan_path = self.forward_path[:]   # used up
-                self.using_forward_path = False 
+                self.current_scan_path = new_items   # do new ones
             else:
-                self.current_scan_path = self.reverse_path[:]   # used up
-                self.using_forward_path = True
+                if self.using_forward_path:
+                    self.current_scan_path = self.forward_path[:]   # used up
+                    self.using_forward_path = False 
+                else:
+                    self.current_scan_path = self.reverse_path[:]   # used up
+                    self.using_forward_path = True
         if len(self.current_scan_path) > 0: 
             item = self.current_scan_path.pop(0)
             self._display_item = item    
             self.display_item(item)
             self.report_item(item)
-        if item.cell is None:
+
+        if item is None or item.cell is None:
             self.mw.after(int(self.space_time*1000), self.scan_path_item_complete)
         else:
             self.mw.after(int(self.cell_time*1000), self.scan_path_item_complete)
@@ -420,6 +452,11 @@ class AdwScanner:
         self.stop_scan()
         
 
+    def set_profile_running(self, val=True):
+        """ Set/clear profiler running
+        :val: True set profiling default: True
+        """
+        self.profile_running = val
 
     """
     ############################################################
