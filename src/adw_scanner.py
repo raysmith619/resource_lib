@@ -80,6 +80,9 @@ class AdwScanner:
         self.set_skip_space(not skip_space)
 
 
+    def is_skip_space(self):
+        return self.skip_space 
+
     def get_skip_space(self):
         return self.skip_space 
     
@@ -87,8 +90,8 @@ class AdwScanner:
         self.skip_space = val
 
 
-    def get_skip_run(self):
-        return self.skip_run 
+    def is_skip_run(self):
+        return self.skip_run  
     
     def set_skip_run(self, val):
         self.skip_run = val
@@ -96,7 +99,7 @@ class AdwScanner:
     def flip_skip_run(self):
         """ Flip skipping runs
         """
-        skip_run = self.get_skip_run()
+        skip_run = self.is_skip_run()
         self.set_skip_run(not skip_run)
                 
     def start_scanning(self, cells=None):

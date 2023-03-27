@@ -12,7 +12,7 @@ import re
 import os
 
 from select_trace import SlTrace
-from Lib.pickle import FALSE, TRUE
+
 
 """
 test list files

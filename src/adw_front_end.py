@@ -19,6 +19,8 @@ from grid_fill_gobble import GridFillGobble
 from magnify_info import MagnifyInfo, MagnifySelect, MagnifyDisplayRegion
 from adw_menus import AdwMenus
 from adw_scanner import AdwScanner
+from Lib.pickle import FALSE, NONE
+from test.test_smtpnet import check_ssl_verifiy
 
 class AdwFrontEnd:
     
@@ -846,17 +848,17 @@ class AdwFrontEnd:
         
     def key_up(self):
         y_inc = -1
-        self.move_cursor(y_inc=y_inc)
+        self.move_cursor(y_inc=y_inc, general_move=True)
     
     def key_down(self):
         y_inc = 1
-        self.move_cursor(y_inc=y_inc)
+        self.move_cursor(y_inc=y_inc, general_move=True)
         
     def key_left(self):
-        self.move_cursor(x_inc=-1)
+        self.move_cursor(x_inc=-1, general_move=True)
         
     def key_right(self):
-        self.move_cursor(x_inc=1)
+        self.move_cursor(x_inc=1, general_move=True)
 
     def key_exit(self):
         self.speak_text("Quitting Program")
@@ -1579,16 +1581,16 @@ class AdwFrontEnd:
         """ Flip skipping run of equals
         """
         self.scanner.flip_skip_run()
-
-    def get_skip_space(self):
-        return self.scanner.get_skip_space() 
     
     def set_skip_space(self, val):
         self.scanner.set_skip_space(val=val)
 
 
-    def get_skip_run(self):
-        return self.scanner.get_skip_run() 
+    def is_skip_space(self):
+        return self.scanner.is_skip_space() 
+
+    def is_skip_run(self):
+        return self.scanner.is_skip_run() 
     
     def set_skip_run(self, val):
         self.scanner.set_skip_run(val=val)
@@ -1837,13 +1839,83 @@ class AdwFrontEnd:
     def mainloop(self):
         self.adw.mainloop()
 
-    def move_cursor(self, x_inc=0, y_inc=0):
+    def move_cursor(self, x_inc=0, y_inc=0, general_move=False):
         """ Move cursor by cell increments to center of
         cell to maximise chance of seeing cell figures
         :x_inc: x change default: no movement
         :y_inc: y change default: no movement
+        :general_move: True - honor skip_space, skip_run
+                        default: False
         """
-        self.move_cursor_win(x_inc=x_inc, y_inc=y_inc)
+        if general_move:
+            self.move_cursor_general(x_inc, y_inc)
+        else:
+            self.move_cursor_win(x_inc=x_inc, y_inc=y_inc)
+
+    def is_inbounds(self,ix=None, iy=None):
+        """ Test if inbounds
+        :ix: x index - default: don't test
+        :iy: y index - default: don't test
+        :returns: True iff in bounds
+        """
+        if ix > self.get_ix_max():
+            return False 
+        if ix < self.get_ix_min():
+            return False
+        if iy > self.get_iy_max():
+            return False 
+        if iy < self.get_iy_min():
+            return False 
+        
+        return True
+        
+    def move_cursor_general(self, x_inc=0, y_inc=0):
+        """ Move cursor by cell increments honor scanning skip_space, skip_run
+        :x_inc: x change default: no movement
+        :y_inc: y change default: no movement
+        """
+        cells = self.get_cells()
+        ix,iy = self.get_ixy_at()
+        ix_end = ix_next = ix + x_inc
+        iy_end = iy_next = iy + y_inc
+        if not self.is_inbounds(ix=ix_next, iy=iy_next):
+            self.announc_can_not_do()
+            return
+        
+        skip_space = self.is_skip_space()
+        skip_run = self.is_skip_run()
+        ixy = (ix_next,iy_next) 
+        cell_first = cells[ixy] if ixy in cells else None
+        color_first = cell_first.color_string() if cell_first is not None else None
+        loc_list = [(ixy, cell_first)]
+        while True:
+            ix_next,iy_next = ix_next+x_inc, iy_next+y_inc
+            if not self.is_inbounds(ix=ix_next, iy=iy_next):
+                break       # Quit  if next cell is out of bounds
+            
+            ixy = (ix_next,iy_next)
+            cell_next = cells[ixy] if ixy in cells else None
+            color_next = cell_next.color_string() if cell_next is not None else NONE
+            if skip_space and cell_first is None and cell_next is None:
+                loc_list.append((ixy, cell_next))    # skip spaces
+                continue
+            
+            if (skip_run and cell_next is not None
+                    and cell_first is not None and color_next == color_first):
+                loc_list.append((ixy, cell_next))
+                continue
+            break       # Anything else and we are done
+        
+        for loc in loc_list:        # Mark cells we've traversed
+            cell = loc[1]
+            self.mark_cell(cell)
+        lc = len(loc_list)
+        if lc > 1:
+            if color_first is not None:
+                cstr = color_first + "s"
+                self.speak_text(f"{lc} {cstr}")
+        ix,iy = loc[0]    
+        self.move_to_ixy(ix=ix, iy=iy)
 
     def move_cursor_win(self, x_inc=0, y_inc=0):
         """ Move cursor by cell increments to center of
