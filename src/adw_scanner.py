@@ -8,7 +8,7 @@ import math
 import time
 import cProfile, pstats, io         # profiling support
 
-from sinewave import SineWave
+from sinewave_numpy import SineWaveNumPy
 
 from select_trace import SlTrace
 from sinewave_beep import SineWaveBeep
@@ -253,26 +253,11 @@ class AdwScanner:
                 pitch = self.color2pitch("OTHER")
             else:
                 pitch = self.get_pitch(ix=ix, iy=iy)
-            ''' 
-            sinewave_left = SineWave(pitch = pitch,
-                                     channels=2, channel_side='l')
-
-            sinewave_right = SineWave(pitch=pitch,
-                                      channels=2, channel_side='r')
-            '''
-            sinewave_left = SineWave(pitch = pitch,
-                                     channels=2, channel_side='l',
-                                     decibels=vol_left,
-                                     pitch_per_second=10/self.cell_time,
-                                     decibels_per_second=10/self.cell_time)
-
-            sinewave_right = SineWave(pitch=pitch,
-                                      channels=2, channel_side='r',
-                                      decibels=vol_right,
-                                     decibels_per_second=10/self.cell_time)
-
-            sp_ent.sinewave_left = sinewave_left
-            sp_ent.sinewave_right = sinewave_right
+            sinewave_stereo = SineWaveNumPy(pitch = pitch,
+                                    duration_s=self.cell_time*4,
+                                    decibels_left=vol_left,
+                                    decibels_right=vol_right)
+            sp_ent.sinewave_stereo = sinewave_stereo
         end_time = time.time()
         dur_time = end_time-begin_time
         if self.profile_running:
@@ -428,8 +413,7 @@ class AdwScanner:
         """ Remove any noise for reported item
         """
         if self._report_item is not None:
-            self._report_item.sinewave_left.stop()
-            self._report_item.sinewave_right.stop()
+            self._report_item.sinewave_stereo.stop()
             self._report_item = None        # TBD - turn tone off
                 
     def report_item(self, item):
@@ -437,10 +421,9 @@ class AdwScanner:
         start tone, to be stopped via report_item_complete
         :item: item being reported via tone
         """
-        if item.sinewave_left is not None:
+        if item.sinewave_stereo is not None:
             self._report_item = item
-            item.sinewave_left.play()
-            item.sinewave_right.play()
+            item.sinewave_stereo.play()
         
 
     def report_item_complete(self):

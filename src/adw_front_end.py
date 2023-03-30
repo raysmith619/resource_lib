@@ -1367,9 +1367,9 @@ class AdwFrontEnd:
                         x_str = f"right {x_dist}"
                     y_str = ""
                     if y_dist < 0:
-                        y_str = f"down {-y_dist}"
+                        y_str = f"up {-y_dist}"
                     elif y_dist > 0:
-                        y_str = f"up {y_dist}"
+                        y_str = f"down {y_dist}"
                     rep_str = x_str
                     if rep_str != "":
                         rep_str += " "
@@ -1914,6 +1914,8 @@ class AdwFrontEnd:
             if color_first is not None:
                 cstr = color_first + "s"
                 self.speak_text(f"{lc} {cstr}")
+            else:
+                self.speak_text(f"{lc} blanks")
         ix,iy = loc[0]    
         self.move_to_ixy(ix=ix, iy=iy)
 

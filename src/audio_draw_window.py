@@ -190,7 +190,7 @@ class AudioDrawWindow:
         self.set_look_dist(look_dist)
 
         self.fte.do_complete(menu_str=menu_str, key_str=key_str)
-        self.pos_check()            # Startup possition check loop
+        #self.pos_check()            # Startup possition check loop
         self.update()     # Make visible
 
     def silence(self):
@@ -296,7 +296,7 @@ class AudioDrawWindow:
         if min_x is not None:
             self.set_xy((min_x,min_y))
             x,y = self.get_xy()
-            self.pos_check(x=x,  y=y)
+            #self.pos_check(x=x,  y=y)
         self.set_grid_path()
         self.pos_history = []       # Clear history
         self.update()
@@ -896,7 +896,7 @@ class AudioDrawWindow:
         :cell: figure cell
         :val: set visible Default: True
         """
-        self.fte.set_visible_cell(cell)
+        self.fte.set_visible_cell(cell, val=val)
 
     def announce_can_not_do(self, msg=None, val=None):
         """ Announce we can't do something

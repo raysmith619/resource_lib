@@ -16,6 +16,7 @@ test_desc = "scanning timing"
 test = os.path.basename(__file__)
 
 sq_side = 20     # square side n = sq_side*sq_side
+###sq_side = 2     # TFD
 total_cells = sq_side*sq_side
 colors = ["red","orange","yellow",
           "green", "blue", "indigo", "violet"]
