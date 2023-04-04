@@ -21,7 +21,7 @@ from braille_error import BrailleError
 from braille_cell import BrailleCell
 from magnify_info import MagnifySelect, MagnifyInfo, MagnifyDisplayRegion
 from audio_draw_window import AudioDrawWindow
-from speech_maker import SpeechMakerLocal
+from speaker_control import SpeakerControlLocal
 
 """
 We now think explicit .base.fn_name is better
@@ -31,7 +31,7 @@ for indirect call of tk.Canvas calls:
 
 class CanvasGrid(tk.Canvas):
         
-    def __init__(self, master, base=None, speech_maker=None,
+    def __init__(self, master, base=None, speaker_control=None,
                  g_xmin=None, g_xmax=None, g_ymin=None, g_ymax=None,
                  g_nrows=25, g_ncols=40,
                  **kwargs):
@@ -39,7 +39,7 @@ class CanvasGrid(tk.Canvas):
         :base: tk.Canvas, if present, from which we get
                 canvas item contents
                 default: self
-        :speech_maker: (SpeechMakerLocal) local access to speech facility
+        :speaker_control: (SpeakerControlLocal) local access to speech facility
                         REQUIRED
         :g_xmin: Grid minimum canvas coordinate value default: left edge
         :g_xmax: Grid maximum canvas coordinate value default: right edge
@@ -51,11 +51,11 @@ class CanvasGrid(tk.Canvas):
         if base is None:
             base = self 
         self.base = base
-        if speech_maker is None:
-            SlTrace.lg("Creating local SpeechMaker copy")
-            speech_maker = SpeechMakerLocal()   # local access to speech engine
+        if speaker_control is None:
+            SlTrace.lg("Creating local SpeakerControl copy")
+            speaker_control = SpeakerControlLocal(win=master)   # local access to speech engine
         
-        self.speech_maker = speech_maker
+        self.speaker_control = speaker_control
         self.item_samples = {}      # For incremental presentation  via show_item
         self.audio_wins = []        # window list for access
         self.n_cells_created = 0    # Number of cells in recent window
@@ -145,7 +145,7 @@ class CanvasGrid(tk.Canvas):
         """ Create AudioDrawWindow to navigate canvas from the section
         :title: optinal title
                 region (xmin,ymin, xmax,ymax) with nrows, ncols
-        :speech_maker: (SpeechMakerLocal) local access to centralized speech facility
+        :speaker_control: (SpeakerControlLocal) local access to centralized speech facility
         :xmin,xmax,ymin,ymax,: see get_grid_lims()
                         default: CanvasGrid instance values
         :nrows,ncols: grid size for scanning
@@ -193,7 +193,7 @@ class CanvasGrid(tk.Canvas):
             if require_cells:
                 return None
                 
-        adw = AudioDrawWindow(title=title, speech_maker=self.speech_maker,
+        adw = AudioDrawWindow(title=title, speaker_control=self.speaker_control,
                               iy0_is_top=True, mag_info=mag_info, pgmExit=pgmExit,
                               x_min=self.g_xmin, y_min=self.g_ymin,
                               silent=silent)

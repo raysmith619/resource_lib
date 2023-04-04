@@ -277,6 +277,8 @@ class AdwMenus:
         k - toggle skip space
         s - Start scanning mode
         t - Stop scanning mode
+        n - no_item_wait
+        w - wait for items
         """
         self.speak_text(help_str)
         
@@ -293,6 +295,10 @@ class AdwMenus:
                              underline=0)
         self.scan_menu_add_command(label="Stop scanning", command=self.stop_scanning,
                              underline=1)
+        self.scan_menu_add_command(label="No item wait", command=self.scan_no_item_wait,
+                             underline=0)
+        self.scan_menu_add_command(label="Wait for item", command=self.scan_item_wait,
+                             underline=0)
          
     def scan_menu_add_command(self, label, command, underline):
         """ Setup menu commands, setup dispatch for direct call
@@ -315,7 +321,15 @@ class AdwMenus:
             raise Exception(f"scan option:{short_cut} not recognized")
         scande = self.scan_dispatch[short_cut]
         scande.command()
-                
+
+    def scan_no_item_wait(self):
+        self.set_no_item_wait()
+        
+    def scan_item_wait(self):
+        """clear no item wait
+        """
+        self.set_no_item_wait(val=False)
+                        
     """ End of Scanning support
     """
 
@@ -566,7 +580,14 @@ class AdwMenus:
 
     """
     Scanning support
+        through fte
     """
+    
+    def set_no_item_wait(self, val=True):
+        """ Set/clear scanning no_wait option
+        :val: True - no waiting
+        """
+        self.fte.set_no_item_wait(val=val)
 
     def flip_skip_space(self):
         """ Flip skipping spaces

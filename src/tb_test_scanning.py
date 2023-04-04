@@ -11,7 +11,8 @@ from select_trace import SlTrace
 from turtle_braille_link import *
 
 SlTrace.clearFlags()
-#SlTrace.setFlags("slow_key_str")
+#SlTrace.setFlags("sound_queue,decpl")
+SlTrace.setFlags("sound_time,decpl")
 test_desc = "No test running"
 test = os.path.basename(__file__)
 
@@ -19,7 +20,7 @@ silent = True
 silent = False 
 try:
     
-    test_desc = "magnify"
+    test_desc = "scanning"
     colors = ["red","orange","yellow","green"]
     
     for colr in colors:
@@ -34,9 +35,9 @@ try:
     fte.speak_text("Scanning")
     fte.pause(a_bit)
     fte.do_menu_str("s:s")
-    pt_time = 60
+    pt_time = 160
     fte.speak_text(f"Pausing {pt_time} seconds")
-    fte.pause(30)
+    fte.pause(pt_time)
     SlTrace.lg("Testing Passed")
 
 

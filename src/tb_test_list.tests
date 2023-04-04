@@ -4,6 +4,7 @@ tb_test_goto.py		# First one
 
 tb_test_keyboard.py
 tb_test_placement.py
-
+tb_test_audio_1.py
+tb_test_audio.py
 tb_test_magnify.py
 tb_test_scanning.py

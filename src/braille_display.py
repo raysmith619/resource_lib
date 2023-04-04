@@ -19,7 +19,7 @@ import turtle as tur
 import tkinter as tk            # Best approach
 
 from select_trace import SlTrace
-from speech_maker import SpeechMakerLocal
+from speaker_control import SpeakerControlLocal
 from braille_cell import BrailleCell
 from canvas_grid import CanvasGrid
 from magnify_info import MagnifyInfo
@@ -126,7 +126,6 @@ class BrailleDisplay:
         self.blank_char = blank_char
         shift_to_edge = False               # TFD
         self.shift_to_edge = shift_to_edge
-        self.speech_maker = SpeechMakerLocal()   # local access to speech engine
         self.tk_items = tk_items
         self.canvas_items = canvas_items
 
@@ -188,8 +187,9 @@ class BrailleDisplay:
         geometry = f"{self.win_width}x{self.win_width}"
         mw.geometry(geometry)
         tu_canvas = self.tu_screen.getcanvas()
+        self.speaker_control = SpeakerControlLocal(win=mw)   # local access to speech engine
         self.canvas_grid = CanvasGrid(master=mw, base=tu_canvas,
-                            speech_maker = self.speech_maker,
+                            speaker_control = self.speaker_control,
                             width=self.win_width, height=self.win_height,
                             g_xmin = self.x_min,g_ymin=self.y_min,
                             g_nrows=self.grid_height,

@@ -23,7 +23,7 @@ class SineWaveNumPy:
         atten_left = utilities.decibels_to_amplitude_ratio(decibels_left) 
         atten_right = utilities.decibels_to_amplitude_ratio(decibels_right) 
         self.sample_rate = sample_rate
-        
+        self.duration = duration_s
         # NumpPy magic to calculate the waveform
         each_sample_number = np.arange(duration_s * sample_rate)
         base_waveform = np.sin(2 * np.pi * each_sample_number * freq_hz / sample_rate)

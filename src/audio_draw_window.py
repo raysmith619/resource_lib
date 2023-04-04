@@ -10,7 +10,7 @@ as well as presentation.
 import tkinter as tk
 
 from select_trace import SlTrace
-from speech_maker import SpeechMakerLocal
+from speaker_control import SpeakerControlLocal
 from grid_path import GridPath
 from braille_cell import BrailleCell
 from magnify_info import MagnifyInfo, MagnifySelect, MagnifyDisplayRegion
@@ -22,7 +22,7 @@ class AudioDrawWindow:
 
     
     def __init__(self,
-        title=None, speech_maker=None,
+        title=None, speaker_control=None,
         win_width=800, win_height=800,
         grid_width=40, grid_height=25,
         x_min=None, y_min=None,
@@ -45,7 +45,7 @@ class AudioDrawWindow:
         iy0_is_top=True,        # OBSOLETE
                  ):
         """ Setup audio window
-        :speech_maker: (SpeechMakerLocal) local access to centralized speech making
+        :speaker_control: (SpeakerControlLocal) local access to centralized speech making
         :win_width: display window width in pixels
             default: 800
         :win_height: display window height in pixels
@@ -101,10 +101,6 @@ class AudioDrawWindow:
         :iy0_is_top: OBSOLETE
         """
         
-        if speech_maker is None:
-            SlTrace.lg("Creating own SpeechMaker")
-            speech_maker = SpeechMakerLocal()
-        self.speech_maker = speech_maker
         # direction for digit pad
         if title is None:
             title = "AudioDrawWindow"
@@ -125,6 +121,10 @@ class AudioDrawWindow:
         self.title = title
         mw.title(title)
         self.mw = mw
+        if speaker_control is None:
+            SlTrace.lg("Creating own SpeakerControl")
+            speaker_control = SpeakerControlLocal(win=mw)
+        self.speaker_control = speaker_control
         #mw.withdraw()
 
 
@@ -188,10 +188,16 @@ class AudioDrawWindow:
         self.blank_char = blank_char
         self.shift_to_edge = shift_to_edge
         self.set_look_dist(look_dist)
-
         self.fte.do_complete(menu_str=menu_str, key_str=key_str)
         #self.pos_check()            # Startup possition check loop
         self.update()     # Make visible
+
+
+    def set_look_dist(self, look_dist):
+        self.look_dist = look_dist
+
+    def get_look_dist(self):
+        return self.look_dist
 
     def silence(self):
         """ Check if silent mode
@@ -209,17 +215,18 @@ class AudioDrawWindow:
             CMD    - command
             ECHO
         """
+        self.win_print(msg)
         if self.is_silent():
             if dup_stdout:
                 SlTrace.lg(msg)
             return
         
-        self.speech_maker.speak_text(msg=msg, msg_type=speech_type, dup_stdout=dup_stdout)
+        self.speaker_control.speak_text(msg=msg, msg_type=speech_type, dup_stdout=dup_stdout)
 
     def speak_text_stop(self):
         """ Stop ongoing speach, flushing queue
         """
-        self.speech_maker.speak_text_stop()
+        self.speaker_control.speak_text_stop()
         
     def trav_len(self, ix, iy, dir_x, dir_y, require_cell=True):
         """ Find the travel length
@@ -276,7 +283,7 @@ class AudioDrawWindow:
         SlTrace.lg("draw_cells")
         SlTrace.lg(f"x_min:{self.get_x_min()} y_min: {self.get_y_min()}")
         if cells is None:
-            cells = self.cells
+            cells = self.get_cells()
         else:
             if not isinstance(cells, dict):
                 cs = {}
@@ -299,6 +306,7 @@ class AudioDrawWindow:
             #self.pos_check(x=x,  y=y)
         self.set_grid_path()
         self.pos_history = []       # Clear history
+        self.set_scanning()         # Setup positioning info
         self.update()
                     
     def print_braille(self, title=None, shift_to_edge=None):
@@ -512,10 +520,10 @@ class AudioDrawWindow:
         """
         return self.mag_info
 
-    def get_speech_maker(self):
+    def get_speaker_control(self):
         """ Get speech control
         """
-        return self.speech_maker
+        return self.speaker_control
 
         
 
@@ -994,6 +1002,19 @@ class AudioDrawWindow:
          Links to front end functions
     """
 
+    def wait_on_output(self):
+        """ Wait till queued output speech/tones completed
+        """
+        self.fte.wait_on_output()
+        
+    def win_print(self,*args, dup_stdout=False, **kwargs):
+        """ print to listing area
+        :*args: print-like args
+        :**kwargs: print-flags
+        :dup_stdout:  send duplicate to stdout
+        """
+        self.fte.win_print(args=args, dup_stdout=dup_stdout, kwargs=kwargs)
+
     def get_audio_beep(self):
         """ Get access to audio beep
         """
@@ -1038,11 +1059,20 @@ class AudioDrawWindow:
         """
         self.fte.key_goto()
 
-    def set_look_dist(self, look_dist):
-        self.look_dist = look_dist
-
-    def get_look_dist(self):
-        return self.look_dist
+    def set_scanning(self, cells=None):
+        self.fte.set_scanning(cells=cells)
+        
+    def get_vol(self, ix, iy, eye_ixy_l=None, eye_ixy_r=None):
+        """ Get tone volume for cell at ix,iy
+        volume(left,right)
+        Volume(in decibel): k1*(k2-distance from eye), k1=1, k2=0
+        :ix: cell ix
+        :iy: cell iy
+        :eye_xy_l: left eye/ear at x,y default: self.eye_xy_l
+        :eye_xy_r: right eye/ear at x,y  default: self.eye_xy_r
+        return: volume(left,right) in decibel
+        """
+        return self.fte.get_vol(ix=ix, iy=iy, eye_ixy_l=eye_ixy_l, eye_ixy_r=eye_ixy_r)
 
     def set_xy(self, xy):
         """ Set our internal win x,y
