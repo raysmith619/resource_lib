@@ -12,7 +12,6 @@ from sinewave_numpy import SineWaveNumPy
 
 from select_trace import SlTrace
 from sinewave_beep import SineWaveBeep
-from Lib.pickle import TRUE, NONE
 
 """
 scan path item to facilitate fast display, sound and operation
@@ -50,17 +49,22 @@ class AdwScanner:
     
     def __init__(self, fte, cell_time=.2, space_time=.1,
                  skip_space=True, skip_run=True, scan_len=10,
-                 no_item_wait=False, scan_use_tone=True):
+                 space_pitch=None,
+                 no_item_wait=False, scan_use_tone=True,
+                 combine_wave=False):
         """ Setup scanning
         :cell_time: time (seconds) to beep cell
         :space_time: time (seconds) to beep space
         :skip_space: True - skip space default: True
         :skip_run: True - skip run of equals default: True
         :scan_len: number of items to add to scan list
+        :space_pitch: scanning space pitch default: "SCAN_BLANK"
         :no_item_wait: True - don't wait for items to complete
         :scan_use_tone: True use play_tone for scanning
                         same as cursor movements
                         default: True
+        :combine_wave: waveforms are combined to speed presentation
+                        default: False
         """
         #space_time = 1      # TFD
         #cell_time = 2      # TFD
@@ -88,7 +92,34 @@ class AdwScanner:
         self.sound_queue_back_log = 20  # Target to keep
         self.scan_loop_proc_time_ms = 200   # queue cking loop time
         self.scan_use_tone = scan_use_tone
+        self.set_combine_wave(combine_wave)
+        if space_pitch is None:
+            self.space_pitch = SineWaveBeep.color2pitch("SCAN_SPACE")
+
+    def set_cell_time(self, time):
+        """ Set cell tone duration hoped
+        :time: cell time in seconds
+        """
+        self.cell_time = time
+
+    def set_space_time(self, time):
+        """ Set space tone duration hoped
+        :time: cell time in seconds
+        """
+        self.space_time = time
+
+    def set_space_pitch(self, pitch):
+        """ Set space tone duration hoped
+        :tone: space tone (pitch)
+        """
+        self.space_pitch = pitch
         
+    def set_combine_wave(self, val=True):
+        """ Set/clear combine_wave mode
+        :val: set combine_wave default: True - do combine wave
+        """
+        self.combine_wave = val
+                
     def set_scan_len(self, scan_len):
         """ Set number of items to current scan list
         :scan_len: number of items to add each trip
@@ -263,13 +294,14 @@ class AdwScanner:
             left_to_right = not left_to_right
         return scan_items
 
-    def get_more_scan_path(self, nitem=10):
+    def get_more_scan_path(self, nitem=10, use_sinewave_stereo=False):
         """ Get ordered list of scanning locations
             Scanning order is bottom to top, with alternating
             left-to-right then right-to-left so as to make a contiguous
             path
         :cells: cells dictionary by ix,iy default: self.cells
         :nitem; number of items to return
+        :use_sinewave_stereo: if present add sinewave_stereo entry to each item
         :returns: list of ScanPathItem in the order to scan at most
                     nitem per call
                     Last return len < nitem
@@ -293,18 +325,17 @@ class AdwScanner:
             volume = self.get_vol(ix=ix, iy=iy)
             vol_left, vol_right = volume
             if sp_ent.cell is None:
-                pitch = self.color2pitch("BLANK")
+                pitch = self.space_pitch
                 item_time = self.space_time
             else:
                 pitch = self.get_pitch(ix=ix, iy=iy)
                 item_time = self.cell_time
-            if self.scan_use_tone:
-                sp_ent.pitch = pitch
-                sp_ent.dur = item_time
-                sp_ent.vol = volume
-            else:
+            sp_ent.pitch = pitch
+            sp_ent.dur = item_time
+            sp_ent.vol = volume
+            if not self.scan_use_tone or use_sinewave_stereo:
                 sinewave_stereo = SineWaveNumPy(pitch = pitch,
-                                        duration_s=item_time,
+                                        duration=item_time,
                                         decibels_left=vol_left,
                                         decibels_right=vol_right)
                 sp_ent.sinewave_stereo = sinewave_stereo
@@ -351,7 +382,7 @@ class AdwScanner:
         eye_iy = (eye_iy_l+eye_iy_r)/2
         dist = math.sqrt((ix-eye_ix)**2 + (iy-eye_iy)**2)   # average dist
         k1 = 15
-        k1 = 5     # TFD - quieter
+        k1 = 2     # TFD - quieter
         k2 = 10
         kd = .5
         vol = k1*(k2-dist*kd)
@@ -383,6 +414,7 @@ class AdwScanner:
         and forward_path
         """
         self._scanning = True
+        self.first_scan = True      # Used if combine_wave
         self.using_forward_path = True
         self.forward_path = []
         self.reverse_path = [] 
@@ -406,6 +438,7 @@ class AdwScanner:
         self._scanning = False 
         self.remove_display_item()
         self.remove_report_item()
+        self.force_clear()
         
         
     def scan_path_item(self):
@@ -415,9 +448,13 @@ class AdwScanner:
         """
         if not self._scanning:
             return
+        
+        if self.combine_wave:
+            self.do_combine_wave()
+            return
+
         self.more_to_get = True if (
                 self.scan_items_index < self.scan_items_end) else False
-        n_skip = 0            # avoid too long
         item = None             # Set iff found
         if len(self.current_scan_path) == 0:
             if self.more_to_get:
@@ -432,6 +469,7 @@ class AdwScanner:
                 else:
                     self.current_scan_path = self.reverse_path[:]   # used up
                     self.using_forward_path = True
+        
         if len(self.current_scan_path) > 0: 
             item = self.current_scan_path.pop(0)
             SlTrace.lg(f"\nitem: {item}", "scanning")
@@ -463,6 +501,42 @@ class AdwScanner:
             if self._scanning:
                 self.mw.after(0, self.scan_path_item)
 
+    def do_combine_wave(self):
+        """ Do combined wave scan
+            creating wave(s) before first scan
+        """
+        if self.first_scan:
+                self.forward_path = self.get_more_scan_path(nitem=
+                                            len(self.scan_items),
+                                            use_sinewave_stereo=True)
+                self.reverse_path = list(reversed(self.forward_path))
+                self.forward_wave = self.make_combine_wave(self.forward_path)
+                self.reverse_wave = self.make_combine_wave(self.reverse_path)
+                self.using_forward_path = True
+                self.first_scan = False
+        if self.using_forward_path:
+            self.do_wave(self.forward_wave)
+        else:
+            self.do_wave(self.reverse_wave)
+        self.using_forward_path = not self.using_forward_path    
+
+    def do_wave(self, scan_wave):
+        """ Process sound wave, returning when completed
+        :scan_wave: stereo wave for screen
+        """
+        self.play_waveform(sinewave_numpy=scan_wave, calculate_dur=True)
+        self.speaker_control.wait_while_busy()
+
+    def make_combine_wave(self, item_path):
+        """ Create a SinewaveNumpy.waveform_stereo ndarray of the items components
+        :itempath: list of ScanPathItem s with  sinewave_stereo   field set 
+                        Note that get_scan_items_raw needs self.
+        :returns: SpeakerWaveform of combined item waveforms
+        """
+        swnps = [sp_ent.sinewave_stereo for sp_ent in item_path]
+        cw_swnp = SineWaveNumPy.concatinate(swnps)
+        return cw_swnp
+        
     def color2pitch(self, color):
         return SineWaveBeep.color2pitch(color)
 
@@ -500,7 +574,7 @@ class AdwScanner:
         """ Remove any noise for reported item
         """
         if self._report_item is not None:
-            self._report_item.sinewave_stereo.stop()
+            self._report_item.sinewave__numpy.stop()
             self._report_item = None        # TBD - turn tone off
                 
     def report_item(self, item, after=None, no_wait=False):
@@ -515,20 +589,16 @@ class AdwScanner:
         if no_wait:
             #self.remove_display_item()  # Remove previous item, if any
             if item is not None and item.cell is not None:
-                sinewave_numpy = item.sinewave_stereo
+                sinewave_numpy = item.sinewave__numpy
                 if sinewave_numpy is not None:
                     self._report_item = item
-                    self.play_waveform(ndarr=sinewave_numpy.stereo_waveform,
-                                       dur=sinewave_numpy.duration,
-                                       sample_rate=sinewave_numpy.sample_rate)
+                    self.play_waveform(sinewave_numpy=sinewave_numpy)
             self.mw.after(int (self.cell_time*1000), self.scan_path_item_complete)
         else:    
-            sinewave_numpy = item.sinewave_stereo
+            sinewave_numpy = item.sinewave_numpy
             if sinewave_numpy is not None:
                 self._report_item = item
-                self.play_waveform(ndarr=sinewave_numpy.stereo_waveform,
-                                   dur=sinewave_numpy.duration,
-                                   sample_rate=sinewave_numpy.sample_rate,
+                self.play_waveform(sinewave_numpy=sinewave_numpy,
                                    after=after)
             else:
                 self.mw.after(0, after) # Just go on
@@ -670,23 +740,28 @@ class AdwScanner:
         """ Clear pending output
         """
         self.speaker_control.clear()
+
+    def force_clear(self):
+        """ Clear all pending and reset
+        """
+        self.speaker_control.force_clear()
         
     def get_sound_queue_size(self):
         return self.speaker_control.get_sound_queue_size()
     
-    def play_waveform(self, ndarr, dur=None, dly=None,
-                               sample_rate=None,
-                               after=None):
+    def play_waveform(self, sinewave_numpy,
+                            calculate_dur=False,
+                            after=None):
         """ play waveform
-        :ndarr: waveform (SinewaveNumPy stereo_waveform)
-        :dur: wave max duration (seconds)
-        :dly: delay(seconds) from start default: no delay
-        :sample_rate: sample rate fps
+        :sinewave_numpy: waveform (SinewaveNumPy stereo_waveform)
         :after: function to call after play completes
                 default: no call
         """
-        self.speaker_control.play_waveform(ndarr=ndarr[:],
-                                            dur=dur, dly=dly,
+        swnp = sinewave_numpy
+        self.speaker_control.play_waveform(ndarr=swnp.stereo_waveform,
+                                            dur=swnp.duration,
+                                            dly=swnp.delay,
+                                            calculate_dur=calculate_dur,
                                             after=after)
 
     

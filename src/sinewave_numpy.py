@@ -7,31 +7,57 @@ import copy
 import numpy as np
 import sounddevice as sd
 from pysinewave import utilities
+from Lib.pickle import NONE
+from Lib.tkinter.constants import SW
 
 class SineWaveNumPy:
     """ Gathers and plays stereo sine wave
     """
+    @classmethod
+    def concatinate(cls, sinewave_nps):
+        """ Concatinate a list of SineWaveNumPy wave forms
+        :sinewave_nps: List of SineWaveNumPy waves
+        :returns: SineWaveNumPy waveform
+        """
+        sample_rate = sinewave_nps[0].sample_rate       # Use first entry
+        duration = sinewave_nps[0].duration 
+        wfs_ndarr = [swnp.stereo_waveform for swnp in sinewave_nps]  # Get the waveforms
+        wfc_ndarr = np.concatenate(wfs_ndarr)
+        sw = SineWaveNumPy(stereo_waveform=wfc_ndarr, sample_rate=sample_rate,
+                           duration=duration)
+        return sw
+        
     def __init__(self, pitch=0, decibels_left=0, decibels_right=0,
-                sample_rate=44100, duration_s=1.):
+                sample_rate=44100, duration=None, delay=None,
+                stereo_waveform=None):
         """ Setup waves
         :pitch: user tone level default: 0
         :decibels_left: left volume in decibels default: 0
         :decibels_right: right volume in decibels default: 0
         :samplerate: samples per second default: 44100
-        :duration: stored duration default:1
+        :duration: play duration(seconds) default:calculated from len, sample_rate
+        :stereo_waveform: if present, BYPASS calculation and use as waveform (ndarray)
         """
-        freq_hz = utilities.pitch_to_frequency(pitch)
-        atten_left = utilities.decibels_to_amplitude_ratio(decibels_left) 
-        atten_right = utilities.decibels_to_amplitude_ratio(decibels_right) 
-        self.sample_rate = sample_rate
-        self.duration = duration_s
-        # NumpPy magic to calculate the waveform
-        each_sample_number = np.arange(duration_s * sample_rate)
-        base_waveform = np.sin(2 * np.pi * each_sample_number * freq_hz / sample_rate)
-        left_waveform = base_waveform.reshape(-1,1)*atten_left
-        right_waveform = base_waveform.reshape(-1,1)*atten_right
-        stereo_waveform = np.hstack((left_waveform, right_waveform))
-        self.stereo_waveform = copy.deepcopy(stereo_waveform)
+        if stereo_waveform is not None:
+            self.sample_rate = sample_rate
+            self.duration = duration
+            self.stereo_waveform = stereo_waveform
+            self.delay = delay
+            
+        else:
+            freq_hz = utilities.pitch_to_frequency(pitch)
+            atten_left = utilities.decibels_to_amplitude_ratio(decibels_left) 
+            atten_right = utilities.decibels_to_amplitude_ratio(decibels_right) 
+            self.sample_rate = sample_rate
+            self.duration = duration
+            self.delay = delay
+            # NumpPy magic to calculate the waveform
+            each_sample_number = np.arange(duration * sample_rate)
+            base_waveform = np.sin(2 * np.pi * each_sample_number * freq_hz / sample_rate)
+            left_waveform = base_waveform.reshape(-1,1)*atten_left
+            right_waveform = base_waveform.reshape(-1,1)*atten_right
+            stereo_waveform = np.hstack((left_waveform, right_waveform))
+            self.stereo_waveform = copy.deepcopy(stereo_waveform)
         
     def play(self):
         """ Start playing tone

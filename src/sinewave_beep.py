@@ -19,6 +19,7 @@ class SineWaveBeep:
     pitch_warning = cp+13
     
     color_pitches = {
+        "SCAN_BLANK": cp-3*cpsp,
         "OTHER" : cp-3*cpsp,
         "red" : cp+1*cpsp,
         "orange" : cp+2*cpsp,

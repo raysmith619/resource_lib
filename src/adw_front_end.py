@@ -1582,6 +1582,25 @@ class AdwFrontEnd:
                        Links to scanner
     ############################################################
     """
+
+    def set_cell_time(self, time):
+        """ Set cell tone duration hoped
+        :time: cell time in seconds
+        """
+        self.scanner.set_cell_time(time=time)
+
+    def set_space_time(self, time):
+        """ Set space tone duration hoped
+        :time: cell time in seconds
+        """
+        self.scanner.set_space_time(time=time)
+    
+    def set_combine_wave(self, val=True):
+        """ Enable/disable combine wave scanning mode
+        :val: value for mode
+        """
+        self.scanner.set_combine_wave(val=val)
+
     def set_no_item_wait(self, val=True):
         """ Set/clear scanning no_wait option
         :val: True - no waiting
@@ -1604,6 +1623,12 @@ class AdwFrontEnd:
         """ Flip skipping run of equals
         """
         self.scanner.flip_skip_run()
+
+    def set_combine_wave(self, val=True):
+        """ Set/clear combine_wave mode
+        :val: set combine_wave default: True - do combine wave
+        """
+        self.scanner.set_combine_wave(val=val)
     
     def set_skip_space(self, val):
         self.scanner.set_skip_space(val=val)

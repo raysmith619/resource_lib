@@ -274,6 +274,8 @@ class AdwMenus:
         help_str = """
         Help - list scanning commands (Alt-s) commands
         h - say this help message
+        c - combine wave - faster scan
+        d - disable combine wave - viewing in window
         k - toggle skip space
         s - Start scanning mode
         t - Stop scanning mode
@@ -286,6 +288,12 @@ class AdwMenus:
         self.scan_menu = scan_menu
         self.scan_dispatch = {}
         self.scan_menu_add_command(label="Help", command=self.scan_help,
+                             underline=0)
+        self.scan_menu_add_command(label="c -  combine wave - faster scan",
+                                    command=self.scan_combine_wave,
+                             underline=0)
+        self.scan_menu_add_command(label="d - disable combine wave",
+                                    command=self.scan_disable_combine_wave,
                              underline=0)
         self.scan_menu_add_command(label="f - flip skip space", command=self.flip_skip_space,
                              underline=0)
@@ -322,6 +330,12 @@ class AdwMenus:
         scande = self.scan_dispatch[short_cut]
         scande.command()
 
+    def scan_combine_wave(self):
+        self.set_combine_wave()
+
+    def scan_disable_combine_wave(self):
+        self.set_combine_wave(val=False)
+        
     def scan_no_item_wait(self):
         self.set_no_item_wait()
         
@@ -582,6 +596,13 @@ class AdwMenus:
     Scanning support
         through fte
     """
+
+    def set_combine_wave(self, val=True):
+        """ Enable/disable combine wave scanning mode
+        :val: value for mode
+        """
+        self.fte.set_combine_wave(val=val)
+        
     
     def set_no_item_wait(self, val=True):
         """ Set/clear scanning no_wait option

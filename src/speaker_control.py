@@ -34,10 +34,12 @@ class SpeakerControlError(SelectError):
 class SpeakerControlDelay:
     """ Delay info
     """
-    def __init__(self, dur):
+    def __init__(self, sc, dur):
         """ Start delay
+        :sc: speaker control instance
         :dur: duration seconds
         """
+        self.sc = sc
         self.dur = dur
         self.start = time.time()
         self.end = self.start + self.dur
@@ -47,7 +49,7 @@ class SpeakerControlDelay:
         :returns: True if at or past end
         """
         now = time.time()
-        if now > self.end:
+        if self.sc.forced_clear or now > self.end:
             return True 
         
         return False
@@ -100,15 +102,18 @@ class SpeakerWaveform:
     """ waveform to emit
     """
     
-    def __init__(self, ndarr, dur, delay=None, sample_rate=None):
+    def __init__(self, ndarr, dur,
+                 calculate_dur=None, delay=None, sample_rate=None):
         """ setup waveform
         :ndarr: waveform (SinewaveNumPy stereo_waveform)
         :dur: wave max duration (seconds)
+        :calculate_dur: calculate duration based on waveform and sample_rate
         :dly: delay(seconds) from start default: no delay
         :sample_rate: sample rate fps
         """
         self.ndarr = ndarr
         self.dur = dur
+        self.calculate_dur = calculate_dur
         self.delay = delay
         self.sample_rate = sample_rate
     
@@ -205,6 +210,7 @@ class SpeakerControl(Singleton):
         self.sound_size = sound_size
         self.sample_rate = sample_rate
         self._running = True        # Thread functions exit when cleared
+        self.forced_clear = False   # set on force_clear, checked on waiting...
 
         if got_pyttsx3:
             self.pyttsx3_engine = pyttsx3.init()
@@ -227,7 +233,7 @@ class SpeakerControl(Singleton):
     def sc_cmd_proc_thread(self):
         """ speech maker command processing thread function
         """
-        while self._running:
+        while not self.forced_clear and self._running:
             
             cmd = self.sc_cmd_queue.get()
             SlTrace.lg(f"cmd: {cmd}", "speech")
@@ -277,6 +283,8 @@ class SpeakerControl(Singleton):
         with self.sc_sound_queue.mutex:
             self.sc_sound_queue.queue.clear()
         SlTrace.lg(f"self.sc_sound_queue.qsize(): {self.sc_sound_queue.qsize()}")
+        self.sc_speech_busy = False 
+        self.sc_tone_busy = False
 
     def clear_cmd_queue(self):
         while self.sc_cmd_queue.qsize() > 0:
@@ -289,14 +297,16 @@ class SpeakerControl(Singleton):
             SlTrace.lg(f"removing speech queue entry: {cmd}")
             
     def force_clear(self):
-        """ force Clear queue
+        """ force Clear
         """
         SlTrace.lg("force speech clearing")
         self.clear_cmd_queue()
         SlTrace.lg(f"self.sc_cmd_queue.qsize(): {self.sc_cmd_queue.qsize()}")
         self.clear_sound_queue()
         SlTrace.lg(f"self.sc_sound_queue.qsize(): {self.sc_sound_queue.qsize()}")
-        
+        sd.stop()                   # Stop waveform
+        self.forced_clear = True        # stoping waits...
+
         #if self.pyttsx3_engine.isBusy():
         #self.pyttsx3_engine.stop()
         #if self.pyttsx3_engine._inLoop:
@@ -304,7 +314,12 @@ class SpeakerControl(Singleton):
         #self.pyttsx3_engine = pyttsx3.init()
 
         #self.sound_lock.release()
-    
+        self.sc_speech_busy = False 
+        self.sc_tone_busy = False
+
+    def force_clear_reset(self):
+        self.sc_forced_clear = False 
+            
     def is_busy(self):
         """ Check if if busy or anything is pending
         """
@@ -336,7 +351,7 @@ class SpeakerControl(Singleton):
         """ Process pending speech requests (SpeakerControlCmd)
         """
         SlTrace.lg("sc_sounc_proc_thread running")
-        while self._running:
+        while not self.forced_clear and self._running:
             qsize = self.sc_sound_queue.qsize()
             SlTrace.lg(f"sound_queue {qsize}: BEFORE sc_sound_queue.get()", "sound_queue")
             buffer = 10
@@ -404,18 +419,21 @@ class SpeakerControl(Singleton):
         """ Start delay
         :dur: duration in seconds
         """
-        self._delay = SpeakerControlDelay(dur=dur)
+        self._delay = SpeakerControlDelay(self, dur=dur)
 
     def delay_wait(self):
         """ wait till delay end
         """
-        while not self._delay.is_end():
+        while not self.forced_clear and not self._delay.is_end():
             time.sleep(.001) 
         
     def play_tone(self, tone):
         """ Called to play pending tone
-        :tone: (SpeakerTone)
+        :tone: (SpeakerTone) tuple left,right or monoral
         """
+        if type(tone.volume) != tuple:
+            tone.volume = (tone.volume,tone.volume)
+            
         self.sc_tone_busy = True
         SlTrace.lg(f"play_tone: qsize: {self.get_sound_queue_size()}",
                     "sound_queue")
@@ -424,7 +442,7 @@ class SpeakerControl(Singleton):
                 vol_left,vol_right = tone.volume
                 self.delay_start(tone.delay)
                 sinewave_stereo = SineWaveNumPy(pitch = tone.pitch,
-                    duration_s=tone.dur,
+                    duration=tone.dur,
                     decibels_left=vol_left,
                     decibels_right=vol_right)
                 self.delay_wait()
@@ -443,13 +461,18 @@ class SpeakerControl(Singleton):
         """ Called to play pending waveform
         :waveform: (SpeakerWaveform) waveform to play
         :dur: duration default: waveform.dur
-        :sample_rate: sample rate default self.sample_rate
+        :sample_rate: sample rate default: waveform.sample_rate,
+                                           else: self.sample_rate
         """
         self.sc_tone_busy = True
         dur = waveform.dur
         sample_rate = waveform.sample_rate
         if sample_rate is None:
             sample_rate = self.sample_rate
+        if dur is None or waveform.calculate_dur:
+            wf_shape = waveform.ndarr.shape
+            wf_len = wf_shape[0]
+            dur = wf_len/sample_rate
         SlTrace.lg(f"play_waveform: qsize: {self.get_sound_queue_size()}",
                     "sound_queue")
         try:                
@@ -571,17 +594,21 @@ class SpeakerControlLocal:
         """
         self.sc.clear()
 
+    def force_clear(self):
+        """ Clear pending output
+        """
+        SlTrace.lg("force_clear")
+        for _ in range(3):
+            self.sc.force_clear()
+            self.win.after(1000)
+        self.sc.force_clear_reset()
+        SlTrace.lg("force_clear reset")
+
     def get_cmd_queue_size(self):
         """ Get current number of entries
         :returns: number of entries
         """
         return self.sc.get_cmd_queue_size()
-
-    def get_sound_queue_size(self):
-        """ Get current number of entries
-        :returns: number of entries
-        """
-        return self.sc.get_sound_queue_size()
 
     def is_busy(self):
         """ Check if if busy or anything is pending
@@ -603,23 +630,26 @@ class SpeakerControlLocal:
         :dly: delay(seconds) from start default: no delay
         """
         tone = SpeakerTone(pitch=pitch, dur=dur, volume=volume)
-        SlTrace.lg(f"play_tone tone: {tone}")
+        SlTrace.lg(f"play_tone tone: {tone}", "play_tone")
         self.sc.send_cmd(cmd_type="CMD_TONE", tone=tone)
         
     def play_waveform(self, ndarr, dur=None, dly=None,
                                sample_rate=None,
+                               calculate_dur=False,
                                after=None):
         """ play waveform
         :ndarr: waveform (SinewaveNumPy stereo_waveform)
         :dur: wave max duration (seconds)
         :dly: delay(seconds) from start default: no delay
         :sample_rate: sample rate fps
+        :calculate_dur:    # calculate duration based on waveform, sample_rate
         :after: function to call after play completes
                  (self.win.after(0,after)
                 default: no call
         """
         waveform = SpeakerWaveform(ndarr=ndarr, dur=dur, delay=dly,
-                              sample_rate=sample_rate)
+                                   calculate_dur=calculate_dur,
+                                   sample_rate=sample_rate)
         SlTrace.lg(f"play_waveform waveform: {waveform}", "sound_queue")
         cmd = self.sc.send_cmd(cmd_type="CMD_WAVEFORM", waveform=waveform,
                          win=self.win, after=after)
