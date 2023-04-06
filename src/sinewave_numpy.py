@@ -3,6 +3,7 @@
     Not a direct substitute but for lower level operations
 """
 import time
+import copy
 import numpy as np
 import sounddevice as sd
 from pysinewave import utilities
@@ -30,7 +31,7 @@ class SineWaveNumPy:
         left_waveform = base_waveform.reshape(-1,1)*atten_left
         right_waveform = base_waveform.reshape(-1,1)*atten_right
         stereo_waveform = np.hstack((left_waveform, right_waveform))
-        self.stereo_waveform = stereo_waveform
+        self.stereo_waveform = copy.deepcopy(stereo_waveform)
         
     def play(self):
         """ Start playing tone

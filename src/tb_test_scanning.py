@@ -12,7 +12,7 @@ from turtle_braille_link import *
 
 SlTrace.clearFlags()
 #SlTrace.setFlags("sound_queue,decpl")
-SlTrace.setFlags("sound_time,decpl")
+SlTrace.setFlags("sound_time,decpl,scanning")
 test_desc = "No test running"
 test = os.path.basename(__file__)
 
@@ -34,6 +34,7 @@ try:
     fte = bd.aud_win.fte
     fte.speak_text("Scanning")
     fte.pause(a_bit)
+    fte.set_skip_space(val=True)
     fte.do_menu_str("s:s")
     pt_time = 160
     fte.speak_text(f"Pausing {pt_time} seconds")

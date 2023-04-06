@@ -176,7 +176,17 @@ class AdwFrontEnd:
             iy = iy_cur
         win_xc,win_yc = self.get_cell_center_win(ix,iy)
         self.move_to(win_xc,win_yc)
-        
+
+    def wait_on_output(self):
+        """ Wait till queued output speech/tones completed
+        """
+
+        while True:
+            if self.adw.speaker_control.is_busy():
+                self.update()
+                continue
+            
+            break        
     """
     Setup menus
     """
@@ -184,7 +194,7 @@ class AdwFrontEnd:
         if self.adw.pgmExit is not None:
             self.adw.pgmExit()
         else:
-            self.adw.speech_maker.quit()
+            self.adw.speaker_control.quit()
             sys.exit()    
         
     def File_Open_tbd(self):
@@ -404,6 +414,7 @@ class AdwFrontEnd:
     """    
     def do_menu_str(self, menu_str=None):
         """ Execute initial navigate string, if any
+            wait on output before each cmd action
         :menu_str: string default: use self.menu_str
         """
         if menu_str is None:
@@ -417,23 +428,29 @@ class AdwFrontEnd:
             cmd_type, cmd_letters = cmd.split(':')
             if cmd_type == 'f':
                 for c in cmd_letters:
+                    self.wait_on_output()
                     self.file_direct_call(c)
             if cmd_type == 'n':
                 for c in cmd_letters:
+                    self.wait_on_output()
                     self.nav_direct_call(c)
             elif cmd_type == 'd':
                 for c in cmd_letters:
+                    self.wait_on_output()
                     self.draw_direct_call(c)
             elif cmd_type == 'm':
                 for c in cmd_letters:
+                    self.wait_on_output()
                     self.mag_direct_call(c)
             elif cmd_type == 's':
                 for c in cmd_letters:
+                    self.wait_on_output()
                     self.scan_direct_call(c)
 
     def do_key_str(self, key_str=None):
         """ Execute initial key string, if any
-        :nav_str: string default: use self.nav_str
+            wait on output before each cmd action
+        :key_str: string default: use self.nav_str
         """
         slow_key_str = SlTrace.trace("slow_key_str")
         if key_str is None:
@@ -445,6 +462,7 @@ class AdwFrontEnd:
         syms = key_str.split(";")
         for sym in syms:
             SlTrace.lg(f"press: {sym}")
+            self.wait_on_output()
             self.key_press(sym)
             if slow_key_str:
                 time.sleep(.5)
@@ -675,7 +693,7 @@ class AdwFrontEnd:
         """
         #self.key_flush(keysym=keysym)
         if self._echo_input:
-            self.adw.speech_maker.speak_text(keysym, msg_type='ECHO')
+            self.adw.speaker_control.speak_text(keysym, msg_type='ECHO')
 
     def key_flush(self, keysym):
         """ Do appropriate flushing
@@ -1564,6 +1582,11 @@ class AdwFrontEnd:
                        Links to scanner
     ############################################################
     """
+    def set_no_item_wait(self, val=True):
+        """ Set/clear scanning no_wait option
+        :val: True - no waiting
+        """
+        self.scanner.set_no_item_wait(val=val)
 
     def set_profile_running(self, val=True):
         """ Set/clear profiler running
@@ -1599,7 +1622,22 @@ class AdwFrontEnd:
         """ Flip skipping spaces
         """
         self.scanner.flip_skip_space()
-    
+        
+    def get_vol(self, ix, iy, eye_ixy_l=None, eye_ixy_r=None):
+        """ Get tone volume for cell at ix,iy
+        volume(left,right)
+        Volume(in decibel): k1*(k2-distance from eye), k1=1, k2=0
+        :ix: cell ix
+        :iy: cell iy
+        :eye_xy_l: left eye/ear at x,y default: self.eye_xy_l
+        :eye_xy_r: right eye/ear at x,y  default: self.eye_xy_r
+        return: volume(left,right) in decibels
+        """
+        return self.scanner.get_vol(ix=ix, iy=iy, eye_ixy_l=eye_ixy_l, eye_ixy_r=eye_ixy_r)
+
+    def set_scanning(self, cells=None):
+        self.scanner.set_scanning(cells=cells)
+            
     def start_scanning(self):
         self.scanner.start_scanning()
 
@@ -1697,24 +1735,24 @@ class AdwFrontEnd:
         """
         return self.adw.get_mag_info()
 
-    def get_speech_maker(self):
+    def get_speaker_control(self):
         """ Get speech control
         """
-        return self.adw.get_speech_maker()
+        return self.adw.get_speaker_control()
 
     def get_cmd_queue_size(self):
         """ Get current number of entries
         :returns: number of entries
         """
-        speech_maker = self.get_speech_maker()
-        return speech_maker.get_cmd_queue_size()
+        speaker_control = self.get_speaker_control()
+        return speaker_control.get_cmd_queue_size()
 
     def get_speech_queue_size(self):
         """ Get current number of entries
         :returns: number of entries
         """
-        speech_maker = self.get_speech_maker()
-        return speech_maker.get_speech_queue_size()
+        speaker_control = self.get_speaker_control()
+        return speaker_control.get_speech_queue_size()
     
     def get_win_ullr_at_ixy_canvas(self, ixy):
         """ Get window rectangle for cell at ixy
@@ -1822,7 +1860,7 @@ class AdwFrontEnd:
         :val: set visible Default: True
         """
         self.adw.set_visible(val=val)
-                
+
     def speak_text(self, msg, dup_stdout=True,
                    speech_type='REPORT'):
         """ Speak text, if possible else write to stdout
@@ -1879,7 +1917,7 @@ class AdwFrontEnd:
         ix_end = ix_next = ix + x_inc
         iy_end = iy_next = iy + y_inc
         if not self.is_inbounds(ix=ix_next, iy=iy_next):
-            self.announc_can_not_do()
+            self.announce_can_not_do()
             return
         
         skip_space = self.is_skip_space()
@@ -1934,9 +1972,8 @@ class AdwFrontEnd:
         if SlTrace.trace("mouse_cell"):
             cell = self.get_cell_at()
             SlTrace.lg(f"{self.win_x},{self.win_y} pos_xy:{self.pos_x}, {self.pos_y}"
-                       f" win x,y:{self.get_point_win()}"
-                       f" tur x,y:{self.get_point_tur()}"
-                       f" ixy:{self.get_ixy_at()}  cell: {cell}")
+                       f" canvas x,y:{self.get_xy_canvas()}"
+                       f" cell: {cell}")
 
     def move_to(self, x,y, quiet=False):
         """ Move to window loc

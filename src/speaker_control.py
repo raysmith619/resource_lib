@@ -88,7 +88,10 @@ class SpeakerTone:
         if self.volume is not None:
             v_left,v_right = self.volume
             st += f" vol=({v_left:.1f},{v_right:.1f})"
-        st += f" dur={self.dur:.3f}"
+        if self.dur is None:
+            st += " dur=None"
+        else:
+            st +=  f" dur={self.dur:.3f}"
         if self.delay is not None:
             st += f" delay:{self.delay:.3f}"
         return st
@@ -458,13 +461,12 @@ class SpeakerControl(Singleton):
                 self.delay(dur=dur)
                 sd.stop()
                 te = time.time()
+                SlTrace.lg(f"play_waveform end tw=({te-ts:.3f})", "sound_time")
         except Exception as e:
-            SlTrace.lg("Bust out of play_tone")
+            SlTrace.lg("Bust out of play_waveform")
             SlTrace.lg(f"Unexpected exception: {e}")
             SlTrace.lg("Printing the full traceback as if we had not caught it here...")
             SlTrace.lg(format_exception(e))
-        SlTrace.lg(f"play_waveform end tw=({te-ts:.3f})", "sound_queue")
-        SlTrace.lg(f"play_waveform end tw=({te-ts:.3f})", "sound_time")
         self.sc_tone_busy = False
                 
     def speak_text(self, msg, msg_type=None):
@@ -585,7 +587,11 @@ class SpeakerControlLocal:
         """ Check if if busy or anything is pending
         """
         return self.sc.is_busy()
-        
+
+    def wait_while_busy(self):
+        while self.is_busy():
+            self.win.update()
+                    
     def quit(self):    
         self.sc.quit()
 
@@ -634,7 +640,8 @@ class SpeakerControlLocal:
         """ Check cmds awaiting for after cking
         """
         self.awaiting_loop_going = False    # Set True if more needed
-        cmd_ids  = list(self.cmds_awaiting_after)   # So we can delete in loop
+                                            # Delete in order
+        cmd_ids  = sorted(list(self.cmds_awaiting_after))   # So we can delete in loop
         for cmd_id in cmd_ids:
             if cmd_id in self.cmds_awaiting_after:
                 cmd = self.cmds_awaiting_after[cmd_id]
