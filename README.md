@@ -8,7 +8,7 @@ approach is to accept these turtle commands, passing them unmodified to turtle, 
   * The braille window supports keyboard cursor movements plus audio feedback describing the current cursor position.
   * The audio feedback can be in spoken text or audio tones to speed the figure contents.  
 
-## Some recent improvements
+## Changes to the text picture
 These changes were the results of experiences with and comments from some 8th grade students at the Perkins School for the Blind.
 
 - Non-trailing blanks are replaced with "," characters so as not to be compressed by the braille producing software.  The ","
@@ -16,15 +16,16 @@ characters, while not being "blank" are single dot braille constructs, and are e
 - Blank area above and to the left is removed to facilitate viewers finding graphics objects.
 
 ## A set of screen shots for a simple program
-# User program in IDLE
+### Example User program in IDLE
 ![IDLE program window](Docs/braille_turtle_spokes_pgm.PNG)
 # turtle display window
 ![turtle screen shot](Docs/braille_turtle_spokes_td.PNG)
 # turtle display window - audio feedback
 Note that the color of the braille dots is for the implementer's view to empasize the color.
 Also the rectangles surrounding the dots are to further help the visual image.
+### Braille Window - audio feedback - An implementation aid, providing the likely braille view
 ![Audio Draw Window](Docs/spokes_audio_window.PNG)
-# Braille Window - audio feedback - An implementation aid, providing the likely braille view
+
 Keyboard / Menu commands
 ## Keyboard display/positioning commands
 ```
@@ -71,8 +72,9 @@ Keyboard / Menu commands
         v - view region (make new window)
 ```
 ### Magnify supports the creation of a new audio-display-window, enlarging the currently selected region of the current audio-display-window.  The selected region is the rectangular region encompasing the currently traversed squares.
-Currently options t is not implemented.
-![Magnification Demo](Docs/spokes_audio_window.PNG)
+###Currently options t is not implemented.
+
+![Magnification Demo](Docs/Magnification_Demo.PNG)
 
 ## Navigate - Navigation commands from Navigate pulldown menu
 ```
@@ -123,35 +125,16 @@ Currently options t is not implemented.
 ```
         Trace - tracing control
 ```
-# Program text printout - targeted for the brailler machine
+### Program text printout - targeted for the brailler machine
 
 ![Program printout](Docs/spokes_print_output.PNG)
 
 ## Supported turtle commands
-Note that we do not handle all turtle commands - mostly those which support simple static low resolution graphics.
-def backward(length):
-def color(*args):
-def dot(size=None, *color):
-def filling():
-def begin_fill():
-def end_fill():
-def forward(length):
-def goto(x, y=None):
-def setpos(x, y=None): 
-def setposition(x, y=None): 
-def left(angle):
-def pendown():
-def penup():
-def right(angle):
-def speed(speed):
-def mainloop():
-def done():
-def pensize(width=None):
-def width(width=None):
+Because of our post running, screen scanning technique, we support all turtle commands, not requiring animation.  That is, we take a static snapshot at the end of the program.
 
 
 Our implementation has some harsh compromises:
-- Our graphics resolution is currently 40 wide by 25 down for a 800 by 800 screen.
+- Our graphics resolution is currently 40 wide by 25 down for a 800 by 800 screen.  Note this is further constrained by the fact that our students' shared braille embosser is set to 30 characters wide.
 - Colors are represented by braille for the color's first letter(English)
 - No motion - yet
 
