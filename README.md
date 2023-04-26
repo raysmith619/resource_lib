@@ -23,16 +23,17 @@ characters, while not being "blank" are single dot braille constructs, and are e
 # turtle display window - audio feedback
 Note that the color of the braille dots is for the implementer's view to empasize the color.
 Also the rectangles surrounding the dots are to further help the visual image.
-![turtle screen shot](Docs/braille_window_audio.PNG)
+![Audio Draw Window](Docs/spokes_audio_window.PNG)
 # Braille Window - audio feedback - An implementation aid, providing the likely braille view
+Keyboard / Menu commands
 ## Keyboard display/positioning commands
 ```
         h - say this help message
-        Up - Move up one row
-        Down - Move down one row
-        Left - Move left one column
-        Right - Move right one column
-        DIGIT - direction (from center):
+        Up - Move up through run of same color/space
+        Down - Move down through run of same color/space
+        Left - Move left through run of same color/space
+        Right - Move right through run of same color/space
+        DIGIT - Move one square in direction (from current square):
            7-up left    8-up       9-up right
            4-left       5-mark     6-right
            1-down left  2-down     3-down right
@@ -43,16 +44,37 @@ Also the rectangles surrounding the dots are to further help the visual image.
         d - pendown - mark when we move
                 
         g - Go to closest figure
+        j - jump up to reduced magnification
+        k - jump down to magnified region
         m - mark location
         p - Report/Say current position
         r - Horizontal position stuff to left, to Right
         t - Vertical position stuff to Top, to bottom
         u - penup - move with out marking 
         w - write out braille
+        x - move to original cell (after a/b Horizontal/Vertical)
         z - clear board
         Escape - flush pending report output
 ```        
-## Navigation commands from Navigate pulldown menu
+## File - Program control - Only Exit is functioning
+```
+        x - Exit program
+```
+
+## Magnify - Magnification Control
+```
+        Help - list magnify commands (Alt-m) commands
+        h - say this help message
+        t - expand magnify selected region left/right
+        s - select/mark magnify region
+        t - expand magnify selected region up/down top/bottom
+        v - view region (make new window)
+```
+### Magnify supports the creation of a new audio-display-window, enlarging the currently selected region of the current audio-display-window.  The selected region is the rectangular region encompasing the currently traversed squares.
+Currently options t is not implemented.
+![Magnification Demo](Docs/spokes_audio_window.PNG)
+
+## Navigate - Navigation commands from Navigate pulldown menu
 ```
         Help - list navigate commands (Alt-n) commands
         h - say this help message
@@ -72,9 +94,35 @@ Also the rectangles surrounding the dots are to further help the visual image.
         p - report position
         u - audio beep
         d - no audio beep
+         Escape - flush pending report output
+```
+
+## Draw - Free drawing control
+```
+        Help - list drawing setup commands (Alt-d) commands
+        h - say this help message
+        d - Start/enable drawing
+        s - stop/disable drawing
         Escape - flush pending report output
 ```
 
+### Scanning - Audio Window Scanning
+```
+        Help - list scanning commands (Alt-s) commands
+        h - say this help message
+        c - combine wave - faster scan
+        d - disable combine wave - viewing in window
+        k - toggle skip space
+        s - Start scanning mode
+        t - Stop scanning mode
+        n - no_item_wait
+        w - wait for items
+```
+
+## Auxiliary  - internal tracking / debugging
+```
+        Trace - tracing control
+```
 # Program text printout - targeted for the brailler machine
 
 ![Program printout](Docs/spokes_print_output.PNG)
