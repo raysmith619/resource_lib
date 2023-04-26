@@ -31,7 +31,8 @@ for indirect call of tk.Canvas calls:
 
 class CanvasGrid(tk.Canvas):
         
-    def __init__(self, master, base=None, speaker_control=None,
+    def __init__(self, master, base=None,
+                 pgmExit=None, speaker_control=None,
                  g_xmin=None, g_xmax=None, g_ymin=None, g_ymax=None,
                  g_nrows=25, g_ncols=40,
                  **kwargs):
@@ -39,6 +40,7 @@ class CanvasGrid(tk.Canvas):
         :base: tk.Canvas, if present, from which we get
                 canvas item contents
                 default: self
+        :pgmExit: program main exit if one default: use local (...os._exit)
         :speaker_control: (SpeakerControlLocal) local access to speech facility
                         REQUIRED
         :g_xmin: Grid minimum canvas coordinate value default: left edge
@@ -54,7 +56,7 @@ class CanvasGrid(tk.Canvas):
         if speaker_control is None:
             SlTrace.lg("Creating local SpeakerControl copy")
             speaker_control = SpeakerControlLocal(win=master)   # local access to speech engine
-        
+        self.pgmExit = pgmExit
         self.speaker_control = speaker_control
         self.item_samples = {}      # For incremental presentation  via show_item
         self.audio_wins = []        # window list for access
@@ -161,7 +163,7 @@ class CanvasGrid(tk.Canvas):
                 Stores number of cells found in self.n_cells_created
         """
         if pgmExit is None:
-            pgmExit= self.exit 
+            pgmExit = self.exit 
 
         if mag_info is None:
             mag_info = self.create_magnify_info(x_min=xmin, y_min=ymin,
@@ -186,8 +188,9 @@ class CanvasGrid(tk.Canvas):
                 for canvas_id in ids:
                     self.show_canvas_item(canvas_id)
             color = self.item_to_color(item_ids=ids)
-            bcell = BrailleCell(ix=ix, iy=iy, color=color)
-            braille_cells.append(bcell)
+            if color is not None:
+                bcell = BrailleCell(ix=ix, iy=iy, color=color)
+                braille_cells.append(bcell)
         self.n_cells_created = len(braille_cells)
         if self.n_cells_created == 0:
             if require_cells:
@@ -206,14 +209,14 @@ class CanvasGrid(tk.Canvas):
         """ Get color string given item id
             Ignore items with fill tuple ending with ''
         :item_ids: list of canvas ids for item
-        :returns: color str
+        :returns: color str or None if no item with valid color
         """
         for top_id in reversed(item_ids):
             color_tuple = self.base.itemconfigure(top_id, "fill")
             color = color_tuple[-1]
             if color != '':
-                break       # Take first that has a color  not ''
-        return color
+                return color       # Take first that has a color  not ''
+        return None
         
     def display_cell(self, ixy_item, mark_type=None):
         """ Display grid square based on graphics
@@ -227,9 +230,10 @@ class CanvasGrid(tk.Canvas):
         if mark_type is None:
             mark_type = "square"
         color = self.item_to_color(item_ids=ids)
-        w_left_x,w_upper_y, w_right_x,w_lower_y = self.get_grid_ullr(ix=ix, iy=iy)
-        self.create_rectangle(w_left_x, w_upper_y, w_right_x, w_lower_y,
-                              outline=color, width=3)
+        if color is not None:
+            w_left_x,w_upper_y, w_right_x,w_lower_y = self.get_grid_ullr(ix=ix, iy=iy)
+            self.create_rectangle(w_left_x, w_upper_y, w_right_x, w_lower_y,
+                                  outline=color, width=3)
 
     def display_cells(self):
         items = self.get_canvas_items()
@@ -630,6 +634,9 @@ class CanvasGrid(tk.Canvas):
     def exit(self):
         """ Main exit if creating magnifications
         """
+        if self.pgmExit is not None:
+            self.pgmExit()      # Use supplied pgmExit
+            
         SlTrace.lg("CanvasGrid.exit")
         SlTrace.onexit()    # Force logging quit
         os._exit(0)

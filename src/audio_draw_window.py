@@ -7,14 +7,16 @@ Uses turtle to facilitate cursor movement within screen
 Adapted from audio_window to concentrate on figure drawing
 as well as presentation.
 """
+import os
 import tkinter as tk
 
 from select_trace import SlTrace
 from speaker_control import SpeakerControlLocal
 from grid_path import GridPath
 from braille_cell import BrailleCell
-from magnify_info import MagnifyInfo, MagnifySelect, MagnifyDisplayRegion
+from magnify_info import MagnifyInfo, MagnifyDisplayRegion
 from adw_front_end import AdwFrontEnd
+from Lib.pickle import NONE
 
 class AudioDrawWindow:
 
@@ -193,6 +195,18 @@ class AudioDrawWindow:
         self.update()     # Make visible
 
 
+    def exit(self, rc=None):
+        """ Main exit if creating magnifications
+        """
+        if rc is None:
+            rc = 0
+        if self.pgmExit is not None:
+            self.pgmExit()      # Use supplied pgmExit
+            
+        SlTrace.lg("AudoDrawWindow.exit")
+        SlTrace.onexit()    # Force logging quit
+        os._exit(0)
+
     def set_look_dist(self, look_dist):
         self.look_dist = look_dist
 
@@ -290,7 +304,7 @@ class AudioDrawWindow:
                 for cell in cells:
                     cs[(cell.ix,cell.iy)] = cell
                 cells = cs
-                self.cells = cells      # Copy
+            self.cells = cells      # Copy
         min_x, max_y, max_x,min_y = self.bounding_box()
         if min_x is not None:            
             SlTrace.lg(f"Lower left: min_x:{min_x} min_y:{min_y}")
@@ -373,6 +387,8 @@ class AudioDrawWindow:
         """Find  top, left, bottom, right non-blank edges
         so we can shift picture to left,top for easier
         recognition
+        :returns: left_edge, top_edge, right_edge, bottom_edge
+                    Also sets self.left_edge,...
         """
         left_edge,top_edge, right_edge,bottom_edge = self.bounding_box_ci()
         if bottom_edge is None:
@@ -430,6 +446,19 @@ class AudioDrawWindow:
         self.update()
         if not quiet:
             self.pos_check(force_output=True)
+
+    def move_to_ixy(self, ix=None, iy=None):
+        """ Move to grid (cell) ix,iy
+        :ix: ix index default: current ix
+        :iy: iy index default: current iy
+        """
+        ix_cur,iy_cur = self.get_ixy_at()
+        if ix is None:
+            ix = ix_cur 
+        if iy is None:
+            iy = iy_cur
+        win_xc,win_yc = self.get_cell_center_win(ix,iy)
+        self.move_to(win_xc,win_yc)
 
 
 
@@ -540,10 +569,13 @@ class AudioDrawWindow:
         _, _, max_x, min_y = self.get_cell_rect_tur(max_ix,min_iy)
         return min_x,max_y, max_x, min_y
     
-    def bounding_box_ci(self, cells=None):
+    def bounding_box_ci(self, cells=None, add_edge=None):
         """ cell indexes which bound the list of cells
         :cells: list of cells, (with cell.ix,cell.iy) or (ix,iy) tuples
                 default: list of all cells in figure
+        :add_edge: number of cells to add/subtract (if possible)
+                     to enlarge/shrink box
+                    default: no change
         :returns: 
                     None,None,None,None if no figure
                     upper left ix,iy  lower right ix,iy
@@ -573,7 +605,29 @@ class AudioDrawWindow:
         if iy_min is None:
             iy_min = 0
         if iy_max is None:
-            ix_max = self.grid_height-1
+            iy_max = self.grid_height-1
+        
+        if add_edge is not None:    # Extend/Shrink box
+            ext_ix_min = ix_min - add_edge
+            bd_ix_max = self.get_ix_max() # protect against too large of negative add_edge
+            if ext_ix_min > bd_ix_max: ext_ix_min = bd_ix_max
+            ix_min = max(ext_ix_min, self.get_ix_min()) # limit to bounds
+
+            ext_iy_min = iy_min - add_edge
+            bd_iy_max = self.get_iy_max()
+            if ext_iy_min > bd_iy_max: ext_iy_min = bd_iy_max
+            iy_min = max(ext_iy_min, self.get_iy_min())
+            
+            ext_ix_max = ix_max + add_edge
+            bd_ix_min = self.get_ix_min()
+            if ext_ix_max < bd_ix_min: ext_ix_max = bd_ix_min
+            ix_max = min(ext_ix_max, self.get_ix_max())
+            
+            ext_iy_max = iy_max + add_edge
+            bd_iy_min = self.get_iy_min()
+            if ext_iy_max < bd_iy_min: ext_ix_max = bd_iy_min
+            iy_max = min(ext_iy_max, self.get_iy_max())
+            
         return ix_min,iy_min, ix_max,iy_max
             
 
@@ -620,6 +674,53 @@ class AudioDrawWindow:
             move x1,x2,y1,y2
         """
         return cx1,cx2,cy1,cy2
+
+    def annotate_cell(self, cell_ixy=None, color=None,
+                      outline="blue", outline_width=2,
+                      text=None):
+        """ Annotate cell to highlight it
+        Possibly for perimeter viewing
+        :cell_xy: ix,iy tuple default: current location
+        :color: rectangle color default: no fill
+        :outline: add outline color
+                    default: no special outline
+        :outline_width: outline width
+                    default: 2
+        :text: added text default: no text added
+        """
+        if cell_ixy is None:
+            cell_ixy = self.get_ixy_at()
+        cell = self.get_cell_at_ixy(cell_ixy=cell_ixy)
+        if cell is None:
+            return     # Just ignore if missing
+        
+        self.deannotate_cell(cell_ixy=cell_ixy) #???
+        self.display_cell(cell=cell)
+        canvas = self.canvas
+        cx1,cy1,cx2,cy2 = self.get_win_ullr_at_ixy_canvas(cell_ixy)
+        if outline is not None:
+            canv_item = canvas.create_rectangle(cx1,cy1,cx2,cy2,
+                                fill=color,
+                                 outline=outline,
+                                 width=outline_width)
+            cell.canv_items.append(canv_item)
+            
+        self.update()    # So we can see it now 
+            
+        return 
+
+    def deannotate_cell(self, cell_ixy=None, color=None,
+                      outline=None, text=None):
+        """ deAnnotate cell, restoring cell to normal
+        :cell_xy: ix,iy tuple default: current location
+        """
+        if cell_ixy is None:
+            cell_ixy = self.get_ixy_at()
+        cell = self.get_cell_at_ixy(cell_ixy=cell_ixy)
+        if cell is not None:
+            self.display_cell(cell=cell)
+            
+        return      # Just ignore if missing
     
     def display_cell(self, cell, show_points=False):
         """ Display cell
@@ -639,6 +740,8 @@ class AudioDrawWindow:
         cell.canv_items.append(canv_item)
         self.update()
         color = self.color_str(cell._color)
+        if len(color) < 1 or color[0] not in BrailleCell.color_for_character:
+            color = "black"
         if show_points:
             dot_size = 1            # Display cell points
             dot_radius = dot_size//2
@@ -659,18 +762,18 @@ class AudioDrawWindow:
             return
             
         dots = cell.dots
-        grid_width = cx2-cx1
-        grid_height = cy1-cy2       # y increases down
+        cell_width = cx2-cx1
+        cell_height = cy2-cy1       # y increases down
         # Fractional offsets from lower left corner
         # of cell rectangle
         ll_x = cx1      # Lower left corner
-        ll_y = cy2
+        ll_y = cy1
         ox1 = ox2 = ox3 = .3 
         ox4 = ox5 = ox6 = .7
         oy1 = oy4 = .15
         oy2 = oy5 = .45
         oy3 = oy6 = .73
-        dot_size = .25*grid_width   # dot size fraction
+        dot_size = .25*cell_width   # dot size fraction
         dot_radius = dot_size//2
         dot_offset = {1: (ox1,oy1), 4: (ox4,oy4),
                       2: (ox2,oy2), 5: (ox5,oy5),
@@ -679,8 +782,8 @@ class AudioDrawWindow:
         for dot in dots:
             offsets = dot_offset[dot]
             off_x_f, off_y_f = offsets
-            dx = ll_x + off_x_f*grid_width
-            dy = ll_y + off_y_f*grid_height
+            dx = ll_x + off_x_f*cell_width
+            dy = ll_y + off_y_f*cell_height
             x0 = dx-dot_radius
             y0 = dy+dot_size 
             x1 = dx+dot_radius 
@@ -822,13 +925,17 @@ class AudioDrawWindow:
         canvas_x, canvas_y = (x-self.get_x_min(), y-self.get_y_min())
         return (canvas_x,canvas_y)
             
-    def get_cell_at_ixy(self, cell_ixy):
+    def get_cell_at_ixy(self,cell_ixy, cells=None, ):
         """ Get cell at (ix,iy), if one
         :cell_ixy: (ix,iy)
+        :cells: dictionary of cells by (ix,iy)
+                default: self.get_cells()
         :returns: BrailleCell if one, else None
         """
-        if cell_ixy in self.cells:
-            return self.cells[cell_ixy]
+        if cells is None:
+            cells = self.get_cells()
+        if cell_ixy in cells:
+            return cells[cell_ixy]
         
         return None
         
@@ -844,6 +951,18 @@ class AudioDrawWindow:
         
         return True
 
+    def is_space(self, ixy, cells=None):
+        """ Are we at a space
+        :ixy: cell ix,iy indexes
+        :cells: cells to check
+                default: our cells - get_cells()
+        :returns: True if a space (not a cell) 
+        """
+        if cells is None:
+            cells = self.get_cells()
+        cell = self.get_cell_at_ixy(cell_ixy=ixy, cells=cells)
+        return True if cell is None else False
+        
     def set_cell(self, pt=None, color=None):
         """ Set cell at pt, else current cell
         If no cell at current location create cell
@@ -948,6 +1067,9 @@ class AudioDrawWindow:
         del self.cells
         self.cells = {}
         self.draw_cells(cells=self.cells)
+
+        
+        
         
     def create_cell(self, cell_ixy=None, color=None,
                     show=True):

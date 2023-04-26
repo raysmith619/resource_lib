@@ -59,10 +59,12 @@ test_desc = "No test running"
 test = os.path.basename(__file__)
 
 test_function = square_loop_colors
-#test_function = spokes
+test_function = spokes
 
 silent = True
-silent = False 
+silent = False
+pt_time = 160
+pt_time = 10 
 try:
     test_function()
     bd.display()        # So we get control
@@ -73,12 +75,13 @@ try:
     fte.set_skip_run(val=False)
     fte.set_skip_space(val=False)
     fte.set_combine_wave()
-    fte.set_cell_time(1.02)
-    fte.set_space_time(.2)
+    fte.set_cell_time(.1)
+    fte.set_space_time(.05)
     fte.do_menu_str("s:s")
-    pt_time = 160
     fte.speak_text(f"Pausing {pt_time} seconds")
     fte.pause(pt_time)
+    SlTrace.lg("Stopping scan with s:t")
+    fte.do_menu_str("s:t")
     SlTrace.lg("Testing Passed")
 
 

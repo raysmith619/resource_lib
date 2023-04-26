@@ -49,7 +49,7 @@ try:
             )
     fte.do_key_str(down_key_str + ";" + first_str)
 
-    SlTrace.setFlags("slow_key_str")    # Slow things down
+    ### Too disruptive SlTrace.setFlags("slow_key_str")    # Slow things down
     SlTrace.lg("Retrace steps with audio beep mode on")
     fte.do_menu_str("n:n;n:u")    
     fte.do_key_str(up_key_str)

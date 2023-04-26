@@ -43,16 +43,22 @@ class SpeakerControlDelay:
         self.dur = dur
         self.start = time.time()
         self.end = self.start + self.dur
+        self.waiting = True 
         
     def is_end(self):
         """ Check if time is up
         :returns: True if at or past end
         """
         now = time.time()
-        if self.sc.forced_clear or now > self.end:
+        if not self.waiting or now > self.end:
             return True 
         
         return False
+
+    def stop(self):
+        """ Stop delay (set as over)
+        """
+        self.waiting = False
 
 class Singleton:
     _instance = None
@@ -81,7 +87,13 @@ class SpeakerTone:
         :delay:   delay before start default: no delay
         """
         self.pitch = pitch
+        if volume is None:
+            SlTrace.lg("SpeakerTone volume={volume}, treat as 0,0")
+            volume = (0,0)
         self.volume = volume
+        if dur is None:
+            SlTrace.lg(f"SpeakerTone dur is {dur} treat as .1")
+            dur = .1
         self.dur = dur
         self.delay = delay
     
@@ -209,6 +221,11 @@ class SpeakerControl(Singleton):
         self.cmds_size = cmds_size
         self.sound_size = sound_size
         self.sample_rate = sample_rate
+        self.start_control()
+        
+    def start_control(self):
+        """ Start / Restart controll
+        """
         self._running = True        # Thread functions exit when cleared
         self.forced_clear = False   # set on force_clear, checked on waiting...
 
@@ -220,9 +237,9 @@ class SpeakerControl(Singleton):
         self.psc = PlaySoundControl()
         self.sound_lock = threading.Lock()
         self.cmds_in_progress = {}   # cmd ins process by cmd_id
-        self.sc_cmd_queue = queue.Queue(cmds_size)  # Command queue of SpeakerControlCmd
+        self.sc_cmd_queue = queue.Queue(self.cmds_size)  # Command queue of SpeakerControlCmd
         self.sc_cmd_thread = threading.Thread(target=self.sc_cmd_proc_thread)
-        self.sc_sound_queue = queue.Queue(sound_size)  # speech queue of SpeakerControlCmd 
+        self.sc_sound_queue = queue.Queue(self.sound_size)  # speech queue of SpeakerControlCmd 
         self.sc_sound_thread = threading.Thread(target=self.sc_sound_proc_thread)
         self.sc_sound_thread.start()
         self.sc_cmd_thread.start()
@@ -277,14 +294,20 @@ class SpeakerControl(Singleton):
         """ Clear queue
         """
         SlTrace.lg("speech clearing")
-        with self.sc_cmd_queue.mutex:
-            self.sc_cmd_queue.queue.clear()
+        sd.stop()
+        self.clear_cmd_queue()
         SlTrace.lg(f"self.sc_cmd_queue.qsize(): {self.sc_cmd_queue.qsize()}")
-        with self.sc_sound_queue.mutex:
-            self.sc_sound_queue.queue.clear()
+        self.clear_sound_queue()
         SlTrace.lg(f"self.sc_sound_queue.qsize(): {self.sc_sound_queue.qsize()}")
         self.sc_speech_busy = False 
         self.sc_tone_busy = False
+
+    
+    def stop_scan(self):
+        """ Stop current scan
+        """
+        self.clear()
+        
 
     def clear_cmd_queue(self):
         while self.sc_cmd_queue.qsize() > 0:
@@ -298,6 +321,7 @@ class SpeakerControl(Singleton):
             
     def force_clear(self):
         """ force Clear
+        :restart: restart controller after a short wait
         """
         SlTrace.lg("force speech clearing")
         self.clear_cmd_queue()
@@ -399,7 +423,7 @@ class SpeakerControl(Singleton):
         SlTrace.lg("sc_sound_proc_thread returning")
             
     def quit(self):
-        SlTrace.lg("SpeachMaker quitting")
+        SlTrace.lg("SpeakerControl quitting")
         self.clear()
         self._running = False       # All our threads watch this
         self.sc_cmd_queue.put(SpeakerControlCmd(cmd_type="QUIT"))   # drop the wait
@@ -408,7 +432,7 @@ class SpeakerControl(Singleton):
         #self.sc_sound_thread.join()
         #self.sc_cmd_thread.join()
 
-    def delay(self, dur):
+    def delay_for(self, dur):
         """ Wait for dur seconds
         :dur: duration seconds
         """
@@ -424,7 +448,7 @@ class SpeakerControl(Singleton):
     def delay_wait(self):
         """ wait till delay end
         """
-        while not self.forced_clear and not self._delay.is_end():
+        while not self._delay.is_end():
             time.sleep(.001) 
         
     def play_tone(self, tone):
@@ -441,14 +465,14 @@ class SpeakerControl(Singleton):
             with self.sound_lock:
                 vol_left,vol_right = tone.volume
                 self.delay_start(tone.delay)
-                sinewave_stereo = SineWaveNumPy(pitch = tone.pitch,
+                stereo_waveform = SineWaveNumPy(pitch = tone.pitch,
                     duration=tone.dur,
                     decibels_left=vol_left,
                     decibels_right=vol_right)
                 self.delay_wait()
-            sinewave_stereo.play()
-            self.delay(dur=tone.dur)
-            sinewave_stereo.stop()
+            stereo_waveform.play()
+            self.delay_for(dur=tone.dur)
+            stereo_waveform.stop()
             
         except Exception as e:
             SlTrace.lg("Bust out of play_tone")
@@ -473,15 +497,15 @@ class SpeakerControl(Singleton):
             wf_shape = waveform.ndarr.shape
             wf_len = wf_shape[0]
             dur = wf_len/sample_rate
-        SlTrace.lg(f"play_waveform: qsize: {self.get_sound_queue_size()}",
-                    "sound_queue")
+        SlTrace.lg(f"play_waveform: len:{wf_len} dur: {dur}",
+                    "sound_time")
         try:                
             with self.sound_lock:
                 if waveform.delay is not None:
-                    self.delay(waveform.delay)
+                    self.delay_for(waveform.delay)
                 ts = time.time()
                 sd.play(waveform.ndarr, sample_rate)
-                self.delay(dur=dur)
+                self.delay_for(dur=dur)
                 sd.stop()
                 te = time.time()
                 SlTrace.lg(f"play_waveform end tw=({te-ts:.3f})", "sound_time")
@@ -503,6 +527,8 @@ class SpeakerControl(Singleton):
             with self.sound_lock:
                 if self.pyttsx3_engine._inLoop:
                     SlTrace.lg("speak_text - in run loop - ignored")
+                    return
+                
                     self.pyttsx3_engine.endLoop()
                     self.sc_speech_busy = False
                     return
@@ -593,16 +619,19 @@ class SpeakerControlLocal:
         """ Clear pending output
         """
         self.sc.clear()
+        self.clear_awaiting()
 
-    def force_clear(self):
+    def force_clear(self, restart=False):
         """ Clear pending output
         """
         SlTrace.lg("force_clear")
-        for _ in range(3):
-            self.sc.force_clear()
-            self.win.after(1000)
-        self.sc.force_clear_reset()
-        SlTrace.lg("force_clear reset")
+        self.sc.force_clear()
+        rwait = 2000
+        SlTrace.lg(f"Waiting {rwait} msec")
+        self.win.after(rwait)
+        if restart:
+            SlTrace.lg("Restarting Speaker control")
+            self.sc.start_control()
 
     def get_cmd_queue_size(self):
         """ Get current number of entries
@@ -682,7 +711,19 @@ class SpeakerControlLocal:
         if len(self.cmds_awaiting_after) > 0:
             self.awaiting_loop_going = True
             self.win.after(self.awaiting_loop_ms, self.awaiting_after_ck)
-                
+
+    def clear_awaiting(self):
+        """ Clear out awaiting, calling all awaiting
+        """
+        self.awaiting_loop_going = False
+        cmd_ids  = sorted(list(self.cmds_awaiting_after))   # So we can delete in loop
+        for cmd_id in cmd_ids:
+            if cmd_id in self.cmds_awaiting_after:
+                cmd = self.cmds_awaiting_after[cmd_id]
+                SlTrace.lg(f"{cmd_id}: after_called for {cmd}", "sound_queue")
+                self.win.after(0, cmd.after)
+                del self.cmds_awaiting_after[cmd_id]
+                        
     def speak_text(self, msg, dup_stdout=True,
                    msg_type="REPORT"):
         """ Speak text, if possible else write to stdout
@@ -705,9 +746,13 @@ class SpeakerControlLocal:
     def speak_text_stop(self):
         """ Stop pending speech
         """
-        self.sc.force_clear()
-        
-            
+        self.force_clear(restart=True)
+
+    def stop_scan(self):
+        """ Stop current scan
+        """
+        self.sc.stop_scan()
+        self.speak_text_stop()    
 if __name__ == "__main__":
     from audio_draw_window import AudioDrawWindow
     

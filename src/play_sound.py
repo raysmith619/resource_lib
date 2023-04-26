@@ -52,7 +52,7 @@ class PlaySound:
             volume = (volume,volume)
         self.volume = volume
         volume_left,volume_right = volume
-        self.sinewave_stereo = SineWaveNumPy(pitch=pitch, decibels_left=volume_left,
+        self.waveform_stereo = SineWaveNumPy(pitch=pitch, decibels_left=volume_left,
                                       decibels_right=volume_right)
         if pskey is None:
             pskey = self.pskey(pitch,volume)
@@ -85,7 +85,7 @@ class PlaySound:
         if dur is None:     # Setup for delayed
             dur = self.dur
         if not isinstance(dur, (int, float)):
-            self.sinewave_stereo.stop()
+            self.waveform_stereo.stop()
             SlTrace.lg(f"bad type for dur {self.dur}:{type(self.dur)}")
             pass
         self.dur = dur
@@ -104,10 +104,10 @@ class PlaySound:
         SlTrace.lg(f"play( ps:{self}", "sound")
         self.time_play_start = datetime.datetime.now()
         self.time_play_stop = None
-        self.sinewave_stereo.play()
+        self.waveform_stereo.play()
         if not isinstance(self.dur, (int, float)):
             SlTrace.lg(f"bad type for self.dur {self.dur}:{type(self.dur)}")
-            self.sinewave_stereo.stop()
+            self.waveform_stereo.stop()
             return
         
         
@@ -126,7 +126,7 @@ class PlaySound:
         self.time_play_stop = datetime.datetime.now()
         play_dur = (self.time_play_stop - self.time_play_start).total_seconds()
         SlTrace.lg(f"play_stop play_dur:{play_dur:.3} ps:{self}", "sound")
-        self.sinewave_stereo.stop()
+        self.waveform_stereo.stop()
         self.psc.free_ps(self)     # Release resource - put on available list
 
     def update(self):

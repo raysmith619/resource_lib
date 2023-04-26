@@ -2,6 +2,7 @@
 """
 Basis for Braille cell (6 dot pattern)
 """
+from Lib.pickle import NONE
 
 class BrailleCell:
     """ braille cell info augmented for analysis
@@ -11,6 +12,20 @@ class BrailleCell:
     MARK_SELECTED = 2
     MARK_TRAVERSED = 3
 
+    # Colors we use
+    color_for_character = {
+        "r": "red",
+        "o": "orange",
+        "y": "yellow",
+        "g": "green",
+        "b": "blue",
+        "i": "indigo",
+        "v": "violet",
+        "w": "white",
+        "p": "pink",
+        "l": "lavender",
+         
+        }
     
     dots_for_character = {
         " ": (),    # blank
@@ -52,6 +67,17 @@ class BrailleCell:
         dots = cls.dots_for_character[c]
         return dots
 
+    @classmethod
+    def ch2color(cls, ch):
+        """ Convert character to recognized color name
+        :ch: character, first character of color name
+        :returns: color name, black if none
+        """
+        if ch in cls.color_for_character:
+            return cls.color_for_character[ch]
+        
+        return "black"  # acceptible tkinter but not in our group
+        
     @classmethod
     def color_str(cls, color):
         """ convert turtle colors arg(s) to color string
@@ -103,6 +129,8 @@ class BrailleCell:
             points = set()
         self.points = points
         self.canv_items = []        # canvas items
+        self.pi_number = None       # perimeter traverse number, if one 
+        self.pi_type = ""           # o-outside, s-surrounding, i-inside
 
     def __str__(self):
         st = f"BCell: [{self.ix},{self.iy}]"

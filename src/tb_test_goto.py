@@ -3,8 +3,6 @@
 # Test positioning
 
 import os
-import traceback
-import sys
 
 from format_exception import format_exception
 
@@ -30,10 +28,10 @@ try:
     assert ix == 0, f"ix should be 0 was {ix}"
     assert iy == 0,  f"ix should be 0 was {iy}"
     
-    test_desc = "cursor_down"
+    test_desc = "key 2 - the new Down"
     x,y = fte.get_x_min(),fte.get_y_min()
     ix,iy = fte.get_ixy_at()
-    fte.key_down()
+    fte.do_key_str("2")
     x2,y2 = fte.get_xy()
     ix2,iy2 = fte.get_ixy_at()
     SlTrace.lg(f"x:{x} y:{y} ix:{ix} iy:{iy} x2:{x2} y2{y2}"

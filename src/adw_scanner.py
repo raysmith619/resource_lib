@@ -6,12 +6,14 @@ contents
 """
 import math
 import time
+import copy
 import cProfile, pstats, io         # profiling support
 
 from sinewave_numpy import SineWaveNumPy
 
 from select_trace import SlTrace
 from sinewave_beep import SineWaveBeep
+from adw_perimeter import AdwPerimeter
 
 """
 scan path item to facilitate fast display, sound and operation
@@ -19,7 +21,7 @@ scan path item to facilitate fast display, sound and operation
 class ScanPathItem:
     
     def __init__(self, ix, iy, cell=None,
-                 sinewave_stereo=None,      # if not scan_use_tone
+                 sinewave_numpy=None,      # if not scan_use_tone
                  pitch=None,
                  dur=None,
                  dly=None,
@@ -33,7 +35,7 @@ class ScanPathItem:
         self.ix = ix
         self.iy = iy
         self.cell = cell
-        self.sinewave_stereo = sinewave_stereo  # Setup after init
+        self.sinewave_numpy = sinewave_numpy  # Setup after init
         self.pitch = pitch          # Setup if scan_use_tone
         self.dur = dur              # Setup if scan_use_tone
         self.dly = dly
@@ -47,22 +49,33 @@ class ScanPathItem:
     
 class AdwScanner:
     
-    def __init__(self, fte, cell_time=.2, space_time=.1,
+    def __init__(self, fte, cell_time=.1, space_time=.1,
                  skip_space=True, skip_run=True, scan_len=10,
+                 skip_run_max = 10,        # Maximum to run skip at a time
+                 skip_space_max = 3,             # Maximum to space skip at a time
+                 sample_rate = 44100,
                  space_pitch=None,
                  no_item_wait=False, scan_use_tone=True,
+                 scan_coverage="perimeter",
                  combine_wave=False):
         """ Setup scanning
         :cell_time: time (seconds) to beep cell
         :space_time: time (seconds) to beep space
         :skip_space: True - skip space default: True
+        :skip_space_max: maximum number of spaces to skip per time
         :skip_run: True - skip run of equals default: True
+        :skip_run_max: maximum number run per time
         :scan_len: number of items to add to scan list
+        :sample_rate: default tone sample rate
         :space_pitch: scanning space pitch default: "SCAN_BLANK"
         :no_item_wait: True - don't wait for items to complete
         :scan_use_tone: True use play_tone for scanning
                         same as cursor movements
                         default: True
+        :scan_coverage: cell coverage strategy
+                            "area" - cover rectangular region
+                            "perimeter" - cover perimeter of figure
+                        default: perimeter
         :combine_wave: waveforms are combined to speed presentation
                         default: False
         """
@@ -75,13 +88,16 @@ class AdwScanner:
         self.canvas = self.adw.canvas
         self.cell_time = cell_time
         self.space_time = space_time
+        self.sample_rate = sample_rate
         self._scan_item = None          # Scanning image
         self._display_item = None       # Currently displayed item, if any
         self._scan_item_tag = None             # Scanning item tag
         self._report_item = None        # Latest scanning report item
         self._scanning = False          # Currently scanning
         self.set_skip_space(skip_space)
+        self.set_skip_space_max(skip_space)
         self.set_skip_run(skip_run)
+        self.set_skip_run_max(skip_run_max)
         self.set_scan_len(scan_len)
         self.skip_color = None          # color of run if any
         self._display_item = None
@@ -89,13 +105,15 @@ class AdwScanner:
         self.set_no_item_wait(no_item_wait)
         self._in_display_item = False   # Avoid recursion
         self._in_update = 0
-        self.sound_queue_back_log = 20  # Target to keep
+        self.sound_queue_back_log = 1  # Target to keep
         self.scan_loop_proc_time_ms = 200   # queue cking loop time
         self.scan_use_tone = scan_use_tone
         self.set_combine_wave(combine_wave)
         if space_pitch is None:
             self.space_pitch = SineWaveBeep.color2pitch("SCAN_SPACE")
-
+            self.scan_loop_checking = None      # set if after alive
+        self.scan_coverage = scan_coverage
+            
     def set_cell_time(self, time):
         """ Set cell tone duration hoped
         :time: cell time in seconds
@@ -141,6 +159,9 @@ class AdwScanner:
     
     def set_skip_space(self, val):
         self.skip_space = val
+    
+    def set_skip_space_max(self, val):
+        self.skip_space_max = val
 
 
     def is_skip_run(self):
@@ -148,6 +169,9 @@ class AdwScanner:
     
     def set_skip_run(self, val):
         self.skip_run = val
+    
+    def set_skip_run_max(self, val):
+        self.skip_run_max = val
 
     def flip_skip_run(self):
         """ Flip skipping runs
@@ -216,9 +240,7 @@ class AdwScanner:
         items_raw_left = scan_items_raw[:]    # Depleated as we go
         scan_items = []         # Populated with used scan items
         
-        max_run_skip = 10               # Maximum to run skip at a time
-        max_space_skip = 50             # Maximum to space skip at a time     
-        run_color = None                # color in run
+        run_color = None                            # color in run
         while len(items_raw_left) > 0:              # Loop over raw items
             n_skip = 0                              # avoid too long a skip
             while len(items_raw_left) > 0:          # In skipping loop
@@ -233,7 +255,7 @@ class AdwScanner:
                                 #scan_items.append(item)     # Include last space
                                 break                       # Quit space run
                     n_skip += 1
-                    if n_skip > max_space_skip:
+                    if n_skip > self.skip_space_max:
                         scan_items.append(item)     # Add in space in long 
                         break
                     continue
@@ -251,7 +273,7 @@ class AdwScanner:
                     if next_item.cell.iy != item.cell.iy:
                         break       # Include new row
                     n_skip += 1
-                    if n_skip > max_run_skip:
+                    if n_skip > self.skip_run_max:
                         break
                 else:
                     break
@@ -279,6 +301,12 @@ class AdwScanner:
             cells = self.get_cells()
         if len(cells) == 0:
             return []       # No cells to scann
+        
+        if self.scan_coverage == "perimeter":
+            self.skip_run = False   # skip_run is too aggressive
+            scan_items = self.get_perimeter_items(cells=cells)
+            return scan_items
+        
         ix_ul, iy_ul, ix_lr, iy_lr = self.bounding_box_ci(cells=cells)
         scan_items = []
         left_to_right = True    # Start going left to right
@@ -294,14 +322,30 @@ class AdwScanner:
             left_to_right = not left_to_right
         return scan_items
 
-    def get_more_scan_path(self, nitem=10, use_sinewave_stereo=False):
+    def get_perimeter_items(self, cells=None):
+        """ get items on the perimeter
+        :cells: cells on which perimeter is based
+                default: self.get_cells()
+        :returns: Raw list of ScanPathItem based on perimeter
+        """
+        if cells is None:
+            cells = self.get_cells()
+        adwp = AdwPerimeter(adw=self.adw, cells=cells)
+        cell_list = adwp.get_perimeter()
+        scan_items = []
+        for cell in cell_list:
+            ix,iy = (cell.ix,cell.iy)
+            scan_items.append(ScanPathItem(ix=ix, iy=iy, cell=cell))
+        return scan_items
+    
+    def get_more_scan_path(self, nitem=10, use_sinewave_numpy=False):
         """ Get ordered list of scanning locations
             Scanning order is bottom to top, with alternating
             left-to-right then right-to-left so as to make a contiguous
             path
         :cells: cells dictionary by ix,iy default: self.cells
         :nitem; number of items to return
-        :use_sinewave_stereo: if present add sinewave_stereo entry to each item
+        :use_sinewave_numpy: if present add sinewave_numpy entry to each item
         :returns: list of ScanPathItem in the order to scan at most
                     nitem per call
                     Last return len < nitem
@@ -333,12 +377,12 @@ class AdwScanner:
             sp_ent.pitch = pitch
             sp_ent.dur = item_time
             sp_ent.vol = volume
-            if not self.scan_use_tone or use_sinewave_stereo:
-                sinewave_stereo = SineWaveNumPy(pitch = pitch,
+            if not self.scan_use_tone or use_sinewave_numpy:
+                sinewave_numpy = SineWaveNumPy(pitch = pitch,
                                         duration=item_time,
                                         decibels_left=vol_left,
                                         decibels_right=vol_right)
-                sp_ent.sinewave_stereo = sinewave_stereo
+                sp_ent.sinewave_numpy = sinewave_numpy
         end_time = time.time()
         dur_time = end_time-begin_time
         if self.profile_running:
@@ -419,26 +463,34 @@ class AdwScanner:
         self.forward_path = []
         self.reverse_path = [] 
         self.current_scan_path = []     # let scan_path_item setup
-        self.mw.after(0, self.scan_loop_proc) 
+        self.scan_loop_checking = self.mw.after(0, self.scan_loop_proc) 
         self.mw.after(0,self.scan_path_item)
 
     def scan_loop_proc(self):
         """ Keep speaker_control moderately full of scan path items
         """
-        if self._scanning:
-            while (self.get_sound_queue_size()
-                    < self.sound_queue_back_log):
+        if self._scanning and not self.combine_wave:
+            #while (self.get_sound_queue_size()
+            #        < self.sound_queue_back_log):
+            #    self.scan_path_item()
+            if self.get_sound_queue_size() < 1:
                 self.scan_path_item()
-            self.mw.after(self.scan_loop_proc_time_ms, self.scan_loop_proc)
+            self.scan_loop_checking = self.mw.after(self.scan_loop_proc_time_ms,
+                                                     self.scan_loop_proc)
             
     def stop_scan(self):
         """ Stop current scan
         """
-        self.clear()
-        self._scanning = False 
+        if not self._scanning:
+            return      # Not scanning - no disrupting 
+        
+        self._scanning = False
+        if self.scan_loop_checking is not None:
+            self.mw.after_cancel(self.scan_loop_checking)
+            self.scan_loop_checking = None
         self.remove_display_item()
         self.remove_report_item()
-        self.force_clear()
+        self.speaker_control.stop_scan()
         
         
     def scan_path_item(self):
@@ -463,12 +515,15 @@ class AdwScanner:
                 self.reverse_path = list(reversed(self.forward_path))
                 self.current_scan_path = new_items   # do new ones
             else:
-                if self.using_forward_path:
+                if self.scan_coverage == "perimeter":
                     self.current_scan_path = self.forward_path[:]   # used up
-                    self.using_forward_path = False 
-                else:
-                    self.current_scan_path = self.reverse_path[:]   # used up
-                    self.using_forward_path = True
+                else:    
+                    if self.using_forward_path:
+                        self.current_scan_path = self.forward_path[:]   # used up
+                        self.using_forward_path = False 
+                    else:
+                        self.current_scan_path = self.reverse_path[:]   # used up
+                        self.using_forward_path = True
         
         if len(self.current_scan_path) > 0: 
             item = self.current_scan_path.pop(0)
@@ -505,35 +560,93 @@ class AdwScanner:
         """ Do combined wave scan
             creating wave(s) before first scan
         """
+        if not self._scanning:
+            return
+        
         if self.first_scan:
-                self.forward_path = self.get_more_scan_path(nitem=
-                                            len(self.scan_items),
-                                            use_sinewave_stereo=True)
-                self.reverse_path = list(reversed(self.forward_path))
-                self.forward_wave = self.make_combine_wave(self.forward_path)
-                self.reverse_wave = self.make_combine_wave(self.reverse_path)
-                self.using_forward_path = True
-                self.first_scan = False
+            self.first_scan = False
+            if self.scan_loop_checking is not None:
+                self.mw.after_cancel(self.scan_loop_checking)
+                self.scan_loop_checking = None
+            self.forward_path = self.get_more_scan_path(nitem=
+                                        len(self.scan_items),
+                                        use_sinewave_numpy=True)
+            self.reverse_path = list(reversed(self.forward_path))
+            self.forward_path = self.add_preamble(self.forward_path)
+            self.forward_wave = self.make_combine_wave(self.forward_path)
+            self.reverse_wave = self.make_combine_wave(self.reverse_path)
+            self.using_forward_path = True
         if self.using_forward_path:
             self.do_wave(self.forward_wave)
         else:
             self.do_wave(self.reverse_wave)
         self.using_forward_path = not self.using_forward_path    
 
+    def add_preamble(self, items, ptype="BEGINNING"):
+        """ Add preamble to item list to aid in identification
+        :items: item list of (ScanPathItem)
+        :ptype: preamble type default: "BEGINNING"
+        """
+        items_new = items[:]
+        # beginning
+        if len(items) == 0:
+            item_model = ScanPathItem(ix=0, iy=0, sinewave_numpy=None)
+            SlTrace.lg("Empty list")
+        else:
+            item_model = copy.copy(items[0])
+        ix_start,iy_start = item_model.ix,item_model.iy
+        sinewave_numpy = item_model.sinewave_numpy
+        if sinewave_numpy is None:
+            sample_rate = self.sample_rate
+        else:
+            sample_rate =  sinewave_numpy.sample_rate
+        nitem = 5
+        cpsp = SineWaveBeep.cpsp        # Pitch spacing
+        pitch_start = SineWaveBeep.color2pitch("SPACE") + 15*cpsp
+        preamble_items = []
+        for i in range(nitem):
+            ix = ix_start
+            iy = iy_start-i 
+            volume = self.get_vol(ix=ix, iy=iy)
+            vol_left, vol_right = volume
+            pitch = pitch_start
+            duration = self.cell_time*2
+            sinewave_numpy = SineWaveNumPy(pitch = pitch,
+                                    duration=duration,
+                                    decibels_left=vol_left,
+                                    decibels_right=vol_right,
+                                    sample_rate=sample_rate)
+            preamble_item = ScanPathItem(ix=ix, iy=iy,
+                                         sinewave_numpy=sinewave_numpy)
+            preamble_items.append(preamble_item)
+        items_new[:0] = preamble_items[:]
+        return items_new
+            
     def do_wave(self, scan_wave):
         """ Process sound wave, returning when completed
         :scan_wave: stereo wave for screen
         """
-        self.play_waveform(sinewave_numpy=scan_wave, calculate_dur=True)
-        self.speaker_control.wait_while_busy()
+        if not self._scanning:
+            return 
+        
+        self.play_waveform(sinewave_numpy=scan_wave, calculate_dur=True,
+                            after=self.do_wave_end)
+        #self.speaker_control.wait_while_busy()
 
+    def do_wave_end(self):
+        if not self._scanning:
+            return
+
+        self.mw.after(0, self.do_combine_wave)
+        
     def make_combine_wave(self, item_path):
-        """ Create a SinewaveNumpy.waveform_stereo ndarray of the items components
-        :itempath: list of ScanPathItem s with  sinewave_stereo   field set 
+        """ Create a SinewaveNumpy.sinewave_numpy ndarray of the items components
+        :itempath: list of ScanPathItem s with  sinewave_numpy   field set 
                         Note that get_scan_items_raw needs self.
         :returns: SpeakerWaveform of combined item waveforms
         """
-        swnps = [sp_ent.sinewave_stereo for sp_ent in item_path]
+        SlTrace.lg(f"make_combine_wave: {len(item_path)} items")
+        swnps = [sp_ent.sinewave_numpy for sp_ent in item_path]
         cw_swnp = SineWaveNumPy.concatinate(swnps)
         return cw_swnp
         
@@ -729,6 +842,9 @@ class AdwScanner:
         self._in_update += 1
         self.adw.update()
         self._in_update -= 1
+        
+    def mainloop(self):
+        self.mw.mainloop()
 
     """
     ############################################################
@@ -758,7 +874,7 @@ class AdwScanner:
                 default: no call
         """
         swnp = sinewave_numpy
-        self.speaker_control.play_waveform(ndarr=swnp.stereo_waveform,
+        self.speaker_control.play_waveform(ndarr=swnp.wf_ndarr,
                                             dur=swnp.duration,
                                             dly=swnp.delay,
                                             calculate_dur=calculate_dur,

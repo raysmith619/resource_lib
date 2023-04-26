@@ -92,6 +92,7 @@ class AdwFrontEnd:
         self.pos_rep_iy_prev = None
         self.pos_rep_str_prev = None    # previous position report
         self.pos_check_interval = pos_check_interval
+        self.goto_travel_list_index = 0
         self._echo_input = True     # True -> speak input
         self._loc_list_original = None
         self._loc_list_first = None     # a,b horiz/vert move targets
@@ -190,12 +191,9 @@ class AdwFrontEnd:
     """
     Setup menus
     """
-    def pgm_exit(self):
-        if self.adw.pgmExit is not None:
-            self.adw.pgmExit()
-        else:
-            self.adw.speaker_control.quit()
-            sys.exit()    
+    def pgm_exit(self, rc=None):
+        SlTrace.lg("fte.pgm_exit")
+        self.adw.exit()
         
     def File_Open_tbd(self):
         print("File_Open_menu to be determined")
@@ -475,9 +473,18 @@ class AdwFrontEnd:
         :time: pause time in seconds
         """
         end_time = time.time() + time_sec
-        while time.time() < end_time:
+        SlTrace.lg(f"pause: end_time:{end_time}")
+        last_time = time.time()
+        while True:
+            now = time.time()
+            if now > end_time:
+                break
+            
+            if now > last_time + 30:
+                print(f"pause time left:{end_time-now:.2f}")
+                last_time = now
             self.mw.update()
-            self.mw.after(1)
+            #self.mw.after(1)
 
 
     """ key / mouse operation
@@ -835,11 +842,11 @@ class AdwFrontEnd:
         """
         help_str = """
         h - say this help message
-        Up - Move up one row
-        Down - Move down one row
-        Left - Move left one column
-        Right - Move right one column
-        DIGIT - direction (from center):
+        Up - Move up through run of same color/space
+        Down - Move down through run of same color/space
+        Left - Move left through run of same color/space
+        Right - Move right through run of same color/space
+        DIGIT - Move one square in direction (from current square):
            7-up left    8-up       9-up right
            4-left       5-mark     6-right
            1-down left  2-down     3-down right
@@ -1448,6 +1455,9 @@ class AdwFrontEnd:
             if len(self.goto_travel_list) == 0:
                 return  # No travel list
             
+            if not hasattr(self, 'goto_travel_list_index'):
+                SlTrace.lg("goto_travel_list_index forced to zero")
+                self.goto_travel_list_index = 0
             goto_idx = self.goto_travel_list_index + 1
             goto_idx %= len(self.goto_travel_list)
             self.goto_travel_list_index = goto_idx
@@ -1566,6 +1576,8 @@ class AdwFrontEnd:
         """
         self.audio_beep = AudioBeep(self, self.silence)
 
+
+
     def update(self):
         """ Update display
         """
@@ -1623,15 +1635,12 @@ class AdwFrontEnd:
         """ Flip skipping run of equals
         """
         self.scanner.flip_skip_run()
-
-    def set_combine_wave(self, val=True):
-        """ Set/clear combine_wave mode
-        :val: set combine_wave default: True - do combine wave
-        """
-        self.scanner.set_combine_wave(val=val)
     
     def set_skip_space(self, val):
         self.scanner.set_skip_space(val=val)
+    
+    def set_skip_space_max(self, val):
+        self.scanner.set_skip_space_max(val=val)
 
 
     def is_skip_space(self):
@@ -1642,6 +1651,9 @@ class AdwFrontEnd:
     
     def set_skip_run(self, val):
         self.scanner.set_skip_run(val=val)
+    
+    def set_skip_run_max(self, val):
+        self.scanner.set_skip_run_max(val=val)
 
     def flip_skip_space(self):
         """ Flip skipping spaces
@@ -1718,6 +1730,11 @@ class AdwFrontEnd:
 
     def clear_cells(self):
         self.adw.clear_cells()
+
+    def erase_pos_history(self):
+        """ Remove history, undo history marking
+        """
+        self.adw.erase_pos_history()
         
     def set_grid_path(self):
         self.adw.set_grid_path()
@@ -1771,6 +1788,13 @@ class AdwFrontEnd:
         """
         speaker_control = self.get_speaker_control()
         return speaker_control.get_cmd_queue_size()
+
+    def get_sound_queue_size(self):
+        """ Get current number of entries
+        :returns: number of entries
+        """
+        speaker_control = self.get_speaker_control()
+        return speaker_control.get_sound_queue_size()
 
     def get_speech_queue_size(self):
         """ Get current number of entries

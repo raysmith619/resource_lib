@@ -140,7 +140,7 @@ class AdwMenus:
         :short_cut: one letter option for call 
         """
         if short_cut not in self.file_dispatch:
-            raise Exception(f"draw option:{short_cut} not recognized")
+            raise Exception(f"file option:{short_cut} not recognized")
         menu_de = self.file_dispatch[short_cut]
         menu_de.command()
         

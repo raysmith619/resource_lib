@@ -34,6 +34,11 @@ try:
           f" ix:{ix}, iy:{iy}")
     assert ix == ixc, f"ix should be {ixc} was {ix}"
     assert iy == iyc,  f"iy should be {iyc} was {iy}"
+    
+    x -=  aw.grid_width//2       # Move to left
+    fte.move_to(x,y)
+    ix,iy = fte.get_ixy_at()
+    print(f"ix:{ix}, iy:{iy}")
     cell = fte.create_cell(cell_ixy=(ix,iy), color="blue")
     fte.display_cell(cell=cell)
     key_str = (
@@ -55,21 +60,25 @@ try:
     '''
     fte.do_key_str("d")
     for _ in range(3):
-        fte.do_key_str("c;b;Right")
-        fte.do_key_str("c;r;Right")
+        fte.do_key_str("c;b;6")
+        fte.do_key_str("c;r;6")
     fte.do_key_str("Escape")
     fte.do_key_str(key_str)
     fte.do_key_str("Escape")
     
-    fte.do_key_str("h;Escape;Up;Down;Left;Right")
     fte.do_key_str("d")      # Lower pen
-    fte.do_key_str("c;r;Down")
+    fte.do_key_str("c;r;2")
     fte.do_key_str("1;2;3;4;5;6;7;8;9;0")
-    fte.do_key_str("r;a;b")
-    fte.do_key_str("c;o;Up")
+    fte.do_key_str("c;o;8")
     fte.do_key_str("w")
     SlTrace.lg(f"speaker cmd queue size:{fte.get_cmd_queue_size()}")
     SlTrace.lg(f"speaker sound queue size:{fte.get_sound_queue_size()}")
+    fte.do_key_str("r;a;b;x")
+    fte.do_key_str("h;Escape;Up;Down;Left;Right")   # Don't easily know where
+                                                    # we will end up
+                                                    # ix,iy = fte.get_ixy()
+                                                    # fte.goto_ixy(ix, iy)
+
     SlTrace.lg("Testing Passed")
 
 except AssertionError as err_msg:

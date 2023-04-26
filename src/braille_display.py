@@ -189,6 +189,7 @@ class BrailleDisplay:
         tu_canvas = self.tu_screen.getcanvas()
         self.speaker_control = SpeakerControlLocal(win=mw)   # local access to speech engine
         self.canvas_grid = CanvasGrid(master=mw, base=tu_canvas,
+                            pgmExit=self.exit,
                             speaker_control = self.speaker_control,
                             width=self.win_width, height=self.win_height,
                             g_xmin = self.x_min,g_ymin=self.y_min,
@@ -232,6 +233,13 @@ class BrailleDisplay:
         :clear_after: clear braille screen after snapshot
         """
 
+    def exit(self, rc=0):
+        """ Main program  exit
+        """
+        SlTrace.lg("BrailleDisplay.exit")
+        SlTrace.onexit()    # Force logging quit
+        os._exit(rc)
+
     """ Turtle "Shaddow" Functions
     """
 
@@ -248,7 +256,7 @@ class BrailleDisplay:
                    braille_print=self._braille_print,
                    print_cells=self._print_cells,
                    canvas_items=canvas_items)
-        tur.mainloop()
+        tur.done()
         
     def done(self):
         self.mainloop()

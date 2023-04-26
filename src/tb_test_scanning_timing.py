@@ -16,11 +16,13 @@ test_desc = "scanning timing"
 test = os.path.basename(__file__)
 
 sq_side = 20     # square side n = sq_side*sq_side
+#sq_side = 5
 ###sq_side = 2     # TFD
 total_cells = sq_side*sq_side
 colors = ["red","orange","yellow",
           "green", "blue", "indigo", "violet"]
 fte = None
+pause_time = 120
 try:
     adw = AudioDrawWindow()
     fte = adw.fte
@@ -35,7 +37,12 @@ try:
     fte.set_scan_len(total_cells//sq_side)
     SlTrace.lg(f"Setup: scan_len:{total_cells}")
     fte.start_scanning()
-    fte.pause(320)
+    SlTrace.lg("Scanning setup finished")
+    fte.pause(pause_time)
+    SlTrace.lg("Stopping scanning")
+    fte.do_menu_str("s:t")
+    SlTrace.lg("Exiting via f:x")
+    fte.do_menu_str("f:x")
     SlTrace.lg("Testing Passed")
 
 except AssertionError as err_msg:

@@ -7,8 +7,6 @@ import copy
 import numpy as np
 import sounddevice as sd
 from pysinewave import utilities
-from Lib.pickle import NONE
-from Lib.tkinter.constants import SW
 
 class SineWaveNumPy:
     """ Gathers and plays stereo sine wave
@@ -21,27 +19,27 @@ class SineWaveNumPy:
         """
         sample_rate = sinewave_nps[0].sample_rate       # Use first entry
         duration = sinewave_nps[0].duration 
-        wfs_ndarr = [swnp.stereo_waveform for swnp in sinewave_nps]  # Get the waveforms
+        wfs_ndarr = [swnp.wf_ndarr for swnp in sinewave_nps]  # Get the waveforms
         wfc_ndarr = np.concatenate(wfs_ndarr)
-        sw = SineWaveNumPy(stereo_waveform=wfc_ndarr, sample_rate=sample_rate,
+        swnp = SineWaveNumPy(wf_ndarr=wfc_ndarr, sample_rate=sample_rate,
                            duration=duration)
-        return sw
+        return swnp
         
     def __init__(self, pitch=0, decibels_left=0, decibels_right=0,
                 sample_rate=44100, duration=None, delay=None,
-                stereo_waveform=None):
+                wf_ndarr=None):
         """ Setup waves
         :pitch: user tone level default: 0
         :decibels_left: left volume in decibels default: 0
         :decibels_right: right volume in decibels default: 0
         :samplerate: samples per second default: 44100
         :duration: play duration(seconds) default:calculated from len, sample_rate
-        :stereo_waveform: if present, BYPASS calculation and use as waveform (ndarray)
+        :wf_ndarr: if present, BYPASS calculation and use as waveform (ndarray)
         """
-        if stereo_waveform is not None:
+        if wf_ndarr is not None:
             self.sample_rate = sample_rate
             self.duration = duration
-            self.stereo_waveform = stereo_waveform
+            self.wf_ndarr = wf_ndarr
             self.delay = delay
             
         else:
@@ -49,6 +47,9 @@ class SineWaveNumPy:
             atten_left = utilities.decibels_to_amplitude_ratio(decibels_left) 
             atten_right = utilities.decibels_to_amplitude_ratio(decibels_right) 
             self.sample_rate = sample_rate
+            if duration is None:
+                SlTrace.lg(f"SineWaveNumPy duration is {duration} treat as .1")
+                duration = .1
             self.duration = duration
             self.delay = delay
             # NumpPy magic to calculate the waveform
@@ -56,13 +57,13 @@ class SineWaveNumPy:
             base_waveform = np.sin(2 * np.pi * each_sample_number * freq_hz / sample_rate)
             left_waveform = base_waveform.reshape(-1,1)*atten_left
             right_waveform = base_waveform.reshape(-1,1)*atten_right
-            stereo_waveform = np.hstack((left_waveform, right_waveform))
-            self.stereo_waveform = copy.deepcopy(stereo_waveform)
+            wf_ndarr = np.hstack((left_waveform, right_waveform))
+            self.wf_ndarr = copy.deepcopy(wf_ndarr)
         
     def play(self):
         """ Start playing tone
         """
-        sd.play(self.stereo_waveform, self.sample_rate)
+        sd.play(self.wf_ndarr, self.sample_rate)
         
         
     def stop(self):
