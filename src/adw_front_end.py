@@ -10,17 +10,14 @@ import time
 import tkinter as tk
 
 from select_trace import SlTrace
-from trace_control_window import TraceControlWindow
 from audio_beep import AudioBeep
 
 from braille_cell import BrailleCell
 from grid_fill_gobble import GridFillGobble
 
-from magnify_info import MagnifyInfo, MagnifySelect, MagnifyDisplayRegion
+from magnify_info import MagnifySelect
 from adw_menus import AdwMenus
 from adw_scanner import AdwScanner
-from Lib.pickle import FALSE, NONE
-from test.test_smtpnet import check_ssl_verifiy
 
 class AdwFrontEnd:
     
@@ -239,7 +236,7 @@ class AdwFrontEnd:
         select = MagnifySelect(ix_min=ix_min, iy_min=iy_min,
                                ix_max=ix_max, iy_max=iy_max)
         mag_info.select = select
-        self.show_selection(mag_info)
+        self.show_mag_selection(mag_info)
         self.is_selected = True
         return True
 
@@ -284,7 +281,16 @@ class AdwFrontEnd:
             self.speak_text(f"Magnification has {n_cells_created} cell"
                             "s" if n_cells_created != 1 else "")
 
-    def show_selection(self, mag_info):
+    def remove_mag_selection(self):
+        """ Remove magnify selection and marker
+        """
+        canvas = self.adw.canvas
+        if self.adw.mag_selection_tag is not None:
+            canvas.delete(self.adw.mag_selection_tag)
+            self.adw.mag_selection_tag = None
+            self.update()       # View change
+        
+    def show_mag_selection(self, mag_info):
         """ Display selected region
         :ix_min: minimum ix index
         :iy_min: minimum iy index
@@ -293,9 +299,7 @@ class AdwFrontEnd:
         """
         select = mag_info.select
         canvas = self.adw.canvas
-        if self.adw.mag_selection_tag is not None:
-            canvas.delete(self.adw.mag_selection_tag)
-            self.adw.mag_selection_tag = None
+        self.remove_mag_selection()
         ixy_ul = (select.ix_min,select.iy_min)
         ul_cx1,ul_cy1,_,_ = self.get_win_ullr_at_ixy_canvas(ixy_ul)
 
@@ -329,6 +333,7 @@ class AdwFrontEnd:
                            
         
     def nav_enable_mouse(self):
+        self.nav_audio_beep()
         self.set_enable_mouse()
     
     def nav_disable_mouse(self):
@@ -504,6 +509,7 @@ class AdwFrontEnd:
         
         self.set_xy((event.x,event.y))
         x,y = self.get_xy()
+        x,y = x + self.x_min, y + self.y_min
         self.win_x,self.win_y = x,y
         SlTrace.lg(f"motion x={x} y={y}", "aud_motion")
         quiet = self._drawing   # move quietly if drawing
@@ -603,7 +609,7 @@ class AdwFrontEnd:
                        f" ixy:{(ix,iy)}  cell: {cell}")
             mag_info.base_canvas.show_mag_info_items(mag_info, ix=ix, iy=iy)
 
-        if self._drawing:
+        if self.is_drawing():
             if cell is None:
                 new_cell = self.create_cell()
                 self.display_cell(new_cell)
@@ -618,7 +624,7 @@ class AdwFrontEnd:
         treated as mouse click at point
         """
         if self.is_enable_mouse():
-            self.on_button_1(event)
+            self.on_button_1(event=event)
         
     def on_key_press(self, event):
         """ Key press event
@@ -802,8 +808,9 @@ class AdwFrontEnd:
             cell = cells[ixy]
             cell.mtype = mtype
             self.show_cell(ixy=ixy)
-                
-    def set_visible_cell(self, cell, val=True):
+
+                    
+    def set_visible_cell_OLD(self, cell, val=True):
         """ Set cells visible/invisible
         Useful to give sighted a vision
         :cell: figure cell
@@ -814,20 +821,40 @@ class AdwFrontEnd:
             if val:
                 canvas.itemconfigure(item_id, state='normal')            
             else:
-                if (self._show_marked
-                     and cell.mtype !=cell.MARK_UNMARKED): 
-                    canvas.itemconfigure(item_id, state='normal')            
+                if self._show_marked:
+                    if cell.mtype !=cell.MARK_UNMARKED: 
+                        canvas.itemconfigure(item_id, state='normal')
+                    else:            
+                        canvas.itemconfigure(item_id, state='hidden')
                 else:
                     canvas.itemconfigure(item_id, state='hidden')
+        '''
         if not val:
             if cell.mtype != cell.MARK_UNMARKED:
-                self.show_cell((cell.ix,cell.iy))   # force view                            
-            
+                self.show_cell((cell.ix,cell.iy))   # force view
+        '''                            
+                
+    def set_visible_cell(self, cell, val=True):
+        """ Set cells visible/invisible
+        Useful to give sighted a vision
+        :cell: figure cell
+        :val: set visible Default: True
+        """
+        cell._visible = val
+        self.show_cell(ixy=(cell.ix,cell.iy))
+        
+    
     def show_cell(self, ixy=None):
         cells = self.get_cells()
         if ixy in cells:
             cell = cells[ixy]
-            self.set_visible_cell(cell)
+            self.display_cell(cell)
+                    
+    def show_cell_OLD(self, ixy=None):
+        cells = self.get_cells()
+        if ixy in cells:
+            cell = cells[ixy]
+            self.set_visible_cell(cell, self.is_visible())
             canvas = self.canvas
             for item_id in cell.canv_items:
                 item_type = canvas.type(item_id)
@@ -1676,6 +1703,7 @@ class AdwFrontEnd:
         self.scanner.set_scanning(cells=cells)
             
     def start_scanning(self):
+        self.remove_mag_selection()
         self.scanner.start_scanning()
 
      
@@ -1730,6 +1758,15 @@ class AdwFrontEnd:
 
     def clear_cells(self):
         self.adw.clear_cells()
+            
+    def complete_cell(self, cell, color=None):
+        """ create/Fill braille cell
+            Currently just fill with color letter (ROYGBIV)
+        :cell: (ix,iy) cell index or BrailleCell
+        :color: cell color default: current color
+        :returns: created/modified cell
+        """
+        return self.adw.complete_cell(cell=cell, color=color)
 
     def erase_pos_history(self):
         """ Remove history, undo history marking
@@ -1893,6 +1930,11 @@ class AdwFrontEnd:
         """
         return self.adw.get_ixy_at(pt=pt)
 
+    def is_visible(self):
+        """ Check on visible mode
+        """
+        return self.adw.is_visible()
+
 
     def set_cell(self, pt=None, color=None):
         """ Set cell at pt, else current cell
@@ -1982,7 +2024,7 @@ class AdwFrontEnd:
             
             ixy = (ix_next,iy_next)
             cell_next = cells[ixy] if ixy in cells else None
-            color_next = cell_next.color_string() if cell_next is not None else NONE
+            color_next = cell_next.color_string() if cell_next is not None else None
             if skip_space and cell_first is None and cell_next is None:
                 loc_list.append((ixy, cell_next))    # skip spaces
                 continue
@@ -1995,7 +2037,8 @@ class AdwFrontEnd:
         
         for loc in loc_list:        # Mark cells we've traversed
             cell = loc[1]
-            self.mark_cell(cell)
+            if not self.is_drawing():
+                self.mark_cell(cell)
         lc = len(loc_list)
         if lc > 1:
             if color_first is not None:

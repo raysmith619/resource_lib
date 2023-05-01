@@ -12,4 +12,3 @@ for colr in colors:
     forward(200)
     right(90)
 done()		    # Complete drawing
-6

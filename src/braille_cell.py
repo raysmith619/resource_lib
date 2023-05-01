@@ -2,8 +2,6 @@
 """
 Basis for Braille cell (6 dot pattern)
 """
-from Lib.pickle import NONE
-
 class BrailleCell:
     """ braille cell info augmented for analysis
     """
@@ -96,6 +94,7 @@ class BrailleCell:
                  color=None, color_bg=None,
                  ix=0, iy=0,
                  mtype=None,
+                 visible=True,
                  points=None):
         """ setup braille cell
         :dots: list of set dots default: none - blank
@@ -104,14 +103,16 @@ class BrailleCell:
         :iy: cell index from bottom
         :mtype: marked type
                 default: MARK_UNSELECTED
+        :visible: cell is visible default: True
         :points: initial set of points, if any
             default: empty
         """
         self.ix = ix    # Include to make self sufficient
         self.iy = iy
         if mtype is None:
-            mtype = BrailleCell.MARK_SELECTED
+            mtype = BrailleCell.MARK_UNMARKED
         self.mtype = mtype
+        self._visible = visible
         if color is None or len(color)==0:
             color = "black"
         if dots is None:
@@ -174,3 +175,10 @@ class BrailleCell:
         dots = self.braille_for_color(color=color)
         self.dots = dots
         self._color = color
+
+    def is_visible(self):
+        """Check if visible
+        :returns: True iff cell is visible
+        """
+        return self._visible
+    

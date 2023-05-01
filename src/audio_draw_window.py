@@ -16,7 +16,6 @@ from grid_path import GridPath
 from braille_cell import BrailleCell
 from magnify_info import MagnifyInfo, MagnifyDisplayRegion
 from adw_front_end import AdwFrontEnd
-from Lib.pickle import NONE
 
 class AudioDrawWindow:
 
@@ -32,7 +31,7 @@ class AudioDrawWindow:
         pos_check_interval= .1,
         pos_rep_interval = .1,
         pos_rep_queue_max = 1,
-        visible_figure = True,
+        visible = True,
         enable_mouse = False,
         pgmExit=None,
         blank_char=",",
@@ -69,7 +68,7 @@ class AudioDrawWindow:
                 default: Force
         :pos_rep_queue_max: maximum position report queue maximum
                 default: 4
-        :visible_figure: figure is visible
+        :visible: cells are visible
                 default: True - visible
         :blank_char: replacement for non-trailing blanks
                     default "," to provide a "mostly blank",
@@ -144,7 +143,7 @@ class AudioDrawWindow:
         self.update()        # Force display
         SlTrace.lg(f"canvas width: {canvas.winfo_width()}")
         SlTrace.lg(f"canvas height: {canvas.winfo_height()}")
-        self.visible_figure = visible_figure
+        self._visible = visible
         self.fte = AdwFrontEnd(self, title=title, silent=silent, color=color)
         self.set_x_min(x_min)
         self.set_y_min(y_min)
@@ -643,6 +642,7 @@ class AudioDrawWindow:
         if cell.canv_items:
             for item_id in cell.canv_items:
                 self.canvas.delete(item_id)
+            self.update()       # Make change visible
         cell.canv_items = []
 
     def erase_pos_history(self):
@@ -729,14 +729,22 @@ class AudioDrawWindow:
                 default: False --> show braille dots
         """
         self.erase_cell(cell)
+        if not cell.is_visible():
+            return              # Nothing to show
+        
         canvas = self.canvas
         ix = cell.ix
         iy = cell.iy
         
         cx1,cy1,cx2,cy2 = self.get_win_ullr_at_ixy_canvas((ix,iy))
         SlTrace.lg(f"{ix},{iy}: {cell} :{cx1},{cy1}, {cx2},{cy2} ", "display_cell")
-        canv_item = canvas.create_rectangle(cx1,cy1,cx2,cy2,
-                                 outline="light gray")
+        if cell.mtype==BrailleCell.MARK_UNMARKED:
+            canv_item = canvas.create_rectangle(cx1,cy1,cx2,cy2,
+                                    outline="light gray")
+        else:
+            canv_item = canvas.create_rectangle(cx1,cy1,cx2,cy2,
+                                    fill="dark gray",
+                                    outline="dark gray")
         cell.canv_items.append(canv_item)
         self.update()
         color = self.color_str(cell._color)
@@ -1008,12 +1016,20 @@ class AudioDrawWindow:
                 color_str = "pink"  # TBD - color tuple work
         return color_str
 
+    def is_visible(self):
+        """ Check on visible mode
+        """
+        return self._visible
+    
     def set_visible(self, val=True):
         """ Set cells visible/invisible
         Useful to give sighted a vision
         :val: set visible Default: True
         """
         SlTrace.lg(f"set_visible:{val}")
+        self._visible = val
+        if not val:
+            self.set_show_marked(False)     # Make marked also invisible
         for cell in self.cells.values():
             self.set_visible_cell(cell, val)
                 
@@ -1123,6 +1139,11 @@ class AudioDrawWindow:
     """
          Links to front end functions
     """
+
+    def set_show_marked(self,val=True):
+        """ Show marked "invisible" cells
+        """
+        self.fte.set_show_marked(val=val)
 
     def wait_on_output(self):
         """ Wait till queued output speech/tones completed
