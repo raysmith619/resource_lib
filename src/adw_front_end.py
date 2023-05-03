@@ -1536,6 +1536,19 @@ class AdwFrontEnd:
         else:
             self.key_unrecognized(keyslow)
 
+    def delete_cell(self, cell=None):
+        """ Delete cell
+        :cell: cell to delete default: current cell
+        """
+        if cell is None:
+            cell = self.get_cell_at()
+        if cell is None:
+            return 
+        
+        self.erase_cell(cell)
+        cells = self.get_cells()
+        del cells[(cell.ix,cell.iy)]
+        
 
     def key_mark(self, val=True):
         """ Mark/Erase current location with current color
@@ -1556,11 +1569,7 @@ class AdwFrontEnd:
             self.display_cell(cell)
         else:
             cell = self.get_cell_at()
-            if cell is None:
-                pass    # beep ?
-            else:
-                self.erase_cell(cell)
-                del self.cells[(cell.ix,cell.iy)]
+            self.delete_cell(cell)
                 
         
     def key_direction(self, keyslow):
@@ -1890,7 +1899,7 @@ class AdwFrontEnd:
         """ Erase cell
         :cell: BrailleCell
         """
-        self.adw.erase_cell
+        self.adw.erase_cell(cell=cell)
 
     def get_cells(self):
         return self.adw.get_cells()
