@@ -1961,18 +1961,24 @@ class AdwFrontEnd:
         """
         self.adw.set_visible(val=val)
 
+                        
     def speak_text(self, msg, dup_stdout=True,
-                   speech_type='REPORT'):
+                   msg_type=None,
+                   rate=None, volume=None):
         """ Speak text, if possible else write to stdout
-        :msg: text message
+        :msg: text message, iff speech
         :dup_stdout: duplicate to stdout default: True
-        :speech_type: type of speech default: "report"
+        :msg_type: type of speech default: 'REPORT'
             REPORT - standard reporting
             CMD    - command
-            ECHO
+            ECHO - echo user input
+        :rate: speech rate words per minute
+                default: 240
+        :volume: volume default: .9            
         """
-        self.adw.speak_text(msg=msg, speech_type=speech_type,
-                             dup_stdout=dup_stdout)
+        self.adw.speak_text(msg=msg, msg_type=msg_type,
+                             dup_stdout=dup_stdout,
+                             rate=rate, volume=volume)
 
     def mainloop(self):
         self.adw.mainloop()

@@ -140,6 +140,7 @@ class SpeakerControlCmd:
     """
 
     def __init__(self, cmd_type=None, msg=None, msg_type=None,
+                 rate=None, volume=None,
                  tone=None, waveform=None, win=None, after=None):
         """ Setup command
         :cmd_type: command to execute
@@ -154,6 +155,8 @@ class SpeakerControlCmd:
                 CMD: command
                 ECHO: echo of user input
             default: REPORT
+        :rate: speach rate WPM
+        :volume: speach volume
         :tone: (SpeakerTone) tone to make
         :waveform: (SpeakerWaveform) waveform to play 
         :win: SpeakerControlLocal's window reference
@@ -165,6 +168,8 @@ class SpeakerControlCmd:
                 
         self.msg = msg
         self.msg_type = msg_type
+        self.rate = rate
+        self.volume = volume
         self.tone = tone
         self.waveform = waveform
         self.win = win
@@ -403,7 +408,8 @@ class SpeakerControl(Singleton):
             elif cmd.cmd_type == "CMD_MSG":
                 msg = cmd.msg
                 msg_type = cmd.msg_type
-                self.speak_text(msg, msg_type=msg_type)
+                self.speak_text(msg, msg_type=msg_type,
+                                rate=cmd.rate, volume=cmd.volume)
                 SlTrace.lg(f"sound_queue: cmd: {cmd} AFTER speak_text", "sound_queue")
             elif cmd.cmd_type == "CMD_TONE":
                 self.play_tone(cmd.tone)
@@ -516,10 +522,18 @@ class SpeakerControl(Singleton):
             SlTrace.lg(format_exception(e))
         self.sc_tone_busy = False
                 
-    def speak_text(self, msg, msg_type=None):
+    def speak_text(self, msg, msg_type=None,
+                   rate=240, volume=.9):
         """ Called to speak pending line
+        :msg: text of message
+        :mst_type: default: REPORT
+        :rate: speech rate words per minute
+                default: 240
+        :volume: volume default: .9
         
         """
+        if msg_type is None:
+            msg_type = "REPORT"
         self.sc_speech_busy = True
         SlTrace.lg(f"speek_text: qsize: {self.get_sound_queue_size()}",
                     "speech")
@@ -535,8 +549,8 @@ class SpeakerControl(Singleton):
                 
                 if msg_type == 'REPORT':
                     self.pyttsx3_engine.say(msg)
-                    self.pyttsx3_engine.setProperty('rate', 240)
-                    self.pyttsx3_engine.setProperty('volume', 0.9)
+                    self.pyttsx3_engine.setProperty('rate', rate)
+                    self.pyttsx3_engine.setProperty('volume', volume)
                     self.pyttsx3_engine.runAndWait()
                     SlTrace.lg(f"speak_text  msg: {msg} AFTER runAndWait", "speech")
                 elif msg_type == "ECHO":
@@ -551,13 +565,17 @@ class SpeakerControl(Singleton):
                     self.pyttsx3_engine.setProperty('volume', 0.9)
                     self.pyttsx3_engine.runAndWait()
                 else:
-                    raise SpeakerControlError(f"Unrecognized speech_type"
+                    raise SpeakerControlError(f"Unrecognized msg_type"
                                     f" {msg_type} {msg}")
-        except:
+        except Exception as e:
             SlTrace.lg("Bust out of speak_text")
+            SlTrace.lg(f"Unexpected exception: {e}")
+            SlTrace.lg("Printing the full traceback as if we had not caught it here...")
+            SlTrace.lg(format_exception(e))
         self.sc_speech_busy = False
 
-    def send_cmd(self, cmd_type='speak', msg=None, msg_type=None, tone=None,
+    def send_cmd(self, cmd_type='speak', msg=None, msg_type=None,
+                 rate=None, volume=None, tone=None,
                  waveform=None, win=None, after=None):
         """ Send cmd to speaker control engine
             storing hash of cmds in process
@@ -570,6 +588,8 @@ class SpeakerControl(Singleton):
         :msg_type: type of text
                 'report'  - standard report
                 'command' - a command
+        :rate: speaking rate for speech
+        :volume: speaking volume for speech
         :tone: SpeakerTone
         :waveform: waveform (SinewaveNumPy.stereo_waveform) NumPy array
         :win: SpeakerControlLocal's window reference
@@ -578,7 +598,9 @@ class SpeakerControl(Singleton):
         :returns: cmd, cmd_id, after is needed but cmd is for documentation
         """
         SlTrace.lg(f"send_cmd:{cmd_type} msg: {msg} tone: {tone}", "sound_queue")
-        cmd = SpeakerControlCmd(cmd_type=cmd_type, msg=msg, msg_type=msg_type,
+        cmd = SpeakerControlCmd(cmd_type=cmd_type, msg=msg,
+                                 msg_type=msg_type,
+                                 rate=rate, volume=volume,
                                  tone=tone, waveform=waveform,
                                  win=win, after=after)
         cmd_id = cmd.cmd_id
@@ -725,21 +747,30 @@ class SpeakerControlLocal:
                 del self.cmds_awaiting_after[cmd_id]
                         
     def speak_text(self, msg, dup_stdout=True,
-                   msg_type="REPORT"):
+                   msg_type=None,
+                   rate=None, volume=None):
         """ Speak text, if possible else write to stdout
         :msg: text message, iff speech
         :dup_stdout: duplicate to stdout default: True
-        :nsg_type: type of speech default: 'REPORT'
+        :msg_type: type of speech default: 'REPORT'
             REPORT - standard reporting
             CMD    - command
             ECHO - echo user input
+        :rate: speech rate words per minute
+                default: 240
+        :volume: volume default: .9
+            
         """
+        if msg_type is None:
+            msg_type = "REPORT"
         if self.logging_sound:
             SlTrace.lg(msg)
         text_lines = msg.split("\n")
         for text_line in text_lines:
             if not self._silent:
-                self.sc.send_cmd(cmd_type="CMD_MSG", msg=text_line, msg_type=msg_type)
+                self.sc.send_cmd(cmd_type="CMD_MSG", msg=text_line,
+                                  msg_type=msg_type,
+                                  rate=rate, volume=volume)
         if dup_stdout and not self.logging_sound:
             SlTrace.lg(msg)
 

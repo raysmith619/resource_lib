@@ -216,17 +216,20 @@ class AudioDrawWindow:
         """ Check if silent mode
         """
         return self.fte.silence()
-            
-                
+
     def speak_text(self, msg, dup_stdout=True,
-                   speech_type='REPORT'):
+                   msg_type=None,
+                   rate=None, volume=None):
         """ Speak text, if possible else write to stdout
-        :msg: text message
+        :msg: text message, iff speech
         :dup_stdout: duplicate to stdout default: True
-        :speech_type: type of speech default: "report"
+        :msg_type: type of speech default: 'REPORT'
             REPORT - standard reporting
             CMD    - command
-            ECHO
+            ECHO - echo user input
+        :rate: speech rate words per minute
+                default: 240
+        :volume: volume default: .9            
         """
         self.win_print(msg)
         if self.is_silent():
@@ -234,7 +237,9 @@ class AudioDrawWindow:
                 SlTrace.lg(msg)
             return
         
-        self.speaker_control.speak_text(msg=msg, msg_type=speech_type, dup_stdout=dup_stdout)
+        self.speaker_control.speak_text(msg=msg, msg_type=msg_type,
+                             dup_stdout=dup_stdout,
+                             rate=rate, volume=volume)
 
     def speak_text_stop(self):
         """ Stop ongoing speach, flushing queue

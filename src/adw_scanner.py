@@ -57,7 +57,9 @@ class AdwScanner:
                  space_pitch=None,
                  no_item_wait=False, scan_use_tone=True,
                  scan_coverage="perimeter",
-                 combine_wave=False):
+                 add_tone_preamble=False,
+                 combine_wave=False,
+                 n_combine_wave=4):
         """ Setup scanning
         :cell_time: time (seconds) to beep cell
         :space_time: time (seconds) to beep space
@@ -76,8 +78,12 @@ class AdwScanner:
                             "area" - cover rectangular region
                             "perimeter" - cover perimeter of figure
                         default: perimeter
+        :add_tone_preamble: Add tone to sync beginning of scan wave
+                        default: No tone preamble added
         :combine_wave: waveforms are combined to speed presentation
                         default: False
+        :n_combine_wave: number of sections combined wave 
+                        default: 4
         """
         #space_time = 1      # TFD
         #cell_time = 2      # TFD
@@ -108,7 +114,9 @@ class AdwScanner:
         self.sound_queue_back_log = 1  # Target to keep
         self.scan_loop_proc_time_ms = 200   # queue cking loop time
         self.scan_use_tone = scan_use_tone
+        self.add_tone_preamble = add_tone_preamble
         self.set_combine_wave(combine_wave)
+        self.n_combine_wave = n_combine_wave
         if space_pitch is None:
             self.space_pitch = SineWaveBeep.color2pitch("SCAN_SPACE")
             self.scan_loop_checking = None      # set if after alive
@@ -565,23 +573,57 @@ class AdwScanner:
         
         if self.first_scan:
             self.first_scan = False
+            self.wave_index = -1        # Bumped before do_wave
             if self.scan_loop_checking is not None:
                 self.mw.after_cancel(self.scan_loop_checking)
                 self.scan_loop_checking = None
             self.forward_path = self.get_more_scan_path(nitem=
                                         len(self.scan_items),
                                         use_sinewave_numpy=True)
-            self.reverse_path = list(reversed(self.forward_path))
-            self.forward_path = self.add_preamble(self.forward_path)
-            self.forward_wave = self.make_combine_wave(self.forward_path)
-            self.reverse_wave = self.make_combine_wave(self.reverse_path)
-            self.using_forward_path = True
-        if self.using_forward_path:
-            self.do_wave(self.forward_wave)
+            self.forward_paths = self.divide_path(self.forward_path,
+                                            n_section=self.n_combine_wave)
+            if self.add_tone_preamble:
+                self.forward_path[0] = self.add_preamble(self.forward_path[0])
+            self.forward_waves = []
+            for path in self.forward_paths:
+                wave = self.make_combine_wave(path)
+                self.forward_waves.append(wave)
+        self.wave_index += 1
+        if self.wave_index >= self.n_combine_wave:
+            self.wave_index = 0     # Restart around
+        self.do_wave(self.forward_waves[self.wave_index],
+                      index=self.wave_index)
+        '''
         else:
             self.do_wave(self.reverse_wave)
-        self.using_forward_path = not self.using_forward_path    
+        self.using_forward_path = not self.using_forward_path
+        '''    
 
+    def divide_path(self, path, n_section):
+        """ Divide scan path into almost even sections
+        :path: scan path
+        :n_section: number of sections
+        :returns: list of list of ScanPathItems
+        """
+        path_sects = []         # path sections
+        items_left = path[:]    # Depopulate using all but no more
+        n_per_sect = len(path)//n_section
+        if n_per_sect*n_section < len(path):
+            n_per_sect += 1     # Use them up
+        for _ in range(n_section):
+            path_sect = []
+            for _ in range(n_per_sect):
+                if len(items_left) > 0:
+                    path_sect.append(items_left.pop(0))
+            path_sects.append(path_sect)
+        SlTrace.lg(f"divide_path: {len(path)} items in {n_section} sections")
+        for i in range(n_section):
+            item = path_sects[i][0]
+            SlTrace.lg(f"{i}: row: {item.iy+1} col: {item.ix+1}")
+                
+        return path_sects    
+        
+        
     def add_preamble(self, items, ptype="BEGINNING"):
         """ Add preamble to item list to aid in identification
         :items: item list of (ScanPathItem)
@@ -622,13 +664,19 @@ class AdwScanner:
         items_new[:0] = preamble_items[:]
         return items_new
             
-    def do_wave(self, scan_wave):
+    def do_wave(self, scan_wave,  index):
         """ Process sound wave, returning when completed
-        :scan_wave: stereo wave for screen
+        :index:  index into self.forward_path for identification
         """
         if not self._scanning:
             return 
         
+        current_path = self.forward_paths[index]
+        if len(current_path) > 0:
+            current_item = current_path[0]
+            current_ix,current_iy = current_item.ix,current_item.iy 
+            self.speak_text(msg=f"r{current_iy+1} c{current_ix+1}",
+                             dup_stdout=False, rate=350, volume=.3)
         self.play_waveform(sinewave_numpy=scan_wave, calculate_dur=True,
                             after=self.do_wave_end)
         #self.speaker_control.wait_while_busy()
@@ -833,6 +881,24 @@ class AdwScanner:
         :returns: (x_left,y_top, x_right,y_bottom) canvas coords
         """
         return self.adw.get_win_ullr_at_ixy_canvas(ixy)
+
+    def speak_text(self, msg, dup_stdout=True,
+                   msg_type=None,
+                   rate=None, volume=None):
+        """ Speak text, if possible else write to stdout
+        :msg: text message, iff speech
+        :dup_stdout: duplicate to stdout default: True
+        :msg_type: type of speech default: 'REPORT'
+            REPORT - standard reporting
+            CMD    - command
+            ECHO - echo user input
+        :rate: speech rate words per minute
+                default: 240
+        :volume: volume default: .9            
+        """
+        self.adw.speak_text(msg=msg, msg_type=msg_type,
+                             dup_stdout=dup_stdout,
+                             rate=rate, volume=volume)
 
     def update(self):
         """ Update display
