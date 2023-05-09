@@ -8,6 +8,13 @@ This "text picture" is also placed in the Window clipboard to aid in placing the
 * The audio-draw-window supports many keyboard window positioning options, which give audio feedback of the current cursor position. The audio feedback user controlled - spoken text or audio tones.
 * The audio-draw-window supports the production of additional windows presenting magnifications of window selections.  
 
+## Turtle Braille setup from GitHub
+* Create braille_xxxx e.g. on Desktop
+* copy /resource_lib/src to braille_xxxx/resourece_lib_proj
+* copy davedavdi . master to braille_xxxx/pysinewave_master
+* pip install sttsx3 for speech
+* pip install sounddevice for tones
+* 
 ## Notable text picture modifications
 These changes were the results of experiences with and comments from some 8th grade students at the Perkins School for the Blind.
 
