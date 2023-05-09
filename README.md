@@ -10,11 +10,11 @@ This "text picture" is also placed in the Window clipboard to aid in placing the
 
 ## Turtle Braille setup from GitHub
 * Create braille_xxxx e.g. on Desktop
-* copy /resource_lib/src to braille_xxxx/resourece_lib_proj
-* copy davedavdi . master to braille_xxxx/pysinewave_master
-* pip install sttsx3 for speech
+* copy raysmith619/resource_lib/src to braille_xxxx/resource_lib_proj
+* copy daviddavini/pysinewave master to braille_xxxx/pysinewave_master
+* pip install pyttsx3 for speech support
 * pip install sounddevice for tones
-* 
+* run braille_xxxx/resource_lib_proj/square_loop_colors.py as an example  
 ## Notable text picture modifications
 These changes were the results of experiences with and comments from some 8th grade students at the Perkins School for the Blind.
 
