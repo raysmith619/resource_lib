@@ -1,104 +1,84 @@
-# adw_menus    09Mar2023  crs, Split off from adw_front_end
+# wx_adw_menus    20May2023  crs, adapt from adw_menus
+#                 09Mar2023  crs, Split off from adw_front_end
+import os
 
-import tkinter as tk
+import wx
 
 from select_trace import SlTrace
 from trace_control_window import TraceControlWindow
 
+def new_id():
+    """ Repalcement for deprecated wx.NewId()
+    :returns: unique id
+    """
+    return wx.NewIdRef(count=1)
 
 class MenuDisp:
     """ Menu dispatch table entry
     Supporting multiple mode dispatch (e.g, Dropdown item plus command mode)
     """
 
-    def __init__(self, label, command, underline):
-        self.label = label
-        self.command = command
-        self.underline = underline
-        self.shortcut = label[underline].lower()
+    def __init__(self, label, command):
+        self.label = ""
+        def two_arg_command(self, _=None):
+            """ Intermediary to ignore event arg, so we don't need
+            to change all our menu action calls developed for tkinter
+            """
+            command()
+        self.command = two_arg_command
+        self.shortcut = None
+        prev_cl = None
+        for cl in label:           # XXX&<shortcut>XXXX
+            if prev_cl == '&':
+                self.shortcut = cl.lower()
+            if cl != '&':
+                self.label += cl
+            prev_c = cl
 
 
 class AdwMenus:
-    def __init__(self, adw_front_end):
+    def __init__(self, frame, adw_front_end):
         """ Setup menus for AudioDrawWindow
+        :frame: window frame
         :adw_front_end: (AdwFrontEnd)
         """
+        self.frame = frame
         self.fte = adw_front_end
-        self.mw = adw_front_end.mw
-
         self.menu_setup()
-
-    def on_alt_a(self, event):
-        """ keep from key-press
-        """
-        SlTrace.lg("on_alt_a")
-
-    def on_alt_m(self, event):
-        """ keep from key-press
-        """
-        SlTrace.lg("on_alt_m")
-
-    def on_alt_n(self, event):
-        """ keep from key-press
-        """
-        SlTrace.lg("on_alt_n")
-
-    def on_alt_f(self, event):
-        """ keep from key-press
-        """
-        SlTrace.lg("on_alt_f")
-
-    def on_alt_s(self, _):
-        """ keep from key-press
-        """
-        SlTrace.lg("on_alt_s")
 
     def menu_setup(self):
         """ Setup menu system
         """
-        # creating a menu instance
-        self.mw.bind('<Alt-a>', self.on_alt_f)  # Keep this from key cmds
-        self.mw.bind('<Alt-d>', self.on_alt_f)  # Keep this from key cmds
-        self.mw.bind('<Alt-f>', self.on_alt_f)  # Keep this from key cmds
-        self.mw.bind('<Alt-n>', self.on_alt_n)  # Keep this from key cmds
-        self.mw.bind('<Alt-M>', self.on_alt_m)  # Keep this from key cmds
-        self.mw.bind('<Alt-m>', self.on_alt_m)  # Keep this from key cmds
-        self.mw.bind('<Alt-N>', self.on_alt_n)  # Keep this from key cmds
-        self.mw.bind('<Alt-n>', self.on_alt_n)  # Keep this from key cmds
-        self.mw.bind('<Alt-S>', self.on_alt_s)  # Keep this from key cmds
-        self.mw.bind('<Alt-s>', self.on_alt_s)  # Keep this from key cmds
-
-        menubar = tk.Menu(self.mw)
-        self.menubar = menubar  # Save for future reference
-        self.mw.config(menu=menubar)
 
         self.Properties = None
         self.LogFile = None
 
-        file_menu = tk.Menu(menubar, tearoff=0)
+        self.menubar = wx.MenuBar()
+        self.frame.SetMenuBar(self.menubar)
+
+        file_menu = wx.Menu()
         self.file_menu_setup(file_menu)
-        menubar.add_cascade(label="File", menu=file_menu)
+        self.menubar.Append(file_menu, '&File')
 
-        mag_menu = tk.Menu(menubar, tearoff=0)
+        mag_menu = wx.Menu()
         self.mag_menu_setup(mag_menu)
-        menubar.add_cascade(label="Magnify", menu=mag_menu)
+        self.menubar.Append(mag_menu,"&Magnify")
 
-        nav_menu = tk.Menu(menubar, tearoff=0)
+        nav_menu = wx.Menu()
         self.nav_menu_setup(nav_menu)
-        menubar.add_cascade(label="Navigate", menu=nav_menu)
+        self.menubar.Append(nav_menu, "&Navigate")
 
-        draw_menu = tk.Menu(menubar, tearoff=0)
+        draw_menu = wx.Menu()
         self.draw_menu_setup(draw_menu)
-        menubar.add_cascade(label="Draw", menu=draw_menu)
+        self.menubar.Append(draw_menu, "&Draw")
 
-        scan_menu = tk.Menu(menubar, tearoff=0)
+        scan_menu = wx.Menu()
         self.scan_menu_setup(scan_menu)
-        menubar.add_cascade(label="Scanning", menu=scan_menu)
+        self.menubar.Append(scan_menu, "&Scanning")
 
-        aux_menu = tk.Menu(menubar, tearoff=0)
-        aux_menu.add_command(label="Trace", command=self.trace_menu,
-                             underline=0)
-        menubar.add_cascade(label="Auxiliary", menu=aux_menu)
+        aux_menu = wx.Menu()
+        self.aux_menu_setup(aux_menu)
+        self.menubar.Append(aux_menu, "&Auxiliary")
 
     """ File Menu setup package
     """
@@ -106,31 +86,24 @@ class AdwMenus:
     def file_menu_setup(self, file_menu):
         self.file_menu = file_menu
         self.file_dispatch = {}
-        self.file_menu_add_command(label="Open", command=self.File_Open_tbd,
-                                   underline=0)
-        self.file_menu_add_command(label="Save", command=self.File_Save_tbd,
-                                   underline=0)
-        file_menu.add_separator()
-        self.file_menu_add_command(label="Log", command=self.LogFile,
-                                   underline=0)
-        self.file_menu_add_command(label="Properties", command=self.Properties,
-                                   underline=0)
-        file_menu.add_separator()
-        self.file_menu_add_command(label="Exit", command=self.pgm_exit,
-                                   underline=1)
 
-    def file_menu_add_command(self, label, command, underline):
+        self.file_menu_add_command(label="&Open", command=self.File_Open_tbd)
+        self.file_menu_add_command(label="&Save", command=self.File_Save_tbd)
+        file_menu.AppendSeparator()
+        self.file_menu_add_command(label="&Log", command=self.LogFile)
+        self.file_menu_add_command(label="&Properties", command=self.Properties)
+        file_menu.AppendSeparator()
+        self.file_menu_add_command(label="E&xit", command=self.pgm_exit)
+
+    def file_menu_add_command(self, label, command):
         """ Setup menu commands, setup dispatch for direct call
-        :label: add_command label
+        :label: add_command label, with leading & before accelerator key
         :command: command to call
-        :underline: short-cut index in label
         """
-        self.file_menu.add_command(label=label, command=command,
-                                   underline=underline)
-        menu_de = MenuDisp(label=label, command=command,
-                           underline=underline)
-
+        item = self.file_menu.Append(new_id(), label)
+        menu_de = MenuDisp(label=label, command=command)
         self.file_dispatch[menu_de.shortcut] = menu_de
+        self.frame.Bind(wx.EVT_MENU, menu_de.command, item)
 
     def file_direct_call(self, short_cut):
         """ Short-cut call direct to option
@@ -153,25 +126,19 @@ class AdwMenus:
     def draw_menu_setup(self, draw_menu):
         self.draw_menu = draw_menu
         self.draw_dispatch = {}
-        self.draw_menu_add_command(label="Help", command=self.draw_help,
-                                   underline=0)
-        self.draw_menu_add_command(label="drawing", command=self.start_drawing,
-                                   underline=0)
-        self.draw_menu_add_command(label="stop_drawing", command=self.stop_drawing,
-                                   underline=0)
+        self.draw_menu_add_command(label="&Help", command=self.draw_help)
+        self.draw_menu_add_command(label="&drawing", command=self.start_drawing)
+        self.draw_menu_add_command(label="&stop_drawing", command=self.stop_drawing)
 
-    def draw_menu_add_command(self, label, command, underline):
+    def draw_menu_add_command(self, label, command):
         """ Setup menu commands, setup dispatch for direct call
         :label: add_command label
         :command: command to call
-        :underline: short-cut index in label
         """
-        self.draw_menu.add_command(label=label, command=command,
-                                   underline=underline)
-        menu_de = MenuDisp(label=label, command=command,
-                           underline=underline)
-
+        item = self.draw_menu.Append(new_id(), label)
+        menu_de = MenuDisp(label=label, command=command)
         self.draw_dispatch[menu_de.shortcut] = menu_de
+        self.frame.Bind(wx.EVT_MENU, menu_de.command, item)
 
     def draw_direct_call(self, short_cut):
         """ Short-cut call direct to option
@@ -216,33 +183,25 @@ class AdwMenus:
         """
         self.speak_text(help_str)
 
-    def mag_menu_setup(self, mag_menu):
-        self.mag_menu = mag_menu
+    def mag_menu_setup(self, menu):
+        self.mag_menu = menu
         self.mag_dispatch = {}
-        self.mag_menu_add_command(label="Help", command=self.mag_help,
-                                  underline=0)
-        self.mag_menu_add_command(label="Remove Pos History", command=self.erase_pos_history,
-                                  underline=0)
-        self.mag_menu_add_command(label="Select", command=self.mag_select,
-                                  underline=0)
-        self.mag_menu_add_command(label="Expand Right", command=self.mag_expand_right,
-                                  underline=7)
-        self.mag_menu_add_command(label="Expand Top", command=self.mag_expand_top,
-                                  underline=7)
-        self.mag_menu_add_command(label="View", command=self.mag_view,
-                                  underline=0)
+        self.mag_menu_add_command(label="&Help", command=self.mag_help)
+        self.mag_menu_add_command(label="&Remove Pos History", command=self.erase_pos_history)
+        self.mag_menu_add_command(label="&Select", command=self.mag_select)
+        self.mag_menu_add_command(label="Expand &Right", command=self.mag_expand_right)
+        self.mag_menu_add_command(label="Expand &Top", command=self.mag_expand_top)
+        self.mag_menu_add_command(label="Vie&w", command=self.mag_view)
 
-    def mag_menu_add_command(self, label, command, underline):
+    def mag_menu_add_command(self, label, command):
         """ Setup menu commands, setup dispatch for direct call
-        :label: add_command label
+        :label: add_command label, including &<shortcut-letter>
         :command: command to call
-        :underline: short-cut index in label
         """
-        self.mag_menu.add_command(label=label, command=command,
-                                  underline=underline)
-        menu_de = MenuDisp(label=label, command=command,
-                           underline=underline)
-
+        menu_de = MenuDisp(label=label, command=command)
+        self.mag_dispatch[menu_de.shortcut] = menu_de
+        file_item = self.mag_menu.Append(new_id(), label)
+        self.frame.Bind(wx.EVT_MENU, menu_de.command, file_item)
         self.mag_dispatch[menu_de.shortcut] = menu_de
 
     def mag_direct_call(self, short_cut):
@@ -283,39 +242,27 @@ class AdwMenus:
     def scan_menu_setup(self, scan_menu):
         self.scan_menu = scan_menu
         self.scan_dispatch = {}
-        self.scan_menu_add_command(label="Help", command=self.scan_help,
-                                   underline=0)
-        self.scan_menu_add_command(label="c -  combine wave - faster scan",
-                                   command=self.scan_combine_wave,
-                                   underline=0)
-        self.scan_menu_add_command(label="d - disable combine wave",
-                                   command=self.scan_disable_combine_wave,
-                                   underline=0)
-        self.scan_menu_add_command(label="f - flip skip space", command=self.flip_skip_space,
-                                   underline=0)
-        self.scan_menu_add_command(label="r - flip skip run", command=self.flip_skip_run,
-                                   underline=0)
-        self.scan_menu_add_command(label="Start scanning", command=self.start_scanning,
-                                   underline=0)
-        self.scan_menu_add_command(label="Stop scanning", command=self.stop_scanning,
-                                   underline=1)
-        self.scan_menu_add_command(label="No item wait", command=self.scan_no_item_wait,
-                                   underline=0)
-        self.scan_menu_add_command(label="Wait for item", command=self.scan_item_wait,
-                                   underline=0)
+        self.scan_menu_add_command(label="&Help", command=self.scan_help)
+        self.scan_menu_add_command(label="&c -  combine wave - faster scan",
+                                   command=self.scan_combine_wave)
+        self.scan_menu_add_command(label="&d - disable combine wave",
+                                   command=self.scan_disable_combine_wave)
+        self.scan_menu_add_command(label="&f - flip skip space", command=self.flip_skip_space)
+        self.scan_menu_add_command(label="&r - flip skip run", command=self.flip_skip_run)
+        self.scan_menu_add_command(label="&Start scanning", command=self.start_scanning)
+        self.scan_menu_add_command(label="S&top scanning", command=self.stop_scanning)
+        self.scan_menu_add_command(label="&No item wait", command=self.scan_no_item_wait)
+        self.scan_menu_add_command(label="&Wait for item", command=self.scan_item_wait)
 
-    def scan_menu_add_command(self, label, command, underline):
+    def scan_menu_add_command(self, label, command):
         """ Setup menu commands, setup dispatch for direct call
         :label: add_command label
         :command: command to call
-        :underline: short-cut index in label
         """
-        self.scan_menu.add_command(label=label, command=command,
-                                   underline=underline)
-        menu_de = MenuDisp(label=label, command=command,
-                           underline=underline)
-
+        item = self.scan_menu.Append(new_id(), label)
+        menu_de = MenuDisp(label=label, command=command)
         self.scan_dispatch[menu_de.shortcut] = menu_de
+        self.frame.Bind(wx.EVT_MENU, menu_de.command, item)
 
     def scan_direct_call(self, short_cut):
         """ Short-cut call direct to option
@@ -377,61 +324,36 @@ class AdwMenus:
     def nav_menu_setup(self, nav_menu):
         self.nav_menu = nav_menu
         self.nav_dispatch = {}
-        self.nav_menu_add_command(label="Help", command=self.nav_help,
-                                  underline=0)
-        self.nav_menu.add_command(label="add At loc", command=self.nav_add_loc,
-                                  underline=0)
-        self.nav_menu_add_command(label="b-remove At loc", command=self.nav_no_add_loc,
-                                  underline=0)
-        self.nav_menu_add_command(label="echo input on", command=self.nav_echo_on,
-                                  underline=0)
-        self.nav_menu_add_command(label="echo off", command=self.nav_echo_off,
-                                  underline=5)
+        self.nav_menu_add_command(label="Help", command=self.nav_help)
+        self.nav_menu_add_command(label="&add At loc", command=self.nav_add_loc)
+        self.nav_menu_add_command(label="&b-remove At loc", command=self.nav_no_add_loc)
+        self.nav_menu_add_command(label="&echo input on", command=self.nav_echo_on)
+        self.nav_menu_add_command(label="echo &off", command=self.nav_echo_off)
 
-        self.nav_menu_add_command(label="visible cells", command=self.nav_make_visible,
-                                  underline=0)
-        self.nav_menu_add_command(label="invisible cells", command=self.nav_make_invisible,
-                                  underline=0)
-        self.nav_menu_add_command(label="marked", command=self.nav_show_marked,
-                                  underline=0)
-        self.nav_menu_add_command(label="noisy", command=self.make_noisy,
-                                  underline=0)
-        self.nav_menu_add_command(label="silent", command=self.make_silent,
-                                  underline=0)
-        self.nav_menu_add_command(label="talking", command=self.nav_make_talk,
-                                  underline=0)
-        self.nav_menu_add_command(label="log talk", command=self.nav_logt,
-                                  underline=0)
-        self.nav_menu_add_command(label="no log talk", command=self.nav_no_logt,
-                                  underline=10)
-        self.nav_menu_add_command(label="position", command=self.nav_say_position,
-                                  underline=0)
-        self.nav_menu_add_command(label="redraw figure", command=self.nav_redraw,
-                                  underline=2)
-        self.nav_menu_add_command(label="audio beep", command=self.nav_audio_beep,
-                                  underline=1)
-        self.nav_menu_add_command(label="q no audio beep",
-                                  command=self.nav_no_audio_beep,
-                                  underline=0)
-        self.nav_menu_add_command(label="x enable mouse navigation",
-                                  command=self.nav_enable_mouse,
-                                  underline=0)
-        self.nav_menu_add_command(label="y disable mouse navigation",
-                                  command=self.nav_disable_mouse,
-                                  underline=0)
+        self.nav_menu_add_command(label="&visible cells", command=self.nav_make_visible)
+        self.nav_menu_add_command(label="&invisible cells", command=self.nav_make_invisible)
+        self.nav_menu_add_command(label="&marked", command=self.nav_show_marked)
+        self.nav_menu_add_command(label="&noisy", command=self.make_noisy)
+        self.nav_menu_add_command(label="&silent", command=self.make_silent)
+        self.nav_menu_add_command(label="&talking", command=self.nav_make_talk)
+        self.nav_menu_add_command(label="&log talk", command=self.nav_logt)
+        self.nav_menu_add_command(label="no log tal&k", command=self.nav_no_logt)
+        self.nav_menu_add_command(label="&position", command=self.nav_say_position)
+        self.nav_menu_add_command(label="re&draw figure", command=self.nav_redraw)
+        self.nav_menu_add_command(label="a&udio beep", command=self.nav_audio_beep)
+        self.nav_menu_add_command(label="&q no audio beep", command=self.nav_no_audio_beep)
+        self.nav_menu_add_command(label="&x enable mouse navigation", command=self.nav_enable_mouse)
+        self.nav_menu_add_command(label="&y disable mouse navigation", command=self.nav_disable_mouse)
 
-    def nav_menu_add_command(self, label, command, underline):
+    def nav_menu_add_command(self, label, command):
         """ Setup menu commands, setup dispatch for direct call
         :label: add_command label
         :command: command to call
-        :underline: short-cut index in label
         """
-        self.nav_menu.add_command(label=label, command=command,
-                                  underline=underline)
-        menu_de = MenuDisp(label=label, command=command,
-                           underline=underline)
-
+        item = self.nav_menu.Append(new_id(), label)
+        menu_de = MenuDisp(label=label, command=command)
         self.nav_dispatch[menu_de.shortcut] = menu_de
+        self.frame.Bind(wx.EVT_MENU, menu_de.command, item)
 
     def nav_direct_call(self, short_cut):
         """ Short-cut call direct to option
@@ -442,12 +364,49 @@ class AdwMenus:
         navde = self.nav_dispatch[short_cut]
         navde.command()
 
+
+    """ Aux Menu setup package
+    """
+
+    def aux_menu_setup(self, menu):
+        self.aux_menu = menu
+        self.aux_dispatch = {}
+
+        self.aux_menu_add_command(label="Trace", command=self.trace_menu)
+
+    def aux_menu_add_command(self, label, command):
+        """ Setup menu commands, setup dispatch for direct call
+        :menu: menu object
+        :label: add_command label, with leading & before accelerator key
+        :command: command to call
+        """
+        item = self.aux_menu.Append(new_id(), label)
+        menu_de = MenuDisp(label=label, command=command)
+        self.file_dispatch[menu_de.shortcut] = menu_de
+        self.frame.Bind(wx.EVT_MENU, menu_de.command, item)
+
+    def file_direct_call(self, short_cut):
+        """ Short-cut call direct to option
+        :short_cut: one letter option for call
+        """
+        if short_cut not in self.file_dispatch:
+            raise Exception(f"file option:{short_cut} not recognized")
+        menu_de = self.file_dispatch[short_cut]
+        menu_de.command()
+
+    def File_Open_tbd(self):
+        print("File_Open_menu to be determined")
+
+    def File_Save_tbd(self):
+        print("File_Save_menu to be determined")
+
+
     """
     Trace support
     """
 
-    def trace_menu(self):
-        TraceControlWindow(tcbase=self.mw)
+    def trace_menu(self, dummy=None):
+        TraceControlWindow(tcbase=None)     # Standalone window
 
     """
     Links to front end 
@@ -483,8 +442,13 @@ class AdwMenus:
       most local
     """
 
-    def pgm_exit(self):
-        self.fte.pgm_exit()
+    def pgm_exit(self, dummy=None):
+        if self.fte is not None:
+            self.fte.pgm_exit()
+
+        SlTrace.lg("wx_adw_menus.exit")
+        SlTrace.onexit()  # Force logging quit
+        os._exit(0)
 
     """
     Magnification links
@@ -629,3 +593,16 @@ class AdwMenus:
 
     def stop_scanning(self):
         self.fte.stop_scanning()
+
+
+if __name__ == "__main__":
+    app = wx.App()
+    fr = wx.Frame(None, title="wx_adw_menus.py")
+    fr.Show()
+    fr.SetSize((300, 200))
+    fr.Centre()
+
+    adw_front_end = None
+    adw_menus = AdwMenus(fr, adw_front_end)
+    app.MainLoop()
+    print("After app.MainLoop()")

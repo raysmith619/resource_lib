@@ -139,7 +139,7 @@ class SpeakerControlCmd:
 
     def __init__(self, cmd_type=None, msg=None, msg_type=None,
                  rate=None, volume=None,
-                 tone=None, waveform=None, win=None, after=None):
+                 tone=None, waveform=None, fr=None, after=None):
         """ Setup command
         :cmd_type: command to execute
                 "CMD_MSG" - speak message - msg REQUIRED
@@ -157,7 +157,7 @@ class SpeakerControlCmd:
         :volume: speach volume
         :tone: (SpeakerTone) tone to make
         :waveform: (SpeakerWaveform) waveform to play 
-        :win: SpeakerControlLocal's window reference
+        :fr: SpeakerControlLocal's window reference
         :after: function to call after cmd completion
                 default: no call
         """
@@ -170,11 +170,11 @@ class SpeakerControlCmd:
         self.volume = volume
         self.tone = tone
         self.waveform = waveform
-        self.win = win
+        self.fr = fr
         self.after = after
         if after is not None:
-            if win is None:
-                raise SpeakerControlError(f"after missing win cmd:{self}")
+            if fr is None:
+                raise SpeakerControlError(f"after missing fr cmd:{self}")
         if cmd_type == "CMD_MSG":
             if msg is None:
                 raise SpeakerControlError(f"msg missing with type MSG: {self}")
@@ -197,7 +197,7 @@ class SpeakerControlCmd:
         if self.waveform is not None:
             ret += f" {self.waveform}"
         if self.after is not None:
-            ret += f" win:{self.win} after:{self.after}"
+            ret += f" fr:{self.fr} after:{self.after}"
         
         return ret
 
@@ -419,8 +419,8 @@ class SpeakerControl(Singleton):
                 raise SpeakerControlError(f"Unrecognized speaker cmd type:{cmd.cmd_type} in {cmd}")
             if cmd.after is not None:
                 cmd_id = cmd.cmd_id
-                if cmd.win is None:
-                    raise SpeakerControlError(f"after missing win in cmd {cmd}")
+                if cmd.fr is None:
+                    raise SpeakerControlError(f"after missing fr in cmd {cmd}")
                 if cmd_id in self.cmds_in_progress:
                     del self.cmds_in_progress[cmd_id]
                 
@@ -574,7 +574,7 @@ class SpeakerControl(Singleton):
 
     def send_cmd(self, cmd_type='speak', msg=None, msg_type=None,
                  rate=None, volume=None, tone=None,
-                 waveform=None, win=None, after=None):
+                 waveform=None, fr=None, after=None):
         """ Send cmd to speaker control engine
             storing hash of cmds in process
         :cmd_type: command type
@@ -590,7 +590,7 @@ class SpeakerControl(Singleton):
         :volume: speaking volume for speech
         :tone: SpeakerTone
         :waveform: waveform (SinewaveNumPy.stereo_waveform) NumPy array
-        :win: SpeakerControlLocal's window reference
+        :fr: SpeakerControlLocal's window reference
         :after: function to call after cmd completion
                 default: no call
         :returns: cmd, cmd_id, after is needed but cmd is for documentation
@@ -600,7 +600,7 @@ class SpeakerControl(Singleton):
                                  msg_type=msg_type,
                                  rate=rate, volume=volume,
                                  tone=tone, waveform=waveform,
-                                 win=win, after=after)
+                                 fr=fr, after=after)
         cmd_id = cmd.cmd_id
         self.cmds_in_progress[cmd_id] = cmd
         self.sc_cmd_queue.put(cmd)
@@ -611,12 +611,12 @@ class SpeakerControlLocal:
     """ Localinstance of SpeakerControl
     """
 
-    def __init__(self, win, logging_sound=False):
+    def __init__(self, fr, logging_sound=False):
         self.cmds_awaiting_after = {} # dictionary by cmd_id awaiting after
         self.awaiting_loop_ms = 1      # Awaiting loop
         self.awaiting_loop_going = False    # Checking loop in progress
         self.sc = SpeakerControl()
-        self.win = win
+        self.fr = fr
         self.logging_sound = logging_sound
         self.make_silent(False)
 
@@ -648,7 +648,7 @@ class SpeakerControlLocal:
         self.sc.force_clear()
         rwait = 2000
         SlTrace.lg(f"Waiting {rwait} msec")
-        self.win.after(rwait)
+        self.fr.after(rwait)
         if restart:
             SlTrace.lg("Restarting Speaker control")
             self.sc.start_control()
@@ -666,7 +666,7 @@ class SpeakerControlLocal:
 
     def wait_while_busy(self):
         while self.is_busy():
-            self.win.update()
+            self.fr.update()
                     
     def quit(self):    
         self.sc.quit()
@@ -693,7 +693,7 @@ class SpeakerControlLocal:
         :sample_rate: sample rate fps
         :calculate_dur:    # calculate duration based on waveform, sample_rate
         :after: function to call after play completes
-                 (self.win.after(0,after)
+                 (self.fr.after(0,after)
                 default: no call
         """
         waveform = SpeakerWaveform(ndarr=ndarr, dur=dur, delay=dly,
@@ -701,7 +701,7 @@ class SpeakerControlLocal:
                                    sample_rate=sample_rate)
         SlTrace.lg(f"play_waveform waveform: {waveform}", "sound_queue")
         cmd = self.sc.send_cmd(cmd_type="CMD_WAVEFORM", waveform=waveform,
-                         win=self.win, after=after)
+                         fr=self.fr, after=after)
         if after is not None:
             self.add_awaiting(cmd)
 
@@ -713,7 +713,7 @@ class SpeakerControlLocal:
         self.cmds_awaiting_after[cmd.cmd_id] = cmd
         if not self.awaiting_loop_going:
             self.awaiting_loop_going = True
-            self.win.after(0, self.awaiting_after_ck)
+            self.fr.after(0, self.awaiting_after_ck)
 
     def awaiting_after_ck(self):
         """ Check cmds awaiting for after cking
@@ -726,11 +726,11 @@ class SpeakerControlLocal:
                 cmd = self.cmds_awaiting_after[cmd_id]
                 if not self.sc.is_in_progress(cmd_id):
                     SlTrace.lg(f"{cmd_id}: after_called for {cmd}", "sound_queue")
-                    self.win.after(0, cmd.after)
+                    self.fr.after(0, cmd.after)
                     del self.cmds_awaiting_after[cmd_id]
         if len(self.cmds_awaiting_after) > 0:
             self.awaiting_loop_going = True
-            self.win.after(self.awaiting_loop_ms, self.awaiting_after_ck)
+            self.fr.after(self.awaiting_loop_ms, self.awaiting_after_ck)
 
     def clear_awaiting(self):
         """ Clear out awaiting, calling all awaiting
@@ -741,7 +741,7 @@ class SpeakerControlLocal:
             if cmd_id in self.cmds_awaiting_after:
                 cmd = self.cmds_awaiting_after[cmd_id]
                 SlTrace.lg(f"{cmd_id}: after_called for {cmd}", "sound_queue")
-                self.win.after(0, cmd.after)
+                self.fr.after(0, cmd.after)
                 del self.cmds_awaiting_after[cmd_id]
                         
     def speak_text(self, msg, dup_stdout=True,
@@ -783,11 +783,11 @@ class SpeakerControlLocal:
         self.sc.stop_scan()
         self.speak_text_stop()    
 if __name__ == "__main__":
-    from audio_draw_window import AudioDrawWindow
+    from wx_audio_draw_window import AudioDrawWindow
     
     SlTrace.setFlags("speech")
     awin = AudioDrawWindow()
-    scl = SpeakerControlLocal(win=awin)
+    scl = SpeakerControlLocal(fr=afr)
     scl.speak_text("Hello World!")
     scl.speak_text("How are you?")
     scl.speak_text("Hows the weather?")

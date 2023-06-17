@@ -20,13 +20,13 @@ from adw_menus import AdwMenus
 from adw_scanner import AdwScanner
 
 class AdwFrontEnd:
-    
+
     """
     Front end functions
     """
     # Multi-key commands
     NAV_COLOR_CHANGE = "color_change_cmd"
-    
+
     # Magnification window viewing
     MAG_PARENT = "mag_parent"
     MAG_CHILD = "mag_child"
@@ -36,18 +36,18 @@ class AdwFrontEnd:
                      "g": "green", "b": "blue", "i": "indigo",
                      "v": "violet"}
 
-    
+
     def __init__(self, adw, title=None, key_str=None, menu_str=None,
-                    pos_check_interval= .1,
-                    pos_rep_interval = .1,
-                    pos_rep_queue_max = 1,
-                    visible_figure = True,
-                    enable_mouse = False,
-                    silent=False,
-                    pgmExit=None,
-                    show_marked=False,
-                    shift_to_edge=True,
-                    color="blue",
+                 pos_check_interval= .1,
+                 pos_rep_interval = .1,
+                 pos_rep_queue_max = 1,
+                 visible_figure = True,
+                 enable_mouse = False,
+                 silent=False,
+                 pgmExit=None,
+                 show_marked=False,
+                 shift_to_edge=True,
+                 color="blue",
                  ):
         """ front end support
         :adw: (AudioDrawWindow) parent window
@@ -80,8 +80,8 @@ class AdwFrontEnd:
         self.pos_cell_ixiy = None    # Tracking info, to minimize noise
         self.pos_dist_str = None    # Last position report string
         self.pos_rep_queue = []       # queue of report tuples
-                                        # "dist", ix_dist, iy_dist
-                                        # "fig", cell
+        # "dist", ix_dist, iy_dist
+        # "fig", cell
         self.rept_at_loc = True         # Start with reporting at loc
         self.pos_rep_force_output = False   # True - force output
         self.pos_rep_queue_max = pos_rep_queue_max
@@ -106,7 +106,7 @@ class AdwFrontEnd:
         self._cursor_item = None    # position cursor tag
         self.set_color(color)
         self.setup_beep()
-        
+
         # direction for digit pad
         y_up = -1
         y_down = 1
@@ -121,18 +121,18 @@ class AdwFrontEnd:
         :ixy: ix,iy tuple
         """
         self.goto_cell_list.append(ixy)
-        
+
     def clear_goto_cell_list(self):
         self.goto_cell_list = []
-        
+
     def get_goto_cell_list(self):
         return self.goto_cell_list
-    
+
     def silence(self):
         """ Function to check for silent mode
         """
         return self.is_silent()
-    
+
     def is_silent(self):
         return self._silent
 
@@ -144,7 +144,7 @@ class AdwFrontEnd:
         prev_val = self._silent
         self._silent = val
         return prev_val
-    
+
     def do_complete(self, menu_str=None, key_str=None):
         """ Complete menu process
         """
@@ -155,8 +155,8 @@ class AdwFrontEnd:
         self.mw.bind('<KeyPress>', self.on_key_press)
         self._multi_key_progress = False    # True - processing multiple keys
         self._multi_key_cmd = None          # Set if in progress
-       
-        
+
+
         self.do_menu_str(menu_str)
         if key_str:
             self.adw.move_to_ixy(self.adw.grid_width/2, self.adw.grid_height//2)
@@ -169,7 +169,7 @@ class AdwFrontEnd:
         """
         ix_cur,iy_cur = self.get_ixy_at()
         if ix is None:
-            ix = ix_cur 
+            ix = ix_cur
         if iy is None:
             iy = iy_cur
         win_xc,win_yc = self.get_cell_center_win(ix,iy)
@@ -183,15 +183,15 @@ class AdwFrontEnd:
             if self.adw.speaker_control.is_busy():
                 self.update()
                 continue
-            
-            break        
+
+            break
     """
     Setup menus
     """
     def pgm_exit(self, rc=None):
         SlTrace.lg("fte.pgm_exit")
         self.adw.exit()
-        
+
     def File_Open_tbd(self):
         print("File_Open_menu to be determined")
 
@@ -199,21 +199,21 @@ class AdwFrontEnd:
         print("File_Save_menu to be determined")
     def is_drawing(self):
         return self._drawing
-  
-    def set_drawing(self, val=True):        
+
+    def set_drawing(self, val=True):
         self._drawing = val
         return val
-      
+
     def start_drawing(self):
         """ Start/enable drawing
         """
-        self.set_drawing() 
+        self.set_drawing()
 
     def stop_drawing(self):
         """ Stop/disable drawing
         """
-        self.set_drawing(False) 
-        
+        self.set_drawing(False)
+
     def mag_select(self):
         """ Select magnification region
             -rectangle including all figure cells traveled so far
@@ -223,14 +223,14 @@ class AdwFrontEnd:
         if mag_info is None:
             SlTrace.lg("Magnification is not enabled")
             return False
-        
+
         ix_min, iy_min, ix_max, iy_max = self.adw.bounding_box_ci(cells=self.adw.pos_history)
         if (ix_min is None or iy_min is None
                 or ix_max is None or   iy_max is None):
             self.speak_text(f"Bad selection:"
                             f" indexs: {ix_min}, {iy_min}, {ix_max}, {iy_max}")
             return False
-        
+
         SlTrace.lg(f"select: ix_min:{ix_min} iy_min:{iy_min}"
                    f" ix_max:{ix_max} iy_max:{iy_max}")
         select = MagnifySelect(ix_min=ix_min, iy_min=iy_min,
@@ -243,11 +243,11 @@ class AdwFrontEnd:
     def mag_expand_right(self):
         """ Expand selection region right and left by 20%
         """
-    
+
     def mag_expand_top(self):
         """ Expand selection region top and bottom by 20%
         """
-        
+
     def mag_view(self):
         """ View selected region, creating a new AudioDrawWindow
         """
@@ -255,27 +255,27 @@ class AdwFrontEnd:
         if mag_info is None or mag_info.base_canvas is None:
             SlTrace.lg("Magnification is not enabled")
             return
-        
+
         # Select again, in case of change.  Doesn't hurt.
         if not self.mag_select():
             self.speak_text("No history to select")
             return
-        
+
         display_region = mag_info.display_region
         if display_region.ncols is None:
             display_region.ncols = self.adw.grid_width
         if display_region.nrows is None:
             display_region.nrows = self.adw.grid_height
-           
-        SlTrace.lg(f"view select: {mag_info}")    
+
+        SlTrace.lg(f"view select: {mag_info}")
         adw = mag_info.base_canvas.create_magnification_window(
-                self.adw.mag_info)
+            self.adw.mag_info)
         n_cells_created = self.adw.mag_info.base_canvas.n_cells_created
         if adw is None:
             self.speak_text("No magnification created because"
                             f" it would containe {n_cells_created} cell"
                             "s" if n_cells_created != 1 else "")
-            
+
         else:
             self.stop_scanning()    # Stop old scanning - possible confusion
             self.speak_text(f"Magnification has {n_cells_created} cell"
@@ -289,7 +289,7 @@ class AdwFrontEnd:
             canvas.delete(self.adw.mag_selection_tag)
             self.adw.mag_selection_tag = None
             self.update()       # View change
-        
+
     def show_mag_selection(self, mag_info):
         """ Display selected region
         :ix_min: minimum ix index
@@ -306,11 +306,11 @@ class AdwFrontEnd:
         ixy_lr = (select.ix_max,select.iy_max)
         _,_,lr_cx2,lr_cy2 = self.get_win_ullr_at_ixy_canvas(ixy_lr)
         self.adw.mag_selection_tag = canvas.create_rectangle(ul_cx1,ul_cy1,
-                                                              lr_cx2,lr_cy2,
-                                 outline="dark blue", width=4)
-        
+                                                             lr_cx2,lr_cy2,
+                                                             outline="dark blue", width=4)
 
-        
+
+
     """ End of Magnify support
     """
 
@@ -329,16 +329,16 @@ class AdwFrontEnd:
     def announce_location(self):
         """ Announce current / cursor location
         """
-        self.pos_check(force_output=True, with_voice=True) 
-                           
-        
+        self.pos_check(force_output=True, with_voice=True)
+
+
     def nav_enable_mouse(self):
         self.nav_audio_beep()
         self.set_enable_mouse()
-    
+
     def nav_disable_mouse(self):
-        self.set_enable_mouse(False) 
- 
+        self.set_enable_mouse(False)
+
     def set_enable_mouse(self, val=True):
         """ Enable/Disable mouse dragging operation
         :val: value to set default: True - enable
@@ -349,34 +349,34 @@ class AdwFrontEnd:
         """ Check if mouse dragging enabled
         """
         return self._enable_mouse
-        
+
     def nav_echo_on(self):
-        self._echo_input = True 
-    
+        self._echo_input = True
+
     def nav_echo_off(self):
-        self._echo_input = False 
-                
+        self._echo_input = False
+
     def nav_add_loc(self):
         """ Add At location info to report
         """
         self.key_set_rept_at()
-        
+
     def nav_audio_beep(self):
         """ Use audio beeps to aid positioning
         """
         self.set_using_audio_beep()
         self.nav_echo_off()
-        
+
     def nav_no_audio_beep(self):
         """ Use audio beeps to aid positioning
         """
         self.set_using_audio_beep(False)
-               
+
     def nav_no_add_loc(self):
         """ Remove At location info to report
         """
         self.key_set_rept_at(False)
-        
+
     def nav_logt(self):
         """ Log talking
         """
@@ -386,8 +386,8 @@ class AdwFrontEnd:
         self.key_log_speech(False)
 
     def nav_make_invisible(self):
-        self.key_visible(False) 
-        
+        self.key_visible(False)
+
     def nav_make_visible(self):
         self.key_visible()
 
@@ -395,12 +395,12 @@ class AdwFrontEnd:
         """ Show marked cells
         """
         self.set_show_marked()
-        
+
     def nav_make_talk(self):
         self.key_talk()
-    
+
     def nav_redraw(self):
-        self.adw.draw_cells()    
+        self.adw.draw_cells()
 
     def nav_say_position(self):
         self.pos_report(force_output=True)
@@ -414,7 +414,7 @@ class AdwFrontEnd:
     """
 
     """ Automate functions for menu access
-    """    
+    """
     def do_menu_str(self, menu_str=None):
         """ Execute initial navigate string, if any
             wait on output before each cmd action
@@ -424,7 +424,7 @@ class AdwFrontEnd:
             menu_str = self.menu_str
         if menu_str is None or menu_str == "":
             return
-        
+
         menu_cmds = menu_str.split(';')
         for cmd in menu_cmds:
             cmd = cmd.strip()
@@ -460,7 +460,7 @@ class AdwFrontEnd:
             key_str = self.key_str
         if key_str is None or key_str == "":
             return
-         
+
         SlTrace.lg(f"do_key_str: {key_str}")
         syms = key_str.split(";")
         for sym in syms:
@@ -469,8 +469,8 @@ class AdwFrontEnd:
             self.key_press(sym)
             if slow_key_str:
                 time.sleep(.5)
-                self.speak_text_stop() 
-                    
+                self.speak_text_stop()
+
 
 
     def pause(self, time_sec):
@@ -484,7 +484,7 @@ class AdwFrontEnd:
             now = time.time()
             if now > end_time:
                 break
-            
+
             if now > last_time + 30:
                 print(f"pause time left:{end_time-now:.2f}")
                 last_time = now
@@ -495,18 +495,18 @@ class AdwFrontEnd:
     """ key / mouse operation
     and those actions close to that
     """
-            
+
     def motion(self, event):
         """ Mouse motion in  window
         """
         if not self.is_enable_mouse():
             return      # Ignore mouse motion 
-        
+
         if self.motion_level > 1:
             SlTrace.lg("Motion Recursion: motion_level({self.motion_Level} > 1")
             self.motion_level = 0
             return
-        
+
         self.set_xy((event.x,event.y))
         x,y = self.get_xy()
         x,y = x + self.x_min, y + self.y_min
@@ -534,7 +534,7 @@ class AdwFrontEnd:
         """ Get current xy pair
         :returns: (x,y) tuple
         """
-        return self.x, self.y 
+        return self.x, self.y
 
     def get_xy_canvas(self, xy=None):
         """ Get current xy pair on canvas (0-max)
@@ -544,7 +544,7 @@ class AdwFrontEnd:
         if xy is None:
             xy = self.get_xy()
         x,y = xy
-        return x-self.x_min, y-self.y_min 
+        return x-self.x_min, y-self.y_min
 
     def set_x_min(self, val):
         """ Set min
@@ -567,8 +567,8 @@ class AdwFrontEnd:
 
     def get_x_max(self):
         return self.x_max
-        
- 
+
+
     def set_y_min(self, val):
         """ Set min
         :val: new x_min
@@ -590,8 +590,8 @@ class AdwFrontEnd:
 
     def get_y_max(self):
         return self.x_max
-    
-    
+
+
     def on_button_1(self, event):
         """ Mouse button in window
         """
@@ -625,14 +625,14 @@ class AdwFrontEnd:
         """
         if self.is_enable_mouse():
             self.on_button_1(event=event)
-        
+
     def on_key_press(self, event):
         """ Key press event
         :event: Actual event
-        """        
+        """
         keysym = event.keysym
         self.key_press(keysym)
-        
+
     def key_press(self, keysym):
         """ Actual or simulated key event
         :keysym: Symbolic key value/string
@@ -645,7 +645,14 @@ class AdwFrontEnd:
         if self._multi_key_progress:
             self.key_multi_process(keysym)
             return
-        
+
+    """
+    keyboard commands
+    """
+    def key_echo(self,keysym):
+        """ Echo key, if appropriate
+        :keysym; key symbol
+        """
         if keysym == 'Escape':
             self.key_escape()
         elif keysym == 'Up':
@@ -658,52 +665,48 @@ class AdwFrontEnd:
             self.key_right()
         elif keysym in "1234567890":
             self.key_digit(keysym)
-        elif keyslow == "a":
+        elif keysym == "a":
             self.key_to_hv_move("first")
-        elif keyslow == "b":
+        elif keysym == "b":
             self.key_to_hv_move("second")
-        elif keyslow == "e":            # Erase current position with current color
+        elif keysym == "e":            # Erase current position with current color
             self.key_mark(False)
-        elif keyslow == "g":
+        elif keysym == "g":
             self.key_goto()             # Goto closest figure
-        elif keyslow == "h":
+        elif keysym == "h":
             self.key_help()             # Help message
-        elif keyslow == "j":
+        elif keysym == "j":
             self.key_magnify(self.MAG_PARENT)         # Jump to magnify parent
-        elif keyslow == "k":
+        elif keysym == "k":
             self.key_magnify(self.MAG_CHILD)          # jump to magnify child
-        elif keyslow == "c":            # Change color
+        elif keysym == "c":            # Change color
             self.key_color_change()
-        elif keyslow == "u":            # raise pen - for subsequent not visible
-            self.key_pendown(False)
-        elif keyslow == "d":
+        elif keysym == "d":
             self.key_pendown()          # lower pen - for subsequent visible
-        elif keyslow == "m":            # Mark current position with current color
+        elif keysym == "m":            # Mark current position with current color
             self.key_mark()
-        elif keyslow == "p":
+        elif keysym == "p":
             self.key_report_pos()       # Report position
-        elif keyslow == "r":
+        elif keysym == "r":
             self.key_report_pos_horz()       # Report horizontal position
-        elif keyslow == "t":
+        elif keysym == "s":
+            self.key_raise_vol_adj()       # Raise volume adjusmten
+        elif keysym == "t":
             self.key_report_pos_vert()       # Report vertical position
-        elif keyslow == "x":
+        elif keysym == "u":  # raise pen - for subsequent not visible
+            self.key_pendown(False)
+        elif keysym == "v":
+            self.key_lower_vol_adj()    # lower volume adjusmten
+        elif keysym == "x":
             self.key_to_hv_move("original")
-        elif keyslow == "z": 
+        elif keysym == "z":
             self.key_clear_display()     # Clear display
-        elif keyslow == "w":
+        elif keysym == "w":
             self.key_write_display()     # Write(print) out figure
-        elif keyslow == "win_l":
+        elif keysym == "win_l":
             pass                        # Ignore Win key
         else:
             self.key_unrecognized(keysym)
-
-    """
-    keyboard commands
-    """
-    def key_echo(self,keysym):
-        """ Echo key, if appropriate
-        :keysym; key symbol
-        """
         #self.key_flush(keysym=keysym)
         if self._echo_input:
             self.adw.speaker_control.speak_text(keysym, msg_type='ECHO')
@@ -714,9 +717,9 @@ class AdwFrontEnd:
         """
         self.escape_pressed = True  # Let folks in prog know
         self.flush_rep_queue()
-        self.speak_text_stop() 
+        self.speak_text_stop()
         self.escape_pressed = False
-        
+
     def key_escape(self):
         SlTrace.lg("Escape pressed")
         #self._multi_key_progress = False    # Stop multi key processing   
@@ -743,22 +746,22 @@ class AdwFrontEnd:
         SlTrace.lg(f"key_color_change: ")
         SlTrace.lg(f"cmd: {self._multi_key_cmd}")
         SlTrace.lg(f"multi...{self._multi_key_progress}")
-                 
+
     def key_color_changeing(self, keysym):
         """ Process color changeing
         :keysym: color letter
         """
         color_letter = keysym.lower()
         if color_letter in self.color_letters:
-                color = self.color_letters[color_letter]
-                self.set_color(color)
-                if self.is_at_cell():
-                    self.set_cell()
+            color = self.color_letters[color_letter]
+            self.set_color(color)
+            if self.is_at_cell():
+                self.set_cell()
         else:
             self.speak_text(f"Don't recognize {color_letter} for color")
-        self._multi_key_cmd = None 
+        self._multi_key_cmd = None
         self._multi_key_progress = False
-            
+
     def key_multi_process(self, keysym):
         """ Process multiple keys
         :keysym: next symbol
@@ -792,7 +795,7 @@ class AdwFrontEnd:
         """ Clear display figure
         """
         self.clear_cells()
-        
+
     def mark_cell(self, cell,
                   mtype=BrailleCell.MARK_SELECTED):
         """ Mark cell for viewing of history
@@ -800,7 +803,7 @@ class AdwFrontEnd:
         :mtype: Mark type default: MARK_SELECTED
         """
         if isinstance(cell, BrailleCell):
-            ixy = (cell.ix,cell.iy) 
+            ixy = (cell.ix,cell.iy)
         else:
             ixy = cell
         cells = self.get_cells()
@@ -809,7 +812,7 @@ class AdwFrontEnd:
             cell.mtype = mtype
             self.show_cell(ixy=ixy)
 
-                    
+
     def set_visible_cell_OLD(self, cell, val=True):
         """ Set cells visible/invisible
         Useful to give sighted a vision
@@ -819,12 +822,12 @@ class AdwFrontEnd:
         canvas = self.canvas
         for item_id in cell.canv_items:
             if val:
-                canvas.itemconfigure(item_id, state='normal')            
+                canvas.itemconfigure(item_id, state='normal')
             else:
                 if self._show_marked:
-                    if cell.mtype !=cell.MARK_UNMARKED: 
+                    if cell.mtype !=cell.MARK_UNMARKED:
                         canvas.itemconfigure(item_id, state='normal')
-                    else:            
+                    else:
                         canvas.itemconfigure(item_id, state='hidden')
                 else:
                     canvas.itemconfigure(item_id, state='hidden')
@@ -832,8 +835,8 @@ class AdwFrontEnd:
         if not val:
             if cell.mtype != cell.MARK_UNMARKED:
                 self.show_cell((cell.ix,cell.iy))   # force view
-        '''                            
-                
+        '''
+
     def set_visible_cell(self, cell, val=True):
         """ Set cells visible/invisible
         Useful to give sighted a vision
@@ -842,14 +845,14 @@ class AdwFrontEnd:
         """
         cell._visible = val
         self.show_cell(ixy=(cell.ix,cell.iy))
-        
-    
+
+
     def show_cell(self, ixy=None):
         cells = self.get_cells()
         if ixy in cells:
             cell = cells[ixy]
             self.display_cell(cell)
-                    
+
     def show_cell_OLD(self, ixy=None):
         cells = self.get_cells()
         if ixy in cells:
@@ -861,8 +864,8 @@ class AdwFrontEnd:
                 if item_type == "rectangle":
                     canvas.itemconfigure(item_id, fill='dark gray')
                 else:
-                    canvas.itemconfigure(item_id, fill='')            
-        
+                    canvas.itemconfigure(item_id, fill='')
+
 
     def key_help(self):
         """ Help - list keyboard action
@@ -889,26 +892,28 @@ class AdwFrontEnd:
         m - mark location
         p - Report/Say current position
         r - Horizontal position stuff to left, to Right
+        s - raise volume adjustment for scanning
         t - Vertical position stuff to Top, to bottom
-        u - penup - move with out marking 
+        u - penup - move with out marking
+        v - lower volume adjustment for scanning 
         w - write out braille
         x - move to original cell (after a/b Horizontal/Vertical)
         z - clear board
         Escape - flush pending report output
         """
         self.speak_text(help_str)
-        
+
     def key_up(self):
         y_inc = -1
         self.move_cursor(y_inc=y_inc, general_move=True)
-    
+
     def key_down(self):
         y_inc = 1
         self.move_cursor(y_inc=y_inc, general_move=True)
-        
+
     def key_left(self):
         self.move_cursor(x_inc=-1, general_move=True)
-        
+
     def key_right(self):
         self.move_cursor(x_inc=1, general_move=True)
 
@@ -926,7 +931,7 @@ class AdwFrontEnd:
         cell = self.get_cell_at()
         if cell is None:
             return      # TBD beep?, red dot?
-        
+
         self.set_visible_cell(cell, val=set_val)
         self.update()
 
@@ -939,13 +944,13 @@ class AdwFrontEnd:
         mag_info = self.get_mag_info()
         if mag_info is None:
             self.speak_text("Magnification is not enabled")
-            return 
-        
+            return
+
         if option == self.MAG_PARENT:
             parent = mag_info.parent_info
             if parent is None:
                 self.speak_text("No magnification parent")
-                return 
+                return
             display = parent.display_window
         elif option == self.MAG_CHILD:
             children = mag_info.child_infos
@@ -955,7 +960,7 @@ class AdwFrontEnd:
             display = children[0].display_window
         else:
             raise Exception(f"Unrecognized magnify option: {option}")
-        
+
         self.adw_window_display(display)
 
     def adw_window_display(self, window):
@@ -969,7 +974,7 @@ class AdwFrontEnd:
         root.focus_force()
         root.lift()
         root.attributes('-topmost', 1)
-        
+
     def key_talk(self, val=True):
         """ Enable / Disable talking
         """
@@ -986,7 +991,7 @@ class AdwFrontEnd:
         """
         if self._loc_list_first is None:
             return      # No current target
-        
+
         if end_pos == "first":
             self.move_to_ixy(*self._loc_list_first)
         elif end_pos == "second":
@@ -995,13 +1000,13 @@ class AdwFrontEnd:
             self.move_to_ixy(*self._loc_list_original)
         else:
             audio_beep = self.get_audio_beep()
-            audio_beep.announce_can_not_do()          
+            audio_beep.announce_can_not_do()
 
 
     def key_report_pos(self):
         """ Report current position with voice
         """
-        self.pos_check(force_output=True, with_voice=True) 
+        self.pos_check(force_output=True, with_voice=True)
 
     def get_cells_in_dir(self, ixy, dir):
         """ Get list of cells/locations from cell in given direction
@@ -1031,25 +1036,25 @@ class AdwFrontEnd:
             if chg_y < 0:
                 if loc_y < self.get_iy_min():
                     break   # Top edge
-            
+
             loc = (loc_x,loc_y)
             cell = self.get_cell_at_ixy(loc)
             if cell is not None:
                 loc_list.append(cell)
             else:
                 loc_list.append(loc)
-        return loc_list   
+        return loc_list
 
     def set_color(self, color):
         """ Set current color
         """
         self._color = color
-        
+
     def get_color(self):
         """ Get current color
         """
         return self._color
-    
+
     def loc_list_target(self, pos_ixy, name, dir):
         """ Create target (msg, ixy) of search
         msg: text description of range
@@ -1069,7 +1074,7 @@ class AdwFrontEnd:
         loc_list = self.get_cells_in_dir(ixy=pos_ixy, dir=dir)
         msg = ""
         target_ixy = pos_ixy
-        
+
         if cell is not None:
             colors = {}         # Inside figure
             ncell = 0
@@ -1089,8 +1094,8 @@ class AdwFrontEnd:
                                 break
                             ntblank += 1
                             target_ixy = ltblank
-                            
-                        
+
+
                     break
             if ncell > 0:
                 plr = "s" if ncell > 1 else ""      # part of string
@@ -1117,7 +1122,7 @@ class AdwFrontEnd:
                     target_ixy = loc_or_cell    # move along blanks
                 else:
                     cell_end = loc_or_cell    # Cell after end
-                    target_ixy = (cell_end.ix,cell_end.iy) 
+                    target_ixy = (cell_end.ix,cell_end.iy)
                     if nblank == 0:
                         for ltcell in loc_list[nblank:]:
                             if not isinstance(ltcell, BrailleCell):
@@ -1125,7 +1130,7 @@ class AdwFrontEnd:
                             ntcell += 1
                             tcell_colors[ltcell.color_string()] = 1
                             target_ixy = (ltcell.ix, ltcell.iy)
-                            
+
                     break
             if nblank > 0:      # Are there a string of blanks
                 plr = "s" if nblank  > 1  else ""
@@ -1140,7 +1145,17 @@ class AdwFrontEnd:
                     msg += plr
                 msg += f" to {name}"
         return (msg,target_ixy)
-                
+
+    def key_raise_vol_adj(self):
+        """ Raise volume adjustment
+        """
+        self.raise_vol_adj()
+
+    def key_lower_vol_adj(self):
+        """ Raise volume adjustment
+        """
+        self.lower_vol_adj()
+
     def key_report_pos_horz(self):
         """ Report current horizontal position
                 if in figure cell:
@@ -1151,15 +1166,15 @@ class AdwFrontEnd:
         """
         pos_ixy = self.get_ixy_at()
         msg_left, loc_left_end = self.loc_list_target(pos_ixy,
-                                             name="left", dir=(-1,0))
+                                                      name="left", dir=(-1,0))
         msg_right, loc_right_end = self.loc_list_target(pos_ixy,
-                                             name="right", dir=(1,0))
+                                                        name="right", dir=(1,0))
         self._loc_list_original = pos_ixy
         self._loc_list_first = loc_left_end
         self._loc_list_second = loc_right_end
         self.speak_text(msg_left)
         self.speak_text(msg_right)
-                
+
     def key_report_pos_vert(self):
         """ Report current vertical position
                 if in figure cell:
@@ -1174,21 +1189,21 @@ class AdwFrontEnd:
         dir_down = (0,1)
         pos_ixy = self.get_ixy_at()
         msg_top, loc_top_end = self.loc_list_target(pos_ixy,
-                                         name="above", dir=dir_up)
+                                                    name="above", dir=dir_up)
         msg_bottom, loc_bottom_end = self.loc_list_target(pos_ixy,
-                                         name="below", dir=dir_down)
+                                                          name="below", dir=dir_down)
         self._loc_list_original = pos_ixy
         self._loc_list_first = loc_top_end
         self._loc_list_second = loc_bottom_end
 
         self.speak_text(msg_top)
         self.speak_text(msg_bottom)
-                
+
     def key_silent(self):
         """ Disable sound
         """
         self.make_silent(val=True)
-        
+
     def make_noisy(self):
         """ Enable sound
         """
@@ -1196,22 +1211,22 @@ class AdwFrontEnd:
 
     def make_silent(self, val=True):
         self.set_silent(val)
-                                            
+
     def key_space(self):
         """ repeat last key cmd
         """
     def key_tab(self):
         """ repeat last key cmd 4 times
         """
-        
+
     def key_unrecognized(self, keyslow):
         """ Process unrecognized key
         :keyslow: key symbol (lower case)
         """
         self.speak_text(f"Don't understand {keyslow}")
 
-    
-    def key_backspace(self):    
+
+    def key_backspace(self):
         """ retract last key command
         """
 
@@ -1229,7 +1244,7 @@ class AdwFrontEnd:
     def key_set_rept_at(self, set_val=True):
         """ Turn on/off "addition of at location" on reporting
         """
-        self.rept_at_loc = set_val 
+        self.rept_at_loc = set_val
         SlTrace.lg(f"rept_at_loc:{self.rept_at_loc}")
 
     def key_visible(self,val=True):
@@ -1240,7 +1255,7 @@ class AdwFrontEnd:
         self.set_visible(val)
 
     def check_if_drawing(self, x=None, y=None,
-                          force_output=False):       
+                         force_output=False):
         """ Check on drawing
         Add report string to report queue
         :x: x-coordinate (win) default: self.pos_x
@@ -1253,9 +1268,9 @@ class AdwFrontEnd:
         if cell is not None:
             self.pos_rep_queue.append(("draw", (cell.ix,cell.iy)))
             return 0,dist_x,dist_y,cell      # Force "on figure"
-        
+
         return dist,dist_x,dist_y,cell
-        
+
     def check_distance(self, x=None, y=None,
                        force_output=False):
         """ Check on distance to drawing
@@ -1269,15 +1284,15 @@ class AdwFrontEnd:
                         dist_y - in cells down
                         cell - closest cell, if one, else None
         """
-        
+
         dist, dist_x, dist_y, cell = self.distance_from_drawing(x,y)
         if dist is not None and dist > 0:
             if force_output:
                 self.pos_rep_force_output = True
                 self.pos_rep_queue = []
             self.pos_rep_queue.append(("dist", dist_x, dist_y))
-        return dist, dist_x, dist_y, cell    
-        
+        return dist, dist_x, dist_y, cell
+
     def distance_from_drawing(self, x=None, y=None):
         """ Approximately minimum distance in cells from point
             to some displayed cell
@@ -1289,8 +1304,8 @@ class AdwFrontEnd:
                  (0 only iff already in displayed cell)
         """
         return self.distance_from_drawing_win(x=None, y=None)
-        
-        
+
+
     def distance_from_drawing_win(self, x=None, y=None):
         """ Approximately minimum distance in cells from point
             to some displayed cell, using window coordinates
@@ -1309,23 +1324,23 @@ class AdwFrontEnd:
         if x is None:
             return  None,None,None,None # Nothing to report
 
-        cells = self.get_cells()        
-                        # Check/Report on distance from figure
+        cells = self.get_cells()
+        # Check/Report on distance from figure
         if (cells is None
-                 or len(cells) == 0):
+                or len(cells) == 0):
             return 999,999,999, None   # Far....p
 
         cell = self.get_cell_at((x,y))
         if cell is not None:
             cell_closest = cell      # We're there
             return 0,0,0, cell        # On drawing
-        
+
         pt_ixy = self.get_ixy_at((x,y))
         cell_closest = None         # Set if found
         min_dist = None
         min_dist_x = 0      # x,y offset at min dist
         min_dist_y = 0
-        pt_ix, pt_iy = pt_ixy 
+        pt_ix, pt_iy = pt_ixy
         for cell_ixy in self.get_cells():
             cell_ix, cell_iy = cell_ixy
             dist = sqrt((cell_ix-pt_ix)**2 + (cell_iy-pt_iy)**2)
@@ -1337,7 +1352,7 @@ class AdwFrontEnd:
         if min_dist <= 0:
             min_dist = .001     # Saving 0 for in display element
         return min_dist, min_dist_x, min_dist_y, cell_closest
-                
+
     def pos_check(self, x=None, y=None, force_output=False, with_voice=False):
         """ Do position checking followed by report queue processing
         :x: x postion default: current
@@ -1348,7 +1363,7 @@ class AdwFrontEnd:
         self.pos_check_1(x=x, y=y, force_output=force_output)
         self.pos_report(
             force_output=force_output, with_voice=with_voice)  # Handles reporting, queue, timeing
-            
+
     def pos_check_1(self, x=None, y=None, force_output=False):
         """ Position check to see if reporting is warranted
         We use this to reduce the probability that too frequent
@@ -1361,17 +1376,17 @@ class AdwFrontEnd:
         ###    self.mw.after(int(self.pos_check_interval*1000), self.pos_check)
         now = datetime.now()
         if (not force_output
-                    and (now-self.pos_rep_time).total_seconds()
-                       < self.pos_rep_interval):
+                and (now-self.pos_rep_time).total_seconds()
+                < self.pos_rep_interval):
             return              # No reporting this often
-        
-        self.check_distance(x=x, y=y,
-                 force_output=force_output)  # check on distance to drawing
-        self.check_if_drawing(x=x, y=y,
-                 force_output=force_output)    # check if on drawing
 
-        
-        
+        self.check_distance(x=x, y=y,
+                            force_output=force_output)  # check on distance to drawing
+        self.check_if_drawing(x=x, y=y,
+                              force_output=force_output)    # check if on drawing
+
+
+
     def pos_report(self, *args, force_output=False, with_voice=False):
         """ Report position, from queue if sufficient time since last
         report. Reduce queue if too long
@@ -1380,7 +1395,7 @@ class AdwFrontEnd:
         :with_voice: say it default: False - do as set
         """
         if self.pos_rep_force_output:
-            force_output = True 
+            force_output = True
             self.pos_rep_force_output = False   # clear for next
         if len(args) > 0:
             rep_type, *rep_args = args
@@ -1389,7 +1404,7 @@ class AdwFrontEnd:
             if force_output:
                 self.pos_rep_queue = []     # force flushes queue
                 self.pos_rep_queue.append((args))  # Add report
-        
+
         '''
         now = datetime.now()
         if (not force_output
@@ -1404,7 +1419,7 @@ class AdwFrontEnd:
         if self.escape_pressed:
             return      # TBD still not atomic!!!!
         '''
-       
+
         while len(self.pos_rep_queue) > 0:
             rep_type, *rep_args = self.pos_rep_queue.pop(0)
             if rep_type == "dist":
@@ -1433,10 +1448,10 @@ class AdwFrontEnd:
                 rep_str = color
             elif rep_type == "msg":
                 rep_str = rep_args[0]
-    
+
             ix,iy = self.get_ixy_at()
             SlTrace.lg(f"from get_ixy_at(): ix:{ix} iy:{iy}",
-                        "pos_tracking")
+                       "pos_tracking")
             if self.is_using_audio_beep() and not with_voice:
                 audio_beep = self.get_audio_beep()
                 audio_beep.announce_pcell((ix,iy), dly=0)
@@ -1451,14 +1466,14 @@ class AdwFrontEnd:
                     rep_str += f" at row {iy+1} column {ix+1}"
                 if (force_output
                         or ix != self.pos_rep_ix_prev    # Avoid repeats
-                        or iy != self.pos_rep_iy_prev):            
+                        or iy != self.pos_rep_iy_prev):
                     self.win_print(rep_str, end= "\n")
                     self.speak_text(rep_str)
                     self.pos_rep_time = datetime.now()  # Time of last report
                     self.pos_rep_ix_prev = ix
                     self.pos_rep_iy_prev = iy
                     self.pos_rep_str_prev = rep_str
-        
+
     def key_goto(self):
         """ Go to closest figure
             go to figure not in one already
@@ -1468,7 +1483,7 @@ class AdwFrontEnd:
         dist, dist_x, dist_y, cell = self.distance_from_drawing()
         if dist is None or cell is None:
             return              # Nowhere
-        
+
         start_cell = (cell.ix,cell.iy)
         gfg = GridFillGobble(self.get_cells(),start_cell)
         self.goto_travel_list = gfg.find_region(start_cell)
@@ -1476,12 +1491,12 @@ class AdwFrontEnd:
             self.goto_cell(ix=cell.ix, iy=cell.iy)
             self.clear_goto_cell_list()
             self.add_to_goto_cell_list(start_cell)
-                                         
+
             self.goto_travel_list_index = 0
         else:
             if len(self.goto_travel_list) == 0:
                 return  # No travel list
-            
+
             if not hasattr(self, 'goto_travel_list_index'):
                 SlTrace.lg("goto_travel_list_index forced to zero")
                 self.goto_travel_list_index = 0
@@ -1491,7 +1506,7 @@ class AdwFrontEnd:
             new_cell= self.goto_travel_list[goto_idx]
             self.goto_cell(ix=new_cell[0], iy=new_cell[1])
 
-        
+
     def win_print(self,*args, dup_stdout=False, **kwargs):
         """ print to listing area
         :*args: print-like args
@@ -1508,9 +1523,9 @@ class AdwFrontEnd:
         if dup_stdout:
             print(*args, **kwargs)
         self.win_print_entry.delete(0, tk.END)
-        self.win_print_entry.insert(0, lstr)    
+        self.win_print_entry.insert(0, lstr)
         #time.sleep(.2)
-    
+
     def key_digit(self, keyslow):
         """ Process digit key as direction
         :keyslow: 1-9 move in direction
@@ -1543,12 +1558,12 @@ class AdwFrontEnd:
         if cell is None:
             cell = self.get_cell_at()
         if cell is None:
-            return 
-        
+            return
+
         self.erase_cell(cell)
         cells = self.get_cells()
         del cells[(cell.ix,cell.iy)]
-        
+
 
     def key_mark(self, val=True):
         """ Mark/Erase current location with current color
@@ -1558,7 +1573,7 @@ class AdwFrontEnd:
         """
         if not self._drawing:
             self.announce_can_not_do("Not drawing", val)
-            
+
         if val:
             cell = self.get_cell_at()
             if cell is None:
@@ -1570,8 +1585,8 @@ class AdwFrontEnd:
         else:
             cell = self.get_cell_at()
             self.delete_cell(cell)
-                
-        
+
+
     def key_direction(self, keyslow):
         """ Process key direction command
         :keyslow: key 123 4 6 789
@@ -1587,7 +1602,7 @@ class AdwFrontEnd:
             self._cursor_item = None
         rd = 5
         pos_x,pos_y = self.get_xy_canvas()
-        
+
         x0 = pos_x-rd
         x1 = pos_x+rd
         y0 = pos_y-rd
@@ -1601,12 +1616,12 @@ class AdwFrontEnd:
 
     def set_using_audio_beep(self, using=True):
         self._using_audio_beep = using
-    
+
     def get_audio_beep(self):
         """ Get access to audio tone feedback for location
         """
         return self.audio_beep
-    
+
     def setup_beep(self):
         """ Setup audio beep location reporting
         """
@@ -1618,18 +1633,27 @@ class AdwFrontEnd:
         """ Update display
         """
         self.adw.update()
-        
+
     def update_idle(self):
         """ Update pending
         """
         self.adw.update_idle()
 
-        
+
     """
     ############################################################
                        Links to scanner
     ############################################################
     """
+    def raise_vol_adj(self):
+        """ Adjust scanning audio level
+        """
+        self.scanner.raise_vol_adj()
+
+    def lower_vol_adj(self):
+        """ Adjust scanning audio level
+        """
+        self.scanner.lower_vol_adj()
 
     def set_cell_time(self, time):
         """ Set cell tone duration hoped
@@ -1642,7 +1666,7 @@ class AdwFrontEnd:
         :time: cell time in seconds
         """
         self.scanner.set_space_time(time=time)
-    
+
     def set_combine_wave(self, val=True):
         """ Enable/disable combine wave scanning mode
         :val: value for mode
@@ -1671,23 +1695,23 @@ class AdwFrontEnd:
         """ Flip skipping run of equals
         """
         self.scanner.flip_skip_run()
-    
+
     def set_skip_space(self, val):
         self.scanner.set_skip_space(val=val)
-    
+
     def set_skip_space_max(self, val):
         self.scanner.set_skip_space_max(val=val)
 
 
     def is_skip_space(self):
-        return self.scanner.is_skip_space() 
+        return self.scanner.is_skip_space()
 
     def is_skip_run(self):
-        return self.scanner.is_skip_run() 
-    
+        return self.scanner.is_skip_run()
+
     def set_skip_run(self, val):
         self.scanner.set_skip_run(val=val)
-    
+
     def set_skip_run_max(self, val):
         self.scanner.set_skip_run_max(val=val)
 
@@ -1695,7 +1719,7 @@ class AdwFrontEnd:
         """ Flip skipping spaces
         """
         self.scanner.flip_skip_space()
-        
+
     def get_vol(self, ix, iy, eye_ixy_l=None, eye_ixy_r=None):
         """ Get tone volume for cell at ix,iy
         volume(left,right)
@@ -1710,16 +1734,16 @@ class AdwFrontEnd:
 
     def set_scanning(self, cells=None):
         self.scanner.set_scanning(cells=cells)
-            
+
     def start_scanning(self):
         self.remove_mag_selection()
         self.scanner.start_scanning()
 
-     
+
     def stop_scanning(self):
         self.scanner.stop_scanning()
 
-        
+
     """
     ############################################################
                        Links to menus
@@ -1736,14 +1760,14 @@ class AdwFrontEnd:
         :short_cut: one letter option for call 
         """
         self.menus.draw_direct_call(short_cut)
-        
+
 
     def mag_direct_call(self, short_cut):
         """ Short-cut call direct to option
         :short_cut: one letter option for call 
         """
         self.menus.mag_direct_call(short_cut)
-        
+
 
     def nav_direct_call(self, short_cut):
         """ Short-cut call direct to option
@@ -1758,7 +1782,7 @@ class AdwFrontEnd:
         self.menus.scan_direct_call(short_cut)
 
     """ End of menus links """
-            
+
     """
     ############################################################
                        Links to adw
@@ -1767,7 +1791,7 @@ class AdwFrontEnd:
 
     def clear_cells(self):
         self.adw.clear_cells()
-            
+
     def complete_cell(self, cell, color=None):
         """ create/Fill braille cell
             Currently just fill with color letter (ROYGBIV)
@@ -1781,10 +1805,10 @@ class AdwFrontEnd:
         """ Remove history, undo history marking
         """
         self.adw.erase_pos_history()
-        
+
     def set_grid_path(self):
         self.adw.set_grid_path()
-        
+
     def get_grid_path(self):
         return self.adw.get_grid_path()
 
@@ -1793,7 +1817,7 @@ class AdwFrontEnd:
 
     def get_look_dist(self):
         return self.adw.get_look_dist()
-            
+
     def get_ix_min(self):
         """ get minimum ix on grid
         :returns: min ix
@@ -1848,7 +1872,7 @@ class AdwFrontEnd:
         """
         speaker_control = self.get_speaker_control()
         return speaker_control.get_speech_queue_size()
-    
+
     def get_win_ullr_at_ixy_canvas(self, ixy):
         """ Get window rectangle for cell at ixy
         :ixy: cell index tupple (ix,iy)
@@ -1862,7 +1886,7 @@ class AdwFrontEnd:
         :returns: True if at cell, else False
         """
         return self.adw.is_at_cell(pt=pt)
-                    
+
     def print_braille(self, title=None, shift_to_edge=None):
         """ Output braille display
         :title: title default: self.title
@@ -1885,8 +1909,8 @@ class AdwFrontEnd:
         :returns: cell
         """
         return self.adw.create_cell(cell_ixy=cell_ixy, color=color,
-                    show=show)
-    
+                                    show=show)
+
     def display_cell(self, cell, show_points=False):
         """ Display cell
         :cell: BrailleCell
@@ -1903,7 +1927,7 @@ class AdwFrontEnd:
 
     def get_cells(self):
         return self.adw.get_cells()
-    
+
     def get_cell_at(self, pt=None):
         """ Get cell at location, if one
         :pt: x,y pair location in turtle coordinates
@@ -1919,14 +1943,14 @@ class AdwFrontEnd:
             xc,yc are x,y coordinates of cell's center
         """
         return self.adw.get_cell_center_win(ix=ix, iy=iy)
-    
+
     def get_cell_at_ixy(self, cell_ixy):
         """ Get cell at (ix,iy), if one
         :cell_ixy: (ix,iy)
         :returns: BrailleCell if one, else None
         """
         return self.adw.get_cell_at_ixy(cell_ixy)
-        
+
     def get_ixy_at(self, pt=None):
         """ Get cell(indexes) in which point resides
         If on an edge returns lower cell
@@ -1953,7 +1977,7 @@ class AdwFrontEnd:
         :color: color default: current color
         """
         self.adw.set_cell(pt=pt, color=color)
-        
+
     def set_visible(self, val=True):
         """ Set cells visible/invisible
         Useful to give sighted a vision
@@ -1961,7 +1985,7 @@ class AdwFrontEnd:
         """
         self.adw.set_visible(val=val)
 
-                        
+
     def speak_text(self, msg, dup_stdout=True,
                    msg_type=None,
                    rate=None, volume=None):
@@ -1977,8 +2001,8 @@ class AdwFrontEnd:
         :volume: volume default: .9            
         """
         self.adw.speak_text(msg=msg, msg_type=msg_type,
-                             dup_stdout=dup_stdout,
-                             rate=rate, volume=volume)
+                            dup_stdout=dup_stdout,
+                            rate=rate, volume=volume)
 
     def mainloop(self):
         self.adw.mainloop()
@@ -2003,16 +2027,16 @@ class AdwFrontEnd:
         :returns: True iff in bounds
         """
         if ix > self.get_ix_max():
-            return False 
+            return False
         if ix < self.get_ix_min():
             return False
         if iy > self.get_iy_max():
-            return False 
+            return False
         if iy < self.get_iy_min():
-            return False 
-        
+            return False
+
         return True
-        
+
     def move_cursor_general(self, x_inc=0, y_inc=0):
         """ Move cursor by cell increments honor scanning skip_space, skip_run
         :x_inc: x change default: no movement
@@ -2025,10 +2049,10 @@ class AdwFrontEnd:
         if not self.is_inbounds(ix=ix_next, iy=iy_next):
             self.announce_can_not_do()
             return
-        
+
         skip_space = self.is_skip_space()
         skip_run = self.is_skip_run()
-        ixy = (ix_next,iy_next) 
+        ixy = (ix_next,iy_next)
         cell_first = cells[ixy] if ixy in cells else None
         color_first = cell_first.color_string() if cell_first is not None else None
         loc_list = [(ixy, cell_first)]
@@ -2036,20 +2060,20 @@ class AdwFrontEnd:
             ix_next,iy_next = ix_next+x_inc, iy_next+y_inc
             if not self.is_inbounds(ix=ix_next, iy=iy_next):
                 break       # Quit  if next cell is out of bounds
-            
+
             ixy = (ix_next,iy_next)
             cell_next = cells[ixy] if ixy in cells else None
             color_next = cell_next.color_string() if cell_next is not None else None
             if skip_space and cell_first is None and cell_next is None:
                 loc_list.append((ixy, cell_next))    # skip spaces
                 continue
-            
+
             if (skip_run and cell_next is not None
                     and cell_first is not None and color_next == color_first):
                 loc_list.append((ixy, cell_next))
                 continue
             break       # Anything else and we are done
-        
+
         for loc in loc_list:        # Mark cells we've traversed
             cell = loc[1]
             if not self.is_drawing():
@@ -2061,7 +2085,7 @@ class AdwFrontEnd:
                 self.speak_text(f"{lc} {cstr}")
             else:
                 self.speak_text(f"{lc} blanks")
-        ix,iy = loc[0]    
+        ix,iy = loc[0]
         self.move_to_ixy(ix=ix, iy=iy)
 
     def move_cursor_win(self, x_inc=0, y_inc=0):

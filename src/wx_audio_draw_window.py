@@ -1,6 +1,10 @@
-#audio_draw_window.py    12Dec2022  crs, from audio_window.py
+#wx_audio_draw_window.py 24May2023  crs, from audio_draw_window.py
+#                        12Dec2022  crs, from audio_window.py
 #                        08Nov2022  crs, Author
 """
+Remodeled to use wxPython to facilitate better support
+with screen readers such as NVDA and JAWS
+
 Provide simple drawing graphical window with audio feedback
 to facilitate use and examination by the visually impaired.
 Uses turtle to facilitate cursor movement within screen
@@ -8,7 +12,7 @@ Adapted from audio_window to concentrate on figure drawing
 as well as presentation.
 """
 import os
-import tkinter as tk
+import wx
 
 from select_trace import SlTrace
 from speaker_control import SpeakerControlLocal
@@ -16,12 +20,9 @@ from grid_path import GridPath
 from braille_cell import BrailleCell
 from magnify_info import MagnifyInfo, MagnifyDisplayRegion
 from adw_front_end import AdwFrontEnd
+from wx_win import WxWin
 
 class AudioDrawWindow:
-
-
-
-    
     def __init__(self,
         title=None, speaker_control=None,
         win_width=800, win_height=800,
@@ -117,11 +118,12 @@ class AudioDrawWindow:
             x_min = 0
         if y_min is None:
             y_min = 0
-        # create the feedback window
-        mw = tk.Tk()
+        # create the audio feedback window
+        wx_app = wx.App()
+        wx_frame = wx.Frame(None,  title=title)
+        wx_win = WxWin(app=wx_app, frame=wx_frame)
         self.title = title
-        mw.title(title)
-        self.mw = mw
+        self.wx_win = wx_win
         if speaker_control is None:
             SlTrace.lg("Creating own SpeakerControl")
             speaker_control = SpeakerControlLocal(win=mw)
@@ -129,20 +131,6 @@ class AudioDrawWindow:
         #mw.withdraw()
 
 
-        
-        win_print_frame = tk.Frame(mw)
-        win_print_frame.pack(side=tk.TOP)
-        win_print_entry = tk.Entry(
-                                win_print_frame, width=50)
-        win_print_entry.pack(side=tk.TOP)
-        self.win_print_entry = win_print_entry
-        
-        canvas = tk.Canvas(mw, width=self.win_width, height=self.win_height)
-        canvas.pack()
-        self.canvas = canvas
-        self.update()        # Force display
-        SlTrace.lg(f"canvas width: {canvas.winfo_width()}")
-        SlTrace.lg(f"canvas height: {canvas.winfo_height()}")
         self._visible = visible
         self.fte = AdwFrontEnd(self, title=title, silent=silent, color=color)
         self.set_x_min(x_min)
