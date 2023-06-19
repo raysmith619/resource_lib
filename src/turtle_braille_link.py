@@ -26,7 +26,17 @@ import sys
 import os
 from pathlib import Path
 
-lib_dir = "resource_lib_proj"
+lib_dirs = [ "resource_lib", "resource_lib_proj"]
+lib_dir_found = False
+for sys_dir in sys.path:
+    if lib_dir_found:
+        break
+    for lib_dir in lib_dirs:
+        if lib_dir in Path(sys_dir).parts:
+            print(f"Found {lib_dir} in sys.path: {sys.path}")
+            lib_dir_found = True
+            break
+
 src_dir = "src"
 src2_dir = "pysinewave_master"  # second path for pysinewave latest
                                 # MUST be sister to lib_dir

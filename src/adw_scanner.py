@@ -62,6 +62,7 @@ class AdwScanner:
                  n_combine_wave=2,
                  vol_adj=30):
         """ Setup scanning
+        :fte: front end instance
         :cell_time: time (seconds) to beep cell
         :space_time: time (seconds) to beep space
         :skip_space: True - skip space default: True
