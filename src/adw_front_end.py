@@ -64,6 +64,7 @@ class AdwFrontEnd:
         :menu_str: initial menu command string default: none
         """
         self.adw = adw
+        self.speaker_control = self.get_speaker_control()
         if title is None:
             title = "Audio Menu"
         self.title = title
@@ -1645,15 +1646,6 @@ class AdwFrontEnd:
                        Links to scanner
     ############################################################
     """
-    def raise_vol_adj(self):
-        """ Adjust scanning audio level
-        """
-        self.scanner.raise_vol_adj()
-
-    def lower_vol_adj(self):
-        """ Adjust scanning audio level
-        """
-        self.scanner.lower_vol_adj()
 
     def set_cell_time(self, time):
         """ Set cell tone duration hoped
@@ -1782,6 +1774,36 @@ class AdwFrontEnd:
         self.menus.scan_direct_call(short_cut)
 
     """ End of menus links """
+
+    """
+    ############################################################
+                       Links to speaker control
+    ############################################################
+    """
+
+
+    def get_vol_adj(self):
+        """ Get current volume adjustment ??? Thread Safe ???
+        :returns: current vol_adjustment in db
+        """
+        return self.speaker_control.get_vol_adj()
+
+    def set_vol_adj(self, adj=0.0):
+        """ Set volume adjustment
+        :adj: db adjustment default:0.0
+        """
+        self.speaker_control.set_vol_adj(adj=adj)
+
+    def raise_vol_adj(self, db_adj=None):
+        """ Adjust scanning audio level
+        """
+        self.speaker_control.raise_vol_adj(db_adj=db_adj)
+
+    def lower_vol_adj(self, db_adj=None):
+        """ Adjust scanning audio level
+        """
+        self.speaker_control.lower_vol_adj(db_adj=db_adj)
+
 
     """
     ############################################################

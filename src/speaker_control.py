@@ -207,25 +207,28 @@ class SpeakerControl(Singleton):
     SOUND_SIZE = 150
     #SOUND_SIZE = 30        # To force filling
     cmd_id = 0
-    
+
     @classmethod
     def new_id(cls):        # Thread safe ???  TBD
         cls.cmd_id += 1
         return cls.cmd_id
-    
+
     def __init__(self, cmds_size=CMDS_SIZE, sound_size=SOUND_SIZE,
-                 sample_rate=44100):
+                 sample_rate=44100,
+                 db_adj_default=4):
         """ Setup speaker control
         :cmds_size: general command queue size
         :sounc_size: pending sounds queue size
         :sample_rate: waveform presentation sample_rate
                     default: 44100 per second
+        :db_adj_default: default volume adjustment (db)
         """
         self.cmds_size = cmds_size
         self.sound_size = sound_size
         self.sample_rate = sample_rate
         self.start_control()
-        
+        self.vol_adj = 0.0      # Central volume adjustment factor
+        self.db_adj_default = db_adj_default
     def start_control(self):
         """ Start / Restart controll
         """
@@ -249,12 +252,12 @@ class SpeakerControl(Singleton):
         self.sc_speech_busy = False     # True - iff speeking
         self.sc_tone_busy = False       # True - iff toneing
 
-        
+
     def sc_cmd_proc_thread(self):
         """ speech maker command processing thread function
         """
         while not self.forced_clear and self._running:
-            
+
             cmd = self.sc_cmd_queue.get()
             SlTrace.lg(f"cmd: {cmd}", "speech")
             SlTrace.lg(f"cmd: {cmd}", "sound_queue")
@@ -292,7 +295,7 @@ class SpeakerControl(Singleton):
         :returns: number of entries
         """
         return self.sc_sound_queue.qsize()
-        
+
     def clear(self):
         """ Clear queue
         """
@@ -302,15 +305,15 @@ class SpeakerControl(Singleton):
         SlTrace.lg(f"self.sc_cmd_queue.qsize(): {self.sc_cmd_queue.qsize()}")
         self.clear_sound_queue()
         SlTrace.lg(f"self.sc_sound_queue.qsize(): {self.sc_sound_queue.qsize()}")
-        self.sc_speech_busy = False 
+        self.sc_speech_busy = False
         self.sc_tone_busy = False
 
-    
+
     def stop_scan(self):
         """ Stop current scan
         """
         self.clear()
-        
+
 
     def clear_cmd_queue(self):
         while self.sc_cmd_queue.qsize() > 0:
@@ -321,7 +324,7 @@ class SpeakerControl(Singleton):
         while self.sc_sound_queue.qsize() > 0:
             cmd = self.sc_sound_queue.get()
             SlTrace.lg(f"removing speech queue entry: {cmd}")
-            
+
     def force_clear(self):
         """ force Clear
         :restart: restart controller after a short wait
@@ -341,28 +344,28 @@ class SpeakerControl(Singleton):
         #self.pyttsx3_engine = pyttsx3.init()
 
         #self.sound_lock.release()
-        self.sc_speech_busy = False 
+        self.sc_speech_busy = False
         self.sc_tone_busy = False
 
     def force_clear_reset(self):
-        self.sc_forced_clear = False 
-            
+        self.sc_forced_clear = False
+
     def is_busy(self):
         """ Check if if busy or anything is pending
         """
-        
+
         if self.sc_speech_busy or self.sc_tone_busy:     # Fast check
             return True
-        
+
         if self.get_cmd_queue_size() > 0:
-            return True 
+            return True
 
         if self.get_sound_queue_size() > 0:
             return True
 
         if self.sc_speech_busy or self.sc_tone_busy:     # Final check
             return True
-        
+
         return False
 
     def is_in_progress(self, cmd_id):
@@ -370,10 +373,10 @@ class SpeakerControl(Singleton):
         :cmd_id: command  id
         """
         if cmd_id in self.cmds_in_progress:
-            return True 
-        
-        return False 
-    
+            return True
+
+        return False
+
     def sc_sound_proc_thread(self):
         """ Process pending speech requests (SpeakerControlCmd)
         """
@@ -394,7 +397,7 @@ class SpeakerControl(Singleton):
                         SlTrace.lg(f"dropping {cmd}")
                     else:
                         break
-                    
+
             cmd = self.sc_sound_queue.get()
             SlTrace.lg(f"speech queue: cmd: {cmd}", "sound_queue")
             if cmd.cmd_type == "CLEAR":
@@ -423,9 +426,9 @@ class SpeakerControl(Singleton):
                     raise SpeakerControlError(f"after missing win in cmd {cmd}")
                 if cmd_id in self.cmds_in_progress:
                     del self.cmds_in_progress[cmd_id]
-                
+
         SlTrace.lg("sc_sound_proc_thread returning")
-            
+
     def quit(self):
         SlTrace.lg("SpeakerControl quitting")
         self.clear()
@@ -442,7 +445,7 @@ class SpeakerControl(Singleton):
         """
         self.delay_start(dur=dur)
         self.delay_wait()
-        
+
     def delay_start(self, dur):
         """ Start delay
         :dur: duration in seconds
@@ -453,19 +456,19 @@ class SpeakerControl(Singleton):
         """ wait till delay end
         """
         while not self._delay.is_end():
-            time.sleep(.001) 
-        
+            time.sleep(.001)
+
     def play_tone(self, tone):
         """ Called to play pending tone
         :tone: (SpeakerTone) tuple left,right or monoral
         """
         if type(tone.volume) != tuple:
             tone.volume = (tone.volume,tone.volume)
-            
+
         self.sc_tone_busy = True
         SlTrace.lg(f"play_tone: qsize: {self.get_sound_queue_size()}",
                     "sound_queue")
-        try:                
+        try:
             with self.sound_lock:
                 vol_left,vol_right = tone.volume
                 self.delay_start(tone.delay)
@@ -477,14 +480,14 @@ class SpeakerControl(Singleton):
             stereo_waveform.play()
             self.delay_for(dur=tone.dur)
             stereo_waveform.stop()
-            
+
         except Exception as e:
             SlTrace.lg("Bust out of play_tone")
             SlTrace.lg(f"Unexpected exception: {e}")
             SlTrace.lg("Printing the full traceback as if we had not caught it here...")
             SlTrace.lg(format_exception(e))
         self.sc_tone_busy = False
-        
+
     def play_waveform(self, waveform):
         """ Called to play pending waveform
         :waveform: (SpeakerWaveform) waveform to play
@@ -503,7 +506,7 @@ class SpeakerControl(Singleton):
             dur = wf_len/sample_rate
         SlTrace.lg(f"play_waveform: len:{wf_len} dur: {dur}",
                     "sound_time")
-        try:                
+        try:
             with self.sound_lock:
                 if waveform.delay is not None:
                     self.delay_for(waveform.delay)
@@ -519,7 +522,7 @@ class SpeakerControl(Singleton):
             SlTrace.lg("Printing the full traceback as if we had not caught it here...")
             SlTrace.lg(format_exception(e))
         self.sc_tone_busy = False
-                
+
     def speak_text(self, msg, msg_type=None,
                    rate=240, volume=.9):
         """ Called to speak pending line
@@ -535,16 +538,16 @@ class SpeakerControl(Singleton):
         self.sc_speech_busy = True
         SlTrace.lg(f"speek_text: qsize: {self.get_sound_queue_size()}",
                     "speech")
-        try:                
+        try:
             with self.sound_lock:
                 if self.pyttsx3_engine._inLoop:
                     SlTrace.lg("speak_text - in run loop - ignored")
                     return
-                
+
                     self.pyttsx3_engine.endLoop()
                     self.sc_speech_busy = False
                     return
-                
+
                 if msg_type == 'REPORT':
                     self.pyttsx3_engine.say(msg)
                     self.pyttsx3_engine.setProperty('rate', rate)
@@ -557,7 +560,7 @@ class SpeakerControl(Singleton):
                         self.pyttsx3_engine.endLoop()
                         self.sc_speech_busy = False
                         return
-                    
+
                     self.pyttsx3_engine.say(msg)
                     self.pyttsx3_engine.setProperty('rate', 240)
                     self.pyttsx3_engine.setProperty('volume', 0.9)
@@ -606,6 +609,48 @@ class SpeakerControl(Singleton):
         self.sc_cmd_queue.put(cmd)
         return cmd
 
+
+
+    def raise_vol_adj(self, db_adj=None):
+        """ Adjust scanning audio level
+        :db_adj: adjustment in db: default default:self.db_adj_default(4)
+        """
+        if db_adj is None:
+            db_adj = self.db_adj_default
+        self.vol_adj += db_adj
+
+
+    def lower_vol_adj(self, db_adj=None):
+        """ Adjust scanning audio level
+        :db_adj: adjustment in db: default default:self.db_adj_default(4)
+        """
+        if db_adj is None:
+            db_adj = self.db_adj_default
+        self.vol_adj -= db_adj
+
+
+
+
+    def adjust_vol_adj(self, amt=None):
+        """ Adjust vol_adj
+        :amt: adjustment value default: 4
+        """
+        if amt is None:
+            amt = self.db_adj_default
+        self.vol_adj += amt
+
+    def get_vol_adj(self):
+        """ Get current volume adjustment
+        :returns: current vol_adjustment in db
+        """
+        return self.vol_adj
+
+    def set_vol_adj(self, adj=0.0):
+        """ Set volume adjustment
+        :adj: db adjustment default:0.0
+        """
+        self.vol_adj = adj
+
             
 class SpeakerControlLocal:
     """ Localinstance of SpeakerControl
@@ -631,6 +676,29 @@ class SpeakerControlLocal:
         :returns: number of entries
         """
         return self.sc.get_sound_queue_size()
+
+    def get_vol_adj(self):
+        """ Get current volume adjustment ??? Thread Safe ???
+        :returns: current vol_adjustment in db
+        """
+        return self.sc.get_vol_adj()
+
+    def set_vol_adj(self, adj=0.0):
+        """ Set volume adjustment
+        :adj: db adjustment default:0.0
+        """
+        self.sc.set_vol_adj(adj=adj)
+
+    def raise_vol_adj(self, db_adj=None):
+        """ Adjust scanning audio level
+        """
+        self.sc.raise_vol_adj(db_adj=db_adj)
+
+    def lower_vol_adj(self, db_adj=None):
+        """ Adjust scanning audio level
+        """
+        self.sc.lower_vol_adj(db_adj=db_adj)
+
 
     def make_silent(self, val=True):
         self._silent = val

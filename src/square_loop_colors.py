@@ -11,4 +11,4 @@ for colr in colors:
     color(colr)
     forward(200)
     right(90)
-done()		    # Complete drawing
+done()		    # Complete drawings

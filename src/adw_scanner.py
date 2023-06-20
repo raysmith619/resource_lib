@@ -59,8 +59,7 @@ class AdwScanner:
                  scan_coverage="perimeter",
                  add_tone_preamble=False,
                  combine_wave=False,
-                 n_combine_wave=2,
-                 vol_adj=30):
+                 n_combine_wave=2):
         """ Setup scanning
         :fte: front end instance
         :cell_time: time (seconds) to beep cell
@@ -86,7 +85,6 @@ class AdwScanner:
                         default: False
         :n_combine_wave: number of sections combined wave 
                         default: 4
-        :vol_adj: Tone volume adjustment in db default: 0.0
         """
         #space_time = 1      # TFD
         #cell_time = 2      # TFD
@@ -120,7 +118,6 @@ class AdwScanner:
         self.add_tone_preamble = add_tone_preamble
         self.set_combine_wave(combine_wave)
         self.n_combine_wave = n_combine_wave
-        self.vol_adj = vol_adj
         if space_pitch is None:
             self.space_pitch = SineWaveBeep.color2pitch("SCAN_SPACE")
             self.scan_loop_checking = None      # set if after alive
@@ -371,7 +368,8 @@ class AdwScanner:
             self.pr.enable()
         begin_time = time.time()
         next_items = []
-        SlTrace.lg(f"Scanning vol_adj: {self.vol_adj}")
+        vol_adj = self.get_vol_adj()
+        SlTrace.lg(f"Scanning vol_adj: {vol_adj}")
         for _ in range(nitem):
             if self.scan_items_index >= self.scan_items_end:
                 return next_items
@@ -381,9 +379,10 @@ class AdwScanner:
             ix,iy = sp_ent.ix,sp_ent.iy
             volume = self.get_vol(ix=ix, iy=iy)
             vol_left, vol_right = volume
-            if abs(self.vol_adj) > 1.e-10:  # Only if non-trivial
-                vol_left += self.vol_adj
-                vol_right += self.vol_adj
+            vol_adj = self.get_vol_adj()
+            if abs(vol_adj) > 1.e-10:  # Only if non-trivial
+                vol_left += vol_adj
+                vol_right += vol_adj
             if sp_ent.cell is None:
                 pitch = self.space_pitch
                 item_time = self.space_time
@@ -654,7 +653,8 @@ class AdwScanner:
         cpsp = SineWaveBeep.cpsp        # Pitch spacing
         pitch_start = SineWaveBeep.color2pitch("SPACE") + 15*cpsp
         preamble_items = []
-        SlTrace.lg(f"Scanning vol_adj: {self.vol_adj}")
+        vol_adj = self.get_vol_adj()
+        SlTrace.lg(f"Scanning vol_adj: {vol_adj}")
         for i in range(nitem):
             ix = ix_start
             iy = iy_start-i
@@ -662,9 +662,9 @@ class AdwScanner:
             vol_left, vol_right = volume
             pitch = pitch_start
             duration = self.cell_time*2
-            if abs(self.vol_adj) > 1.e-10:  # Only if non-trivial
-                vol_left += self.vol_adj
-                vol_right += self.vol_adj
+            if abs(vol_adj) > 1.e-10:  # Only if non-trivial
+                vol_left += vol_adj
+                vol_right += vol_adj
             sinewave_numpy = SineWaveNumPy(pitch = pitch,
                                            duration=duration,
                                            decibels_left=vol_left,
@@ -800,38 +800,6 @@ class AdwScanner:
         :val: True set profiling default: True
         """
         self.profile_running = val
-
-    def raise_vol_adj(self):
-        """ Adjust scanning audio level
-        """
-        self.adjust_vol_adj(4)
-        SlTrace.lg(f"Raising vol_adj: {self.vol_adj}")
-
-    def lower_vol_adj(self):
-        """ Adjust scanning audio level
-        """
-        self.adjust_vol_adj(-4)
-        SlTrace.lg(f"Lowering vol_adj: {self.vol_adj}")
-
-
-
-    def adjust_vol_adj(self, amt=1.):
-        """ Adjust vol_adj
-        :amt: adjustment value default: 1
-        """
-        self. set_vol_adj(self.get_vol_adj()+amt)
-
-    def get_vol_adj(self):
-        """ Get current volume adjustment
-        :returns: current vol_adjustment in db
-        """
-        return self.vol_adj
-
-    def set_vol_adj(self, adj=0.0):
-        """ Set volume adjustment
-        :adj: db adjustment default:0.0
-        """
-        self.vol_adj = adj
 
     """
     ############################################################
@@ -971,6 +939,12 @@ class AdwScanner:
         """ Clear all pending and reset
         """
         self.speaker_control.force_clear()
+
+    def get_vol_adj(self):
+        """ Get current volume adjustment
+        :returns: current vol_adjustment in db
+        """
+        return self.speaker_control.get_vol_adj()
 
     def get_sound_queue_size(self):
         return self.speaker_control.get_sound_queue_size()
