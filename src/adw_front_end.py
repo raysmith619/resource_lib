@@ -893,10 +893,10 @@ class AdwFrontEnd:
         m - mark location
         p - Report/Say current position
         r - Horizontal position stuff to left, to Right
-        s - raise volume adjustment for scanning
+        s - raise volume adjustment for tones
         t - Vertical position stuff to Top, to bottom
         u - penup - move with out marking
-        v - lower volume adjustment for scanning 
+        v - lower volume adjustment for tones 
         w - write out braille
         x - move to original cell (after a/b Horizontal/Vertical)
         z - clear board

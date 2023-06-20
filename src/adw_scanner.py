@@ -688,7 +688,7 @@ class AdwScanner:
             current_item = current_path[0]
             current_ix,current_iy = current_item.ix,current_item.iy
             self.speak_text(msg=f"r{current_iy+1} c{current_ix+1}",
-                            dup_stdout=False, rate=350, volume=.3)
+                            dup_stdout=False, rate=350, volume=1)
         self.play_waveform(sinewave_numpy=scan_wave, calculate_dur=True,
                            after=self.do_wave_end)
         #self.speaker_control.wait_while_busy()

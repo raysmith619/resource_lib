@@ -467,15 +467,15 @@ class SpeakerControl(Singleton):
 
         self.sc_tone_busy = True
         SlTrace.lg(f"play_tone: qsize: {self.get_sound_queue_size()}",
-                    "sound_queue")
+                   "sound_queue")
         try:
             with self.sound_lock:
                 vol_left,vol_right = tone.volume
                 self.delay_start(tone.delay)
                 stereo_waveform = SineWaveNumPy(pitch = tone.pitch,
-                    duration=tone.dur,
-                    decibels_left=vol_left,
-                    decibels_right=vol_right)
+                                                duration=tone.dur,
+                                                decibels_left=vol_left,
+                                                decibels_right=vol_right)
                 self.delay_wait()
             stereo_waveform.play()
             self.delay_for(dur=tone.dur)
@@ -505,7 +505,7 @@ class SpeakerControl(Singleton):
             wf_len = wf_shape[0]
             dur = wf_len/sample_rate
         SlTrace.lg(f"play_waveform: len:{wf_len} dur: {dur}",
-                    "sound_time")
+                   "sound_time")
         try:
             with self.sound_lock:
                 if waveform.delay is not None:
@@ -537,7 +537,7 @@ class SpeakerControl(Singleton):
             msg_type = "REPORT"
         self.sc_speech_busy = True
         SlTrace.lg(f"speek_text: qsize: {self.get_sound_queue_size()}",
-                    "speech")
+                   "speech")
         try:
             with self.sound_lock:
                 if self.pyttsx3_engine._inLoop:
@@ -567,7 +567,7 @@ class SpeakerControl(Singleton):
                     self.pyttsx3_engine.runAndWait()
                 else:
                     raise SpeakerControlError(f"Unrecognized msg_type"
-                                    f" {msg_type} {msg}")
+                                              f" {msg_type} {msg}")
         except Exception as e:
             SlTrace.lg("Bust out of speak_text")
             SlTrace.lg(f"Unexpected exception: {e}")
@@ -600,10 +600,10 @@ class SpeakerControl(Singleton):
         """
         SlTrace.lg(f"send_cmd:{cmd_type} msg: {msg} tone: {tone}", "sound_queue")
         cmd = SpeakerControlCmd(cmd_type=cmd_type, msg=msg,
-                                 msg_type=msg_type,
-                                 rate=rate, volume=volume,
-                                 tone=tone, waveform=waveform,
-                                 win=win, after=after)
+                                msg_type=msg_type,
+                                rate=rate, volume=volume,
+                                tone=tone, waveform=waveform,
+                                win=win, after=after)
         cmd_id = cmd.cmd_id
         self.cmds_in_progress[cmd_id] = cmd
         self.sc_cmd_queue.put(cmd)
@@ -618,6 +618,7 @@ class SpeakerControl(Singleton):
         if db_adj is None:
             db_adj = self.db_adj_default
         self.vol_adj += db_adj
+        self.report_vol_adj()
 
 
     def lower_vol_adj(self, db_adj=None):
@@ -627,6 +628,7 @@ class SpeakerControl(Singleton):
         if db_adj is None:
             db_adj = self.db_adj_default
         self.vol_adj -= db_adj
+        self.report_vol_adj()
 
 
 
@@ -638,6 +640,7 @@ class SpeakerControl(Singleton):
         if amt is None:
             amt = self.db_adj_default
         self.vol_adj += amt
+        self.report_vol_adj()
 
     def get_vol_adj(self):
         """ Get current volume adjustment
@@ -645,13 +648,16 @@ class SpeakerControl(Singleton):
         """
         return self.vol_adj
 
+    def report_vol_adj(self):
+        SlTrace.lg(f"vol_adj: {self.vol_adj}")
+
     def set_vol_adj(self, adj=0.0):
         """ Set volume adjustment
         :adj: db adjustment default:0.0
         """
         self.vol_adj = adj
+        self.report_vol_adj()
 
-            
 class SpeakerControlLocal:
     """ Localinstance of SpeakerControl
     """
