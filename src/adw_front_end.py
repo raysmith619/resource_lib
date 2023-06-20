@@ -1775,6 +1775,7 @@ class AdwFrontEnd:
 
     """ End of menus links """
 
+
     """
     ############################################################
                        Links to speaker control

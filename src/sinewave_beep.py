@@ -219,15 +219,6 @@ class SineWaveBeep:
         self.play_tone(pitch=self.color2pitch("BLANK"), dur=self.dur_blank,
                                                volume=volume)
 
-    def play_tone(self,pitch, dur=None, volume=None, dly=None):
-        """ Play sound - non-blocking
-        :pitch: sound pitch 
-        :dur: sound duration default:dur_base (msec)
-        :volume: sound volume in decibels default: volume_base
-        :dly: delay(silence) before sound
-        """
-        self.speaker_control.play_tone(pitch=pitch, dur=dur, volume=volume, dly=dly)
-        
     def play_tones(self,pitches, dur=None, volume=None, dly=None):
         """ Play sound - non-blocking
         :pitches: list of sound pitch 
@@ -235,7 +226,9 @@ class SineWaveBeep:
         :volume: sound volume in decibels default: volume_base
         :dly: delay(silence) before sound
         """
-        self.speaker_control.play_tones(pitches=pitches, dur=dur, volume=volume, dly=dly)
+        for pitch in pitches:
+            self.play_tone(pitch=pitch, dur=dur, volume=volume,dly=dly)
+
         
     def get_vol(self, ix, iy, eye_ixy_l=None, eye_ixy_r=None):
         """ Get tone volume for cell at ix,iy
@@ -259,4 +252,34 @@ class SineWaveBeep:
         """ Update pending events
         """
         self.awin.update_idle()
-     
+
+    """
+    ############################################################
+                       Links to speaker control
+    ############################################################
+    """
+
+    def play_tone(self,pitch, dur=None, volume=None, dly=None):
+        """ Play sound - non-blocking
+        :pitch: sound pitch
+        :dur: sound duration default:dur_base (msec)
+        :volume: sound volume in decibels default: volume_base
+        :dly: delay(silence) before sound
+        """
+        if not isinstance(volume, tuple):
+            volume = (volume,volume)
+        vol_adj = self.get_vol_adj()
+        if abs(vol_adj) > 1.e-10:  # Only if non-trivial
+            vol_left,vol_right = volume
+            vol_left += vol_adj
+            vol_right += vol_adj
+            volume = (vol_left,vol_right)
+
+        self.speaker_control.play_tone(pitch=pitch, dur=dur, volume=volume, dly=dly)
+
+
+    def get_vol_adj(self):
+        """ Get current volume adjustment ??? Thread Safe ???
+        :returns: current vol_adjustment in db
+        """
+        return self.speaker_control.get_vol_adj()
