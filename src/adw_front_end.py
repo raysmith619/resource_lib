@@ -71,7 +71,7 @@ class AdwFrontEnd:
         self.mw = adw.mw            # local copies
         self.canvas = adw.canvas
         self.win_print_entry = adw.win_print_entry
-
+        self._multi_key_progress = False    # No multi-key cmd in progress
         self.key_str = key_str
         self.menu_str = menu_str
         self.pos_rep_time = datetime.now()  # Time of last report
@@ -634,6 +634,13 @@ class AdwFrontEnd:
         keysym = event.keysym
         self.key_press(keysym)
 
+    def on_key_press(self, event):
+        """ Key press event
+        :event: Actual event
+        """
+        keysym = event.keysym
+        self.key_press(keysym)
+
     def key_press(self, keysym):
         """ Actual or simulated key event
         :keysym: Symbolic key value/string
@@ -641,19 +648,12 @@ class AdwFrontEnd:
         keyslow = keysym.lower()
         SlTrace.lg(f"on_key_press({keysym}) _multi...{self._multi_key_progress}", "motion")
         if keysym == 'Alt_L':
-            return                  # Ignore ALT
+            return  # Ignore ALT
         self.key_echo(keysym)
         if self._multi_key_progress:
             self.key_multi_process(keysym)
             return
 
-    """
-    keyboard commands
-    """
-    def key_echo(self,keysym):
-        """ Echo key, if appropriate
-        :keysym; key symbol
-        """
         if keysym == 'Escape':
             self.key_escape()
         elif keysym == 'Up':
@@ -666,49 +666,52 @@ class AdwFrontEnd:
             self.key_right()
         elif keysym in "1234567890":
             self.key_digit(keysym)
-        elif keysym == "a":
+        elif keyslow == "a":
             self.key_to_hv_move("first")
-        elif keysym == "b":
+        elif keyslow == "b":
             self.key_to_hv_move("second")
-        elif keysym == "e":            # Erase current position with current color
+        elif keyslow == "e":  # Erase current position with current color
             self.key_mark(False)
-        elif keysym == "g":
-            self.key_goto()             # Goto closest figure
-        elif keysym == "h":
-            self.key_help()             # Help message
-        elif keysym == "j":
-            self.key_magnify(self.MAG_PARENT)         # Jump to magnify parent
-        elif keysym == "k":
-            self.key_magnify(self.MAG_CHILD)          # jump to magnify child
-        elif keysym == "c":            # Change color
+        elif keyslow == "g":
+            self.key_goto()  # Goto closest figure
+        elif keyslow == "h":
+            self.key_help()  # Help message
+        elif keyslow == "j":
+            self.key_magnify(self.MAG_PARENT)  # Jump to magnify parent
+        elif keyslow == "k":
+            self.key_magnify(self.MAG_CHILD)  # jump to magnify child
+        elif keyslow == "c":  # Change color
             self.key_color_change()
-        elif keysym == "d":
-            self.key_pendown()          # lower pen - for subsequent visible
-        elif keysym == "m":            # Mark current position with current color
-            self.key_mark()
-        elif keysym == "p":
-            self.key_report_pos()       # Report position
-        elif keysym == "r":
-            self.key_report_pos_horz()       # Report horizontal position
-        elif keysym == "s":
-            self.key_raise_vol_adj()       # Raise volume adjusmten
-        elif keysym == "t":
-            self.key_report_pos_vert()       # Report vertical position
-        elif keysym == "u":  # raise pen - for subsequent not visible
+        elif keyslow == "u":  # raise pen - for subsequent not visible
             self.key_pendown(False)
-        elif keysym == "v":
-            self.key_lower_vol_adj()    # lower volume adjusmten
-        elif keysym == "x":
+        elif keyslow == "d":
+            self.key_pendown()  # lower pen - for subsequent visible
+        elif keyslow == "m":  # Mark current position with current color
+            self.key_mark()
+        elif keyslow == "p":
+            self.key_report_pos()  # Report position
+        elif keyslow == "r":
+            self.key_report_pos_horz()  # Report horizontal position
+        elif keyslow == "t":
+            self.key_report_pos_vert()  # Report vertical position
+        elif keyslow == "x":
             self.key_to_hv_move("original")
-        elif keysym == "z":
-            self.key_clear_display()     # Clear display
-        elif keysym == "w":
-            self.key_write_display()     # Write(print) out figure
-        elif keysym == "win_l":
-            pass                        # Ignore Win key
+        elif keyslow == "z":
+            self.key_clear_display()  # Clear display
+        elif keyslow == "w":
+            self.key_write_display()  # Write(print) out figure
+        elif keyslow == "win_l":
+            pass  # Ignore Win key
         else:
             self.key_unrecognized(keysym)
-        #self.key_flush(keysym=keysym)
+
+    """
+    keyboard commands
+    """
+    def key_echo(self,keysym):
+        """ Echo key, if appropriate
+        :keysym; key symbol
+        """
         if self._echo_input:
             self.adw.speaker_control.speak_text(keysym, msg_type='ECHO')
 
@@ -717,6 +720,8 @@ class AdwFrontEnd:
         :keysym: key symbol
         """
         self.escape_pressed = True  # Let folks in prog know
+        self._multi_key_progress = False
+        self._multi_key_cmd = False
         self.flush_rep_queue()
         self.speak_text_stop()
         self.escape_pressed = False
@@ -2145,4 +2150,7 @@ if __name__ == '__main__':
     
     
     adw = AudioDrawWindow()
+    fte = adw.fte
+    fte.do_key_str("c;g")
+    fte.mainloop()
     
