@@ -227,11 +227,11 @@ class SpeakerControl(Singleton):
         self.start_control()
         
     def start_control(self):
-        """ Start / Restart controll
+        """ Start / Restart control
         """
         self._running = True        # Thread functions exit when cleared
         self.forced_clear = False   # set on force_clear, checked on waiting...
-
+        self.sound_busy = False     # Set True if active or pending
         if got_pyttsx3:
             self.pyttsx3_engine = pyttsx3.init()
         else:
@@ -304,7 +304,7 @@ class SpeakerControl(Singleton):
         SlTrace.lg(f"self.sc_sound_queue.qsize(): {self.sc_sound_queue.qsize()}")
         self.sc_speech_busy = False 
         self.sc_tone_busy = False
-
+        self.sound_busy = False
     
     def stop_scan(self):
         """ Stop current scan
@@ -350,7 +350,7 @@ class SpeakerControl(Singleton):
     def is_busy(self):
         """ Check if if busy or anything is pending
         """
-        
+        SlTrace.lg(f"is_busy(): self.sc_speech_busy {self.sc_speech_busy} ")
         if self.sc_speech_busy or self.sc_tone_busy:     # Fast check
             return True
         
@@ -394,7 +394,10 @@ class SpeakerControl(Singleton):
                         SlTrace.lg(f"dropping {cmd}")
                     else:
                         break
-                    
+            
+            self.sound_busy = True  # Busy till complete
+                                    # Avoid hazard of empty queue
+                                    # and no active sound        
             cmd = self.sc_sound_queue.get()
             SlTrace.lg(f"speech queue: cmd: {cmd}", "sound_queue")
             if cmd.cmd_type == "CLEAR":
@@ -530,11 +533,14 @@ class SpeakerControl(Singleton):
         :volume: volume default: .9
         
         """
+        SlTrace.lg(f"speek_text: qsize: {self.get_sound_queue_size()}",
+                    "speech")
+        
         if msg_type is None:
             msg_type = "REPORT"
         self.sc_speech_busy = True
-        SlTrace.lg(f"speek_text: qsize: {self.get_sound_queue_size()}",
-                    "speech")
+        SlTrace.lg(f"""speak_text(msg={msg}, msg_type={msg_type},"""
+                   f""" rate={rate}, volume={volume})""")
         try:                
             with self.sound_lock:
                 if self.pyttsx3_engine._inLoop:
@@ -550,6 +556,7 @@ class SpeakerControl(Singleton):
                     self.pyttsx3_engine.setProperty('rate', rate)
                     self.pyttsx3_engine.setProperty('volume', volume)
                     self.pyttsx3_engine.runAndWait()
+                    self.sc_speech_busy = False
                     SlTrace.lg(f"speak_text  msg: {msg} AFTER runAndWait", "speech")
                 elif msg_type == "ECHO":
                     if self.pyttsx3_engine._inLoop:
@@ -611,12 +618,12 @@ class SpeakerControlLocal:
     """ Localinstance of SpeakerControl
     """
 
-    def __init__(self, fr, logging_sound=False):
+    def __init__(self, wx_win, logging_sound=False):
         self.cmds_awaiting_after = {} # dictionary by cmd_id awaiting after
         self.awaiting_loop_ms = 1      # Awaiting loop
         self.awaiting_loop_going = False    # Checking loop in progress
         self.sc = SpeakerControl()
-        self.fr = fr
+        self.wx_win = wx_win
         self.logging_sound = logging_sound
         self.make_silent(False)
 
@@ -648,7 +655,7 @@ class SpeakerControlLocal:
         self.sc.force_clear()
         rwait = 2000
         SlTrace.lg(f"Waiting {rwait} msec")
-        self.fr.after(rwait)
+        self.wx_win.after(rwait)
         if restart:
             SlTrace.lg("Restarting Speaker control")
             self.sc.start_control()
@@ -666,7 +673,7 @@ class SpeakerControlLocal:
 
     def wait_while_busy(self):
         while self.is_busy():
-            self.fr.update()
+            self.wx_win.update()
                     
     def quit(self):    
         self.sc.quit()
@@ -693,7 +700,7 @@ class SpeakerControlLocal:
         :sample_rate: sample rate fps
         :calculate_dur:    # calculate duration based on waveform, sample_rate
         :after: function to call after play completes
-                 (self.fr.after(0,after)
+                 (self.wx_win.after(0,after)
                 default: no call
         """
         waveform = SpeakerWaveform(ndarr=ndarr, dur=dur, delay=dly,
@@ -701,7 +708,7 @@ class SpeakerControlLocal:
                                    sample_rate=sample_rate)
         SlTrace.lg(f"play_waveform waveform: {waveform}", "sound_queue")
         cmd = self.sc.send_cmd(cmd_type="CMD_WAVEFORM", waveform=waveform,
-                         fr=self.fr, after=after)
+                         wx_win=self.wx_win, after=after)
         if after is not None:
             self.add_awaiting(cmd)
 
@@ -713,7 +720,7 @@ class SpeakerControlLocal:
         self.cmds_awaiting_after[cmd.cmd_id] = cmd
         if not self.awaiting_loop_going:
             self.awaiting_loop_going = True
-            self.fr.after(0, self.awaiting_after_ck)
+            self.wx_win.after(0, self.awaiting_after_ck)
 
     def awaiting_after_ck(self):
         """ Check cmds awaiting for after cking
@@ -726,11 +733,11 @@ class SpeakerControlLocal:
                 cmd = self.cmds_awaiting_after[cmd_id]
                 if not self.sc.is_in_progress(cmd_id):
                     SlTrace.lg(f"{cmd_id}: after_called for {cmd}", "sound_queue")
-                    self.fr.after(0, cmd.after)
+                    self.wx_win.after(0, cmd.after)
                     del self.cmds_awaiting_after[cmd_id]
         if len(self.cmds_awaiting_after) > 0:
             self.awaiting_loop_going = True
-            self.fr.after(self.awaiting_loop_ms, self.awaiting_after_ck)
+            self.wx_win.after(self.awaiting_loop_ms, self.awaiting_after_ck)
 
     def clear_awaiting(self):
         """ Clear out awaiting, calling all awaiting
@@ -741,7 +748,7 @@ class SpeakerControlLocal:
             if cmd_id in self.cmds_awaiting_after:
                 cmd = self.cmds_awaiting_after[cmd_id]
                 SlTrace.lg(f"{cmd_id}: after_called for {cmd}", "sound_queue")
-                self.fr.after(0, cmd.after)
+                self.wx_win.after(0, cmd.after)
                 del self.cmds_awaiting_after[cmd_id]
                         
     def speak_text(self, msg, dup_stdout=True,
@@ -782,19 +789,26 @@ class SpeakerControlLocal:
         """
         self.sc.stop_scan()
         self.speak_text_stop()    
+
 if __name__ == "__main__":
-    from wx_audio_draw_window import AudioDrawWindow
+    #from wx_audio_draw_window import AudioDrawWindow
+    from wx_win import WxWin
+    #adw = AudioDrawWindow(setup_wx_win=False)
+    adw = None
+    wx_win = WxWin(adw, "wx_speaker_control Self Test")
     
     SlTrace.setFlags("speech")
-    awin = AudioDrawWindow()
-    scl = SpeakerControlLocal(fr=afr)
+    scl = SpeakerControlLocal(wx_win=wx_win)
+    scl.wait_while_busy()
     scl.speak_text("Hello World!")
+    scl.wait_while_busy()
     scl.speak_text("How are you?")
+    scl.wait_while_busy()
     scl.speak_text("Hows the weather?")
+    scl.wait_while_busy()
     scl.speak_text("What's up?")
     time.sleep(3)
     scl.clear()
     scl.speak_text("Just cleared")
-    time.sleep(10)
-    awin.mainloop()
-    time.sleep(4)
+    time.sleep(2)
+    wx_win.MainLoop()
