@@ -2,32 +2,44 @@
 """
 Reference to wx window support
 """
+import time
 import wx
 
 from select_trace import SlTrace
 
 class WxWin:
-    def __init__(self, app, frame):
+    def __init__(self, adw, title=None):
         """ Setup wxPython window access
-        :app: wx.App instance
-        :frame: wx.Frame instance
+        :adw: AudioDrawWindow base
+        :title: optional window title
         """
-        self.app = app
-        self.frame = frame
-        self.panel = wx.Panel(frame)
-        v_sizer = wx.BoxSizer(wx.VERTICAL)
-        self.win_print_ctrl = wx.TextCtrl(self.panel)
-        v_sizer.Add(self.win_print_ctrl, 0, wx.ALL )
-        win_print_frame = wx.Panel(frame)
-        win_print_frame.pack(side=tk.TOP)
-        win_print_entry = tk.Entry(
-            win_print_frame, width=50)
-        win_print_entry.pack(side=tk.TOP)
-        self.win_print_entry = win_print_entry
+        self.adw = adw
+        self.app = wx.App()
+        frame = wx.Frame(None,  title=title)
 
-        canvas = tk.Canvas(mw, width=self.win_width, height=self.win_height)
-        canvas.pack()
-        self.canvas = canvas
-        self.update()  # Force display
-        SlTrace.lg(f"canvas width: {canvas.winfo_width()}")
-        SlTrace.lg(f"canvas height: {canvas.winfo_height()}")
+        adw_panel = wx.Panel(frame)
+        adw_vbox = wx.BoxSizer(wx.VERTICAL)
+        tout_hbox = wx.BoxSizer(wx.HORIZONTAL)
+        adw_vbox.Add(tout_hbox, flag=wx.CENTER)
+        tout_ctrl = wx.TextCtrl(adw_panel)
+        tout_hbox.Add(tout_ctrl)
+        self.tout_ctrl = tout_ctrl
+
+        
+        adw_panel.SetSizerAndFit(adw_vbox)
+        frame.Show()
+
+    def MainLoop(self):
+        self.app.MainLoop()
+
+    def update(self):
+        time.sleep(.1)
+        wx.Yield()
+                        
+if __name__ == "__main__":
+    from wx_audio_draw_window import AudioDrawWindow
+    
+    #adw = AudioDrawWindow(setup_wx_win=False)
+    adw = None
+    wx_win = WxWin(adw, "WxWin Self Test")
+    wx_win.MainLoop()

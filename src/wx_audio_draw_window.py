@@ -2,12 +2,12 @@
 #                        12Dec2022  crs, from audio_window.py
 #                        08Nov2022  crs, Author
 """
-Remodeled to use wxPython to facilitate better support
-with screen readers such as NVDA and JAWS
+Remodeled from tkinter base to use wxPython to facilitate
+better support with screen readers such as NVDA and JAWS
 
 Provide simple drawing graphical window with audio feedback
 to facilitate use and examination by the visually impaired.
-Uses turtle to facilitate cursor movement within screen
+TBD: Using wxPython to facilitate cursor movement within screen
 Adapted from audio_window to concentrate on figure drawing
 as well as presentation.
 """
@@ -15,7 +15,7 @@ import os
 import wx
 
 from select_trace import SlTrace
-from speaker_control import SpeakerControlLocal
+from wx_speaker_control import SpeakerControlLocal
 from grid_path import GridPath
 from braille_cell import BrailleCell
 from magnify_info import MagnifyInfo, MagnifyDisplayRegion
@@ -44,6 +44,7 @@ class AudioDrawWindow:
         menu_str="",
         key_str="",
         mag_info=None,
+        setup_wx_win = True,
         iy0_is_top=True,        # OBSOLETE
                  ):
         """ Setup audio window
@@ -100,6 +101,7 @@ class AudioDrawWindow:
                     interpretation is case insensitive
         :look_dist: Max number of cells to look ahead and report
                     default: 1
+        :setup_wx_win:  Setup WxWin True  default: True
         :iy0_is_top: OBSOLETE
         """
         
@@ -119,14 +121,12 @@ class AudioDrawWindow:
         if y_min is None:
             y_min = 0
         # create the audio feedback window
-        wx_app = wx.App()
-        wx_frame = wx.Frame(None,  title=title)
-        wx_win = WxWin(app=wx_app, frame=wx_frame)
+        if setup_wx_win:
+            self.wx_win = WxWin(self, title=title)
         self.title = title
-        self.wx_win = wx_win
-        if speaker_control is None:
+        if speaker_control is None and setup_wx_win:
             SlTrace.lg("Creating own SpeakerControl")
-            speaker_control = SpeakerControlLocal(win=mw)
+            speaker_control = SpeakerControlLocal(win=self.wx_win)
         self.speaker_control = speaker_control
         #mw.withdraw()
 
