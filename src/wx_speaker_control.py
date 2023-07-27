@@ -230,6 +230,8 @@ class SpeakerControl(Singleton):
         """ Start / Restart control
         """
         self._running = True        # Thread functions exit when cleared
+        self.sc_busy = False        # True -> control busy
+                                    # to replace other busys
         self.forced_clear = False   # set on force_clear, checked on waiting...
         self.sound_busy = False     # Set True if active or pending
         if got_pyttsx3:
@@ -253,12 +255,12 @@ class SpeakerControl(Singleton):
     def sc_cmd_proc_thread(self):
         """ speech maker command processing thread function
         """
-        while not self.forced_clear and self._running:
-            
+        while not self.forced_clear and self._running:            
             cmd = self.sc_cmd_queue.get()
             SlTrace.lg(f"cmd: {cmd}", "speech")
             SlTrace.lg(f"cmd: {cmd}", "sound_queue")
             if cmd.cmd_type == "CMD_MSG":
+                SlTrace.lg(f"CMD_MSG: {cmd}")
                 self.sc_sound_queue.put(cmd)
             elif cmd.cmd_type == "CMD_TONE":
                 self.sc_sound_queue.put(cmd)
@@ -346,23 +348,30 @@ class SpeakerControl(Singleton):
 
     def force_clear_reset(self):
         self.sc_forced_clear = False 
+
             
-    def is_busy(self):
-        """ Check if if busy or anything is pending
+    def busy_parts(self):
+        """ Check if if busy parts
         """
-        SlTrace.lg(f"is_busy(): self.sc_speech_busy {self.sc_speech_busy} ")
         if self.sc_speech_busy or self.sc_tone_busy:     # Fast check
             return True
         
         if self.get_cmd_queue_size() > 0:
-            return True 
-
+            return True
+         
         if self.get_sound_queue_size() > 0:
             return True
-
-        if self.sc_speech_busy or self.sc_tone_busy:     # Final check
-            return True
         
+        return False
+
+            
+    def is_busy(self):
+        """ Check if if busy or anything is pending
+        """
+        if self.sc_busy or self.busy_parts():
+            self.sc_busy = self.busy_parts()
+            return True
+                
         return False
 
     def is_in_progress(self, cmd_id):
@@ -378,7 +387,8 @@ class SpeakerControl(Singleton):
         """ Process pending speech requests (SpeakerControlCmd)
         """
         SlTrace.lg("sc_sounc_proc_thread running")
-        while not self.forced_clear and self._running:
+        #while not self.forced_clear and self._running:
+        while True:
             qsize = self.sc_sound_queue.qsize()
             SlTrace.lg(f"sound_queue {qsize}: BEFORE sc_sound_queue.get()", "sound_queue")
             buffer = 10
@@ -533,13 +543,13 @@ class SpeakerControl(Singleton):
         :volume: volume default: .9
         
         """
-        SlTrace.lg(f"speek_text: qsize: {self.get_sound_queue_size()}",
+        SlTrace.lg(f"sc: speek_text: qsize: {self.get_sound_queue_size()}",
                     "speech")
         
         if msg_type is None:
             msg_type = "REPORT"
         self.sc_speech_busy = True
-        SlTrace.lg(f"""speak_text(msg={msg}, msg_type={msg_type},"""
+        SlTrace.lg(f"""sc: speak_text(msg={msg}, msg_type={msg_type},"""
                    f""" rate={rate}, volume={volume})""")
         try:                
             with self.sound_lock:
@@ -552,12 +562,13 @@ class SpeakerControl(Singleton):
                     return
                 
                 if msg_type == 'REPORT':
-                    self.pyttsx3_engine.say(msg)
+                    SlTrace.lg(f"sc: speak_text say  msg: {msg}", "speech")
                     self.pyttsx3_engine.setProperty('rate', rate)
                     self.pyttsx3_engine.setProperty('volume', volume)
+                    self.pyttsx3_engine.say(msg)
                     self.pyttsx3_engine.runAndWait()
                     self.sc_speech_busy = False
-                    SlTrace.lg(f"speak_text  msg: {msg} AFTER runAndWait", "speech")
+                    SlTrace.lg(f"sc: speak_text  msg: {msg} AFTER runAndWait", "speech")
                 elif msg_type == "ECHO":
                     if self.pyttsx3_engine._inLoop:
                         SlTrace.lg("speak_text ECHO - in run loop - ignored")
@@ -584,6 +595,9 @@ class SpeakerControl(Singleton):
                  waveform=None, fr=None, after=None):
         """ Send cmd to speaker control engine
             storing hash of cmds in process
+            Sets self.sc_busy True, which is cleared
+            when speech and tone are complete/idle
+            and all queues are empty
         :cmd_type: command type
                     'text'        - speak text
                     'tone'        - tone
@@ -602,6 +616,7 @@ class SpeakerControl(Singleton):
                 default: no call
         :returns: cmd, cmd_id, after is needed but cmd is for documentation
         """
+        self.sc_busy = True
         SlTrace.lg(f"send_cmd:{cmd_type} msg: {msg} tone: {tone}", "sound_queue")
         cmd = SpeakerControlCmd(cmd_type=cmd_type, msg=msg,
                                  msg_type=msg_type,
@@ -672,9 +687,15 @@ class SpeakerControlLocal:
         return self.sc.is_busy()
 
     def wait_while_busy(self):
-        while self.is_busy():
+        '''
+        time.sleep(2)
+        self.clear()
+        time.sleep(2)
+        return
+        '''
+        while self.sc.busy_parts():
             self.wx_win.update()
-                    
+            
     def quit(self):    
         self.sc.quit()
 
@@ -797,7 +818,7 @@ if __name__ == "__main__":
     adw = None
     wx_win = WxWin(adw, "wx_speaker_control Self Test")
     
-    SlTrace.setFlags("speech")
+    SlTrace.setFlags("speech,sound_queue")
     scl = SpeakerControlLocal(wx_win=wx_win)
     scl.wait_while_busy()
     scl.speak_text("Hello World!")
