@@ -15,7 +15,7 @@ from text_to_speech_cmd import TextToSpeechCmd
 class Pyttsx3Engine:
     def __init__(self):
         self.got_pyttsx3 = False
-        self.tts_talking = False
+        self.eng_talking = False
         try:
             import pyttsx3
             self.got_pyttsx3 = True
@@ -49,7 +49,12 @@ class Pyttsx3Engine:
         tts_cmd = TextToSpeechCmd(msg=msg, rate=rate, volume=volume, wait=wait)
         self.speak_text_cmd(tts_cmd)
 
-    def stop():
+    def clear(self):
+        """ Clear out pending/present speech
+        """
+        self.stop()
+        
+    def stop(self):
         """ stop speech/talking
         """
         if self.got_pyttsx3:
@@ -60,8 +65,8 @@ class Pyttsx3Engine:
         """ speak text command
         :cmd: SpeechTextCmd with speech
         """
-        self.tts_talking = True
-        SlTrace.lg(f"Setting tts_talking")
+        self.eng_talking = True
+        SlTrace.lg(f"Setting eng_talking")
         msg = cmd.msg
         msg_type = cmd.msg_type
         rate = cmd.rate
@@ -74,8 +79,8 @@ class Pyttsx3Engine:
                 return
             
                 self.pyttsx3_engine.endLoop()
-                self.tts_talking = False
-                SlTrace.lg(f"Clearing tts_talking")
+                self.eng_talking = False
+                SlTrace.lg(f"Clearing eng_talking")
                 return
             
             if msg_type == 'REPORT':
@@ -87,8 +92,8 @@ class Pyttsx3Engine:
                 self.pyttsx3_engine.runAndWait()
                 SlTrace.lg("Pyttsx3Engine.speak_text_cmd: AFTER runAndWait")
                 time.sleep(.01)
-                self.tts_talking = False
-                SlTrace.lg(f"Clearing tts_talking")
+                self.eng_talking = False
+                SlTrace.lg(f"Clearing eng_talking")
                 time.sleep(.01)
             elif msg_type == "ECHO":
                 if self.pyttsx3_engine._inLoop:
@@ -100,8 +105,8 @@ class Pyttsx3Engine:
                 self.pyttsx3_engine.setProperty('rate', 240)
                 self.pyttsx3_engine.setProperty('volume', 0.9)
                 self.pyttsx3_engine.runAndWait()
-                self.tts_talking = False
-                SlTrace.lg(f"Clearing tts_talking")
+                self.eng_talking = False
+                SlTrace.lg(f"Clearing eng_talking")
             else:
                 raise Exception(f"Unrecognized msg_type"
                                 f" {msg_type} {msg}")
@@ -112,25 +117,23 @@ class Pyttsx3Engine:
             SlTrace.lg(format_exception(e))
 
     def is_busy(self):
-        return self.tts_talking and self.pyttsx3_engine.isBusy()
+        return self.eng_talking and self.pyttsx3_engine.isBusy()
 
     
     def wait_while_busy(self):
         """ Wait while busy
         """
-        ###time.sleep(3)
-        ###return
-    
+            
         SlTrace.lg("Pyttsx3Engine.wait_while_busy")
-        while self.tts_talking:
+        while self.is_busy():
             time.sleep(.1)
 
 if __name__ == "__main__":
     SlTrace.setFlags("speech,sound_queue")
     SlTrace.lg("\nStart Test")
     tts = Pyttsx3Engine()    
-    tts.speak_text("Hello World!")
-    tts.wait_while_busy()
+    tts.speak_text("Hello World!"*4)
+    #tts.wait_while_busy()
     tts.speak_text("How are you?")
     tts.wait_while_busy()
     tts.speak_text("Hows the weather?")

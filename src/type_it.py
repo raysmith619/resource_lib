@@ -24,7 +24,7 @@ class TypeIt:
     def type_it(self):
         self.busy = True
         time.sleep(self.delay)
-        print(self.text)
+        print(f"type_it:{self.text}\n")
         self.busy = False
     
     def is_busy(self):

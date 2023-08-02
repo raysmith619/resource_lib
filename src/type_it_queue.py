@@ -36,10 +36,12 @@ class TypeItQueue:
         """ Put ti in queue
         :ti: TypeIt  to place in queue
         """
+        print(f"put({ti})")
         self.ti_queue.put(ti)
 
     def is_busy(self):
         if self.ti_queue.qsize() > 0:
+            print(f"ti_queue.qsize:{self.ti_queue.qsize()}")
             return True
         
         if self.ti_busy():
@@ -78,10 +80,21 @@ class TypeItQueue:
 if __name__ == "__main__":
     print("Test Start")
     tiq = TypeItQueue()
-    for i in range(6):
-        tiq.put(TypeIt(f"TypeIt({i})", delay=i))
-        if i%3 == 1:
-            tiq.wait_while_busy()
+
+    tiq.put(TypeIt(f"TypeIt(1)", delay=1))
+    tiq.put(TypeIt(f"TypeIt(2)", delay=1))
+    tiq.put(TypeIt(f"TypeIt(3)", delay=1))
+    tiq.wait_while_busy()
+
+    tiq.put(TypeIt(f"TypeIt(4)", delay=1))
+    tiq.put(TypeIt(f"TypeIt(5)", delay=1))
+    tiq.wait_while_busy()
+
+    tiq.put(TypeIt(f"TypeIt(6)", delay=1))
+    tiq.wait_while_busy()
+    
+    tiq.put(TypeIt(f"TypeIt(7)", delay=1))
+    tiq.wait_while_busy()
     tiq.stop()
     print("End of Test")    
         
