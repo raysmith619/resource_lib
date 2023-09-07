@@ -66,11 +66,13 @@ for path in sys.path:
         and path_dirs[-2] == lib_dir
         and path_dirs[-1] == src_dir):
         print(f"{lib_dir}/{src_dir} is already in path")
+        print(f"path:{path}")
         src1_in_path = True
     if src2_dir:
         if (len(path_dirs) >= 2
             and path_dirs[-1] == src2_dir):
             print(f"{src2_dir} is already in path")
+            print(f"path2:{path}")
             src2_in_path = True
 
 if not src1_in_path or not src2_in_path:              
@@ -91,17 +93,17 @@ if not src1_in_path or not src2_in_path:
             dir_check = dirck
             print(f"Found:{dir_check}")
             found_lib = True
-        dirck2 = os.path.join(*wd_dirs[0:i], src2_dir)
-        if not found_src2 and os.path.exists(dirck2):
-            dir_check2 = dirck2
-            print(f"Found:{dir_check2}")
-            found_src2 = True
+            dirck2 = os.path.join(*wd_dirs[0:i], src2_dir)
+            if not found_src2 and os.path.exists(dirck2):
+                dir_check2 = dirck2
+                print(f"Found:{dir_check2}")
+                found_src2 = True
     if not found_lib:
         print(f"Didn't find {os.path.join(lib_dir,src_dir)}")
         sys.exit(1)
         
     if src2_dir and not found_src2:
-        print(f"Didn't find {dir_check2}")
+        print(f"Didn't find {dirck2}")
         sys.exit(1)
         
     print(f"Adding import path: {dir_check}")

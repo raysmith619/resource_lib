@@ -26,8 +26,8 @@ class TypeItQueue:
             if self.ti_busy():
                 time.sleep(.1)            
             elif self.ti_queue.qsize() > 0:            
-                #print("ti_queue.get()")
                 ti = self.ti_queue.get()
+                print(f"ti_queue.get():{ti}")
                 self.ti_run(ti)
                 
         print("ti_proc_thread returning")

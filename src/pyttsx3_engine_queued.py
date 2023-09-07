@@ -18,7 +18,8 @@ class Pyttsx3EngineQueued:
     def __init__(self):
         self.pyt = Pyttsx3Engine()
         self.pyts3_que_size = 20      # queue size, till blocking
-
+        self.running = True
+        self.text_cmd = None            # Current cmd
 
         self.pyt_queue = queue.Queue(self.pyts3_que_size)  # speech queue of SpeakerControlCmd 
         self.pyt_thread = threading.Thread(target=self.pyt_proc_thread)
@@ -55,7 +56,7 @@ class Pyttsx3EngineQueued:
         """ Process pending speech requests (SpeakerControlCmd)
         """
         SlTrace.lg("pyts3_proc_thread running")
-        while True:
+        while self.running:
             SlTrace.lg("pyt thread loop")
             if self.pyt.is_busy():
                 SlTrace.lg("pyt isBusy")
@@ -63,8 +64,8 @@ class Pyttsx3EngineQueued:
                 continue
             
             if self.pyt_queue.qsize() > 0:            
-                SlTrace.lg("pyts3_queue.get()")
                 cmd = self.pyt_queue.get()
+                SlTrace.lg(f"pyts3_queue.get():{cmd}")
                 SlTrace.lg(f"pyt_proc_thread: cmd: {cmd}", "pyts3_queue")
                 if cmd.cmd_type == "CLEAR":
                     self.clear()
@@ -76,11 +77,12 @@ class Pyttsx3EngineQueued:
                 
         SlTrace.lg("pyts3_proc_thread returning")
 
-    def stop():
+    def stop(self):
         """ stop speech/talking
         """
-        if self.got_pyttsx3:
-            self.pyttsx3_engine.stop()
+        self.running = False    # Stop queue thread
+        self.clear()
+        self.pyt.stop()
             
     def put_speech_cmd(self, cmd):
         """ Add speech command
@@ -94,6 +96,7 @@ class Pyttsx3EngineQueued:
         """ speak text command
         :cmd: SpeechTextCmd with speech
         """
+        self.text_cmd = cmd
         self.pyt.speak_text_cmd(cmd=cmd)
 
     def is_busy(self):
@@ -106,12 +109,8 @@ class Pyttsx3EngineQueued:
     def wait_while_busy(self):
         """ Wait while busy
         """
-        time.sleep(3)
-        return      #TFD
-    
         SlTrace.lg("Pyttsx3EngineQueued.wait_while_busy"
                    f" queue:{self.pyt_queue.qsize()}")
-        return      # TFD
     
         while self.is_busy():
             time.sleep(.1)
@@ -127,7 +126,8 @@ if __name__ == "__main__":
     tts.speak_text("Hows the weather?")
     tts.wait_while_busy()
     tts.speak_text("What's up?")
-    tts.clear()
-    tts.speak_text("Just cleared")
+    tts.stop()
+    tts.speak_text("Just stopped")
+    SlTrace.lg("Test End")
 
           
