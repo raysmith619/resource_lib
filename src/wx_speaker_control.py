@@ -16,13 +16,8 @@ from select_trace import SlTrace, SelectError
 from play_sound_control import PlaySoundControl
 from sinewave_numpy import SineWaveNumPy
 
-got_pyttsx3 = False
-try:
-    import pyttsx3
-    got_pyttsx3 = True
-except:
-    SlTrace.lg("No pyttsx3 to be had")
-
+from pyttsx_proc import PyttsxProc
+from speech_maker_cmd import SpeechMakerCmd
 
 
 
@@ -221,6 +216,7 @@ class SpeakerControl(Singleton):
         :sample_rate: waveform presentation sample_rate
                     default: 44100 per second
         """
+        self.pyttsx_proc  = PyttsxProc()
         self.cmds_size = cmds_size
         self.sound_size = sound_size
         self.sample_rate = sample_rate
@@ -234,10 +230,6 @@ class SpeakerControl(Singleton):
                                     # to replace other busys
         self.forced_clear = False   # set on force_clear, checked on waiting...
         self.sound_busy = False     # Set True if active or pending
-        if got_pyttsx3:
-            self.pyttsx3_engine = pyttsx3.init()
-        else:
-            SlTrace.lg("Can't init pyttsx3")
 
         self.psc = PlaySoundControl()
         self.sound_lock = threading.Lock()
@@ -248,7 +240,6 @@ class SpeakerControl(Singleton):
         self.sc_sound_thread = threading.Thread(target=self.sc_sound_proc_thread)
         self.sc_sound_thread.start()
         self.sc_cmd_thread.start()
-        self.sc_speech_busy = False     # True - iff speeking
         self.sc_tone_busy = False       # True - iff toneing
 
         
@@ -353,7 +344,7 @@ class SpeakerControl(Singleton):
     def busy_parts(self):
         """ Check if if busy parts
         """
-        if self.sc_speech_busy or self.sc_tone_busy:     # Fast check
+        if self.pyttsx_proc.is_busy() or self.sc_tone_busy:     # Fast check
             return True
         
         if self.get_cmd_queue_size() > 0:
@@ -413,7 +404,7 @@ class SpeakerControl(Singleton):
             if cmd.cmd_type == "CLEAR":
                 continue
             elif cmd.cmd_type == "QUIT":
-                self.pyttsx3_engine.stop()
+                self.pyttsx3_proc.quit()
                 break
 
             elif cmd.cmd_type == "CMD_MSG":
@@ -548,47 +539,11 @@ class SpeakerControl(Singleton):
         
         if msg_type is None:
             msg_type = "REPORT"
-        self.sc_speech_busy = True
         SlTrace.lg(f"""sc: speak_text(msg={msg}, msg_type={msg_type},"""
                    f""" rate={rate}, volume={volume})""")
-        try:                
-            with self.sound_lock:
-                if self.pyttsx3_engine._inLoop:
-                    SlTrace.lg("speak_text - in run loop - ignored")
-                    return
-                
-                    self.pyttsx3_engine.endLoop()
-                    self.sc_speech_busy = False
-                    return
-                
-                if msg_type == 'REPORT':
-                    SlTrace.lg(f"sc: speak_text say  msg: {msg}", "speech")
-                    self.pyttsx3_engine.setProperty('rate', rate)
-                    self.pyttsx3_engine.setProperty('volume', volume)
-                    self.pyttsx3_engine.say(msg)
-                    self.pyttsx3_engine.runAndWait()
-                    self.sc_speech_busy = False
-                    SlTrace.lg(f"sc: speak_text  msg: {msg} AFTER runAndWait", "speech")
-                elif msg_type == "ECHO":
-                    if self.pyttsx3_engine._inLoop:
-                        SlTrace.lg("speak_text ECHO - in run loop - ignored")
-                        self.pyttsx3_engine.endLoop()
-                        self.sc_speech_busy = False
-                        return
-                    
-                    self.pyttsx3_engine.say(msg)
-                    self.pyttsx3_engine.setProperty('rate', 240)
-                    self.pyttsx3_engine.setProperty('volume', 0.9)
-                    self.pyttsx3_engine.runAndWait()
-                else:
-                    raise SpeakerControlError(f"Unrecognized msg_type"
-                                    f" {msg_type} {msg}")
-        except Exception as e:
-            SlTrace.lg("Bust out of speak_text")
-            SlTrace.lg(f"Unexpected exception: {e}")
-            SlTrace.lg("Printing the full traceback as if we had not caught it here...")
-            SlTrace.lg(format_exception(e))
-        self.sc_speech_busy = False
+        cmd = SpeechMakerCmd(msg=msg, msg_type=msg_type,
+                 rate=rate, volume=volume)
+        self.pyttsx_proc.make_cmd(cmd)
 
     def send_cmd(self, cmd_type='speak', msg=None, msg_type=None,
                  rate=None, volume=None, tone=None,
@@ -812,9 +767,7 @@ class SpeakerControlLocal:
         self.speak_text_stop()    
 
 if __name__ == "__main__":
-    #from wx_audio_draw_window import AudioDrawWindow
     from wx_win import WxWin
-    #adw = AudioDrawWindow(setup_wx_win=False)
     adw = None
     wx_win = WxWin(adw, "wx_speaker_control Self Test")
     
