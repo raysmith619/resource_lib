@@ -34,10 +34,10 @@ class PyttsxProc:
     def setup_proc(self):
         """ Setup procesing process
         """
-        self.pyt_busy = False   # Updated with status 
         self.pyt_proc = mp.Process(target=self.pyt_proc_proc)
         self.pyt_queue = mp.Queue(self.qlen)  # speech queue of SpeakerControlCmd
         self.pyt_out_queue = mp.Queue(self.qlen)
+        self.pyt_engine_busy = False   # Updated with status 
         self.pyt_proc.start()
         
     def clear(self):
@@ -120,8 +120,8 @@ class PyttsxProc:
             return True
         
         while self.pyt_out_queue.qsize() > 0:
-            self.pyt_busy = self.pyt_out_queue.get()
-        return self.pyt_busy
+            self.pyt_engine_busy = self.pyt_out_queue.get()
+        return self.pyt_engine_busy
         
     
     def quit(self, wait=True):
@@ -132,10 +132,7 @@ class PyttsxProc:
         SlTrace.lg("Quitting", "talk_cmd")
         if wait:
             self.wait_while_busy()
-        SlTrace.lg("kill", "talk_cmd")
-        self.pyt_proc.kill()
-        SlTrace.lg("join", "talk_cmd")
-        self.pyt_proc.join()
+        self.clear()
         SlTrace.lg("After quit", "talk_cmd")
            
     
@@ -143,17 +140,21 @@ if __name__ == "__main__":
     import time
     
     SlTrace.clearFlags()
-    SlTrace.setFlags("talk_cmd")
+    #SlTrace.setFlags("talk_cmd")
     
     SlTrace.lg("\nTest Start")
     tt = PyttsxProc()
     tt.talk("Hello World")
+    for i in range(8):
+        print(i, "\a")
+        time.sleep(1)
     tt.talk(" ".join([str(i) for i in range(100,0,-1)]))
     time.sleep(4)
     tt.clear()
+    tt.talk("After clear")
     tt.talk("How are you?", volume=.5)
     tt.talk("How's the weather?", rate=120)
-    tt.wait_while_busy()
     tt.talk("Good Bye for now.", volume=.99)
+    tt.wait_while_busy()
     tt.quit()
     SlTrace.lg("Test End\n")

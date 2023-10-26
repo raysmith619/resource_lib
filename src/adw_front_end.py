@@ -1,6 +1,6 @@
 #adw_front_end.py        03Mar2023  crs, Split off  from audio_draw_window.py
 """
-AudioDrawWiindow support
+AudioDrawWindow support
 Created in an attempt to pare down audio_draw_window.py size
 """
 import sys

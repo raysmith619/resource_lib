@@ -19,11 +19,12 @@ from wx_speaker_control import SpeakerControlLocal
 from grid_path import GridPath
 from braille_cell import BrailleCell
 from magnify_info import MagnifyInfo, MagnifyDisplayRegion
-from adw_front_end import AdwFrontEnd
+from wx_adw_front_end import AdwFrontEnd
 from wx_win import WxWin
 
 class AudioDrawWindow:
     def __init__(self,
+        app=None,
         title=None, speaker_control=None,
         win_width=800, win_height=800,
         grid_width=40, grid_height=25,
@@ -48,6 +49,8 @@ class AudioDrawWindow:
         iy0_is_top=True,        # OBSOLETE
                  ):
         """ Setup audio window
+        :app: wx application object
+            default: create object
         :speaker_control: (SpeakerControlLocal) local access to centralized speech making
         :win_width: display window width in pixels
             default: 800
@@ -104,7 +107,9 @@ class AudioDrawWindow:
         :setup_wx_win:  Setup WxWin True  default: True
         :iy0_is_top: OBSOLETE
         """
-        
+        if app is None:
+            app = wx.App()
+        self.app = app
         # direction for digit pad
         if title is None:
             title = "AudioDrawWindow"
@@ -120,15 +125,22 @@ class AudioDrawWindow:
             x_min = 0
         if y_min is None:
             y_min = 0
-        # create the audio feedback window
-        if setup_wx_win:
-            self.wx_win = WxWin(self, title=title)
         self.title = title
+        
+        # create the audio feedback window
+        self.frame = wx.Frame(None, title=self.title,
+                              size=wx.Size(win_width, win_height))
+        self.frame.Show()
+        pnl = wx.Panel(self.frame)
+        
         if speaker_control is None and setup_wx_win:
             SlTrace.lg("Creating own SpeakerControl")
-            speaker_control = SpeakerControlLocal(win=self.wx_win)
+            speaker_control = SpeakerControlLocal()
         self.speaker_control = speaker_control
         #mw.withdraw()
+        
+        ###wxport### For print entry support
+        self.win_print_entry = None
 
 
         self._visible = visible
@@ -158,7 +170,7 @@ class AudioDrawWindow:
         else:
             if mag_info.description:
                 title = mag_info.description
-                mw.title(title)
+                ###wxport###mw.title(title)
                 self.title = title
                 self.speak_text(f"Magnification of {title}")
         mag_info.display_window = self    # Magnification setup
@@ -173,7 +185,7 @@ class AudioDrawWindow:
         self.cell_history = []          # History of all movement
         self.set_grid_path()
         self.running = True         # Set False to stop
-        self.mw.focus_force()
+        ###wxport###self.mw.focus_force()
         self.blank_char = blank_char
         self.shift_to_edge = shift_to_edge
         self.set_look_dist(look_dist)
@@ -354,10 +366,10 @@ class AudioDrawWindow:
             ###print(f"{iy:2}", end=":")
             braille_text += line + "\n"
         SlTrace.lg(braille_text)
-        self.mw.clipboard_clear()
+        ###wxport###self.mw.clipboard_clear()
         if title is not None:
-            self.mw.clipboard_append(f"\n{title}\n")
-        self.mw.clipboard_append(braille_text)
+            '''###wxport###self.mw.clipboard_append(f"\n{title}\n")'''
+        ###wxport###self.mw.clipboard_append(braille_text)
 
     def print_cells(self, title=None):
         """ Display current braille in a window
@@ -432,8 +444,8 @@ class AudioDrawWindow:
                 self.mark_cell(cell_ixiy)   # Mark cell if one
         self.cursor_update()
 
-        if not self.mw.winfo_exists():
-            return 
+        ###wxport###if not self.mw.winfo_exists():
+        ###wxport###    return 
         
         self.update()
         if not quiet:
@@ -1119,15 +1131,15 @@ class AudioDrawWindow:
     def update(self):
         """ Update display
         """
-        self.mw.update()
+        '''###wxport###self.mw.update()'''
 
     def mainloop(self):
-        self.mw.mainloop()
+        '''###wxport###self.mw.mainloop()'''
         
     def update_idle(self):
         """ Update pending
         """
-        self.mw.update_idletasks()
+        '''###wxport###self.mw.update_idletasks()'''
 
     """
          Links to front end functions
@@ -1302,11 +1314,11 @@ if __name__ == "__main__":
                          menu_str=menu_str,
                          key_str=key_str)
 
-    aw.do_menu_str("n:nu;d:s")
-    aw.do_key_str("u")
+    aw.fte.do_menu_str("n:nu;d:s")
+    aw.fte.do_key_str("u")
     
     
     
     
-    aw.mw.mainloop()
+    ###wxport###aw.mw.mainloop()
     

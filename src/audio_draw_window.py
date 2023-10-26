@@ -1314,8 +1314,8 @@ if __name__ == "__main__":
                          menu_str=menu_str,
                          key_str=key_str)
 
-    aw.do_menu_str("n:nu;d:s")
-    aw.do_key_str("u")
+    aw.fte.do_menu_str("n:nu;d:s")
+    aw.fte.do_key_str("u")
     
     
     

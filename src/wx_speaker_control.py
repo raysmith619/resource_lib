@@ -1,9 +1,11 @@
-# speaker_control.py    19Feb2023  crs, Author
+# wx_speaker_control.py    24Oct2023  crs, Author
 """
 Support thread safe non-blocking speaker control:
     1. text to speech encapsulation of pyttsx3 facilitating
      talk from multiple AudioDrawWindow sources
     2. tone playing using SineWaveNumPy, audio-sounddevice
+    3. Using wxPython utilities for time control
+    4. Using PyttsxProc for speech to text
     
 """
 import threading
@@ -13,7 +15,7 @@ import sounddevice as sd
 
 from format_exception import format_exception
 from select_trace import SlTrace, SelectError
-from play_sound_control import PlaySoundControl
+from wx_play_sound_control import PlaySoundControl
 from sinewave_numpy import SineWaveNumPy
 
 from pyttsx_proc import PyttsxProc
@@ -577,7 +579,7 @@ class SpeakerControl(Singleton):
                                  msg_type=msg_type,
                                  rate=rate, volume=volume,
                                  tone=tone, waveform=waveform,
-                                 fr=fr, after=after)
+                                 after=after)
         cmd_id = cmd.cmd_id
         self.cmds_in_progress[cmd_id] = cmd
         self.sc_cmd_queue.put(cmd)
@@ -588,18 +590,17 @@ class SpeakerControlLocal:
     """ Localinstance of SpeakerControl
     """
 
-    def __init__(self, wx_win, logging_sound=False):
+    def __init__(self, logging_sound=False):
         self.cmds_awaiting_after = {} # dictionary by cmd_id awaiting after
         self.awaiting_loop_ms = 1      # Awaiting loop
         self.awaiting_loop_going = False    # Checking loop in progress
         self.sc = SpeakerControl()
-        self.wx_win = wx_win
         self.logging_sound = logging_sound
         self.make_silent(False)
 
     def get_sound_queue_max(self):
-        """ Get current number of entries
-        :returns: number of entries
+        """ Get maximum number of entries
+        :returns: max number of entries
         """
         return self.sc.get_sound_queue_max()
 
@@ -642,14 +643,8 @@ class SpeakerControlLocal:
         return self.sc.is_busy()
 
     def wait_while_busy(self):
-        '''
-        time.sleep(2)
-        self.clear()
-        time.sleep(2)
-        return
-        '''
         while self.sc.busy_parts():
-            self.wx_win.update()
+            pass    ###wxport###
             
     def quit(self):    
         self.sc.quit()
@@ -772,7 +767,7 @@ if __name__ == "__main__":
     wx_win = WxWin(adw, "wx_speaker_control Self Test")
     
     SlTrace.setFlags("speech,sound_queue")
-    scl = SpeakerControlLocal(wx_win=wx_win)
+    scl = SpeakerControlLocal()
     scl.wait_while_busy()
     scl.speak_text("Hello World!")
     scl.wait_while_busy()

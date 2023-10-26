@@ -804,10 +804,10 @@ if __name__ == "__main__":
         SlTrace.lg("After create_audio_window() 2")
         root.mainloop()
         
-        #test1()
-        #test2()
-        #test3()
-        test5()
-        SlTrace.lg("End of Test")
-        sys.exit()
+    #test1()
+    #test2()
+    #test3()
+    test5()
+    SlTrace.lg("End of Test")
+    sys.exit()
         

@@ -63,6 +63,21 @@ class PyttsxQueued:
         SlTrace.lg(f"After eng.say({text})")
         eng.runAndWait()
         SlTrace.lg("after eng.runAndWait()")
+
+    def quit(self, wait=True):
+        """ Quit talking
+        :wait: if true wait till talking is done
+                default: True - wait
+        """
+        SlTrace.lg("Quitting", "talk_cmd")
+        if wait:
+            self.wait_while_busy()
+        SlTrace.lg("kill", "talk_cmd")
+        self.pyt_proc.kill()
+        SlTrace.lg("join", "talk_cmd")
+        self.pyt_proc.join()
+        SlTrace.lg("After quit", "talk_cmd")
+
     
 if __name__ == "__main__":
     print("\nTest Start")
