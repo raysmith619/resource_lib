@@ -1,6 +1,6 @@
 # adw_menus    09Mar2023  crs, Split off from adw_front_end
 
-import tkinter as tk
+import wx
 
 from select_trace import SlTrace
 from trace_control_window import TraceControlWindow
@@ -19,12 +19,17 @@ class MenuDisp:
 
 
 class AdwMenus:
-    def __init__(self, adw_front_end):
+    def __init__(self, adw_front_end, frame=None):
         """ Setup menus for AudioDrawWindow
         :adw_front_end: (AdwFrontEnd)
+        :frame: frame containing menus
         """
         self.fte = adw_front_end
-
+        if frame is None:
+            wx.Frame(None)
+        self.frame = frame
+        frame.Show()
+        
         self.menu_setup()
 
     def on_alt_a(self, event):
@@ -56,6 +61,128 @@ class AdwMenus:
         """ Setup menu system
         """
         # creating a menu instance
+        menubar = wx.MenuBar()
+        menu_name_list = [
+            "file", "magnify","navigate",
+            "draw", "scanning", "auxiliary"
+            ]
+            
+        # Settings for each menu    
+        menus_settings = {
+            "file" : {"heading" : "File"},
+            "magnify" : {"heading" : "Magnify"},
+            "navigate" : {"heading" : "Navigate"},
+            "draw" : {"heading" : "Draw"},
+            "scanning" : {"heading" : "Scanning"},
+            "auxiliary" : {"heading" : "Auxiliary"},
+        }
+        
+        """ menus_items defines all the menu drop downs
+        SEP - specifies a separator line
+        
+        "name" specifies name and heading
+        if value is a str the heading == name
+        else name is a tuple with
+            name = tuple[0]
+            heading = tuple[1]
+        """
+        
+        SEP = {"sep": "sep"}    # Menu item separator
+          
+        menus_items = {
+            "file":
+                [
+                {"name" : "Open",  "cmd" : self.TBD},
+                {"name" : "Save",  "cmd" : self.TBD},
+                SEP,
+                {"name" : "Log",   "cmd" : self.LogFile},
+                {"name" : "Properties",   "cmd" : self.PropertiesFile},
+                SEP,
+                {"name" : "Exit",  "cmd" : self.pgm_exit},
+                ],
+            "magnify" :
+                [
+                {"name" : "Help", "cmd" : self.mag_help},
+                {"name" : ("rem_pos","Remove Pos History"), "cmd" : self.erase_pos_history},
+                {"name" : "Select", "cmd" : self.mag_select},
+                {"name" : "Expand Right", "cmd" : self.mag_expand_right},
+                {"name" : "Expand Top", "cmd" : self.mag_expand_top},
+                {"name" : "View", "cmd" : self.mag_view},              
+                ],
+            "navigate" :
+                [
+                {"name" : ("help","Help"), "cmd" : self.nav_help},
+                {"name" : ("add_loc","add At loc"), "cmd" : self.nav_add_loc},
+                {"name" : ("no_add_loc","b-remove At loc"), "cmd" : self.nav_no_add_loc},
+                {"name" : ("echo on","echo input on"), "cmd" : self.nav_no_add_loc},
+                {"name" : ("hd","echo off"), "cmd" : self.nav_no_add_loc},
+                {"name" : ("hd","visible cells"), "cmd" : self.nav_no_add_loc},
+                {"name" : ("hd","invisible cells"), "cmd" : self.nav_no_add_loc},
+                {"name" : ("hd","marked"), "cmd" : self.nav_no_add_loc},
+                {"name" : ("hd","noisy"), "cmd" : self.nav_no_add_loc},
+                {"name" : ("hd","silent"), "cmd" : self.nav_no_add_loc},
+                {"name" : ("hd","talking"), "cmd" : self.nav_no_add_loc},
+                {"name" : ("hd","log talk"), "cmd" : self.nav_no_add_loc},
+                {"name" : ("hd","no log talk"), "cmd" : self.nav_no_add_loc},
+                {"name" : ("hd","position"), "cmd" : self.nav_no_add_loc},
+                {"name" : ("hd","redraw figure"), "cmd" : self.nav_no_add_loc},
+                {"name" : ("hd","audio beep"), "cmd" : self.nav_no_add_loc},
+                {"name" : ("hd","q no audio beep"), "cmd" : self.nav_no_add_loc},
+                {"name" : ("hd","x enable mouse navigation"), "cmd" : self.nav_no_add_loc},
+                {"name" : ("hd","y disable mouse navigation"), "cmd" : self.nav_no_add_loc},
+                ],
+            "draw" :
+                [
+                {"name" : "Help", "cmd" : self.draw_help},
+                {"name" : "drawing", "cmd" : self.start_drawing},
+                {"name" : "stop_drawing", "cmd" : self.stop_drawing},
+                ],
+            "scanning" :
+                [
+                {"name" : "Help", "cmd" : self.scan_help},
+                {"name" : "c -  combine wave - faster scan", "cmd" : self.scan_combine_wave},
+                {"name" : "d - disable combine wave", "cmd" : self.scan_disable_combine_wave},
+                {"name" : "f - flip skip space", "cmd" : self.flip_skip_space},
+                {"name" : "r - flip skip run", "cmd" : self.flip_skip_run},
+                {"name" : "Start scanning", "cmd" : self.start_scanning},
+                {"name" : "S&top scanning", "cmd" : self.stop_scanning},
+                {"name" : "No item wait", "cmd" : self.scan_no_item_wait},
+                {"name" : "Wait for item", "cmd" : self.scan_item_wait},
+                ],
+            "auxiliary" :
+                [
+                {"name" : "Trace", "cmd" : self.trace_menu},
+                ],
+            
+        }
+        
+        self.frame.SetMenuBar(menubar)
+        for menu_name in menu_name_list:
+            menu = wx.Menu()
+            menu_settings = menus_settings[menu_name]
+            menu_heading = menu_settings["heading"]
+            menubar.Append(menu,  menu_heading)
+            menu_items = menus_items[menu_name]
+            for menu_item_specs in menu_items:
+                if "sep" in menu_item_specs:
+                    menu_item = menu.Append(wx.ID_SEPARATOR)
+                else:
+                    menu_cmd = menu_item_specs["cmd"]
+                    name_heading = menu_item_specs["name"]
+                    if isinstance(name_heading,str):
+                        menu_item_heading = menu_item_name = name_heading
+                    elif len(name_heading)==1:
+                        menu_item_name = menu_item_heading = name_heading[0]
+                    elif len(name_heading) == 2:
+                        menu_item_name = name_heading[0]
+                        menu_item_heading = name_heading[1]
+   
+                    if "&" not in menu_item_heading:
+                        menu_item_heading = "&" + menu_item_heading
+                    menu_item = menu.Append(wx.ID_ANY, menu_item_heading)
+                frame.Bind(wx.EVT_MENU, menu_cmd, menu_item)
+
+
         """###wxport###
         self.mw.bind('<Alt-a>', self.on_alt_f)  # Keep this from key cmds
         self.mw.bind('<Alt-d>', self.on_alt_f)  # Keep this from key cmds
@@ -73,7 +200,6 @@ class AdwMenus:
         ###wxport###self.mw.config(menu=menubar)
 
         self.Properties = None
-        self.LogFile = None
 
         ###wxport###file_menu = tk.Menu(menubar, tearoff=0)
         ###wxport###self.file_menu_setup(file_menu)
@@ -102,7 +228,16 @@ class AdwMenus:
         '''
     """ File Menu setup package
     """
+    '''
+    menu_items.append(heading_menu.Append(wx.ID_ANY, lbl, "desc-" + lbl))
+        menu_item = menu_items[-1]
+        menu_cmds.append(get_menu_cmd(proc=menu_command, hi=hi, ddj=ddj))
+        menu_cmd = menu_cmds[-1]
+        print(f"menu_cmd: menu_cmd:{menu_cmd} hi:{hi} ddj:{ddj}")
 
+        frame.Bind(wx.EVT_MENU, menu_cmd, id=menu_item.GetId())
+    menubar.Append(heading_menu,  menu_lst[i%len(menu_lst)])
+    '''
     def file_menu_setup(self, file_menu):
         self.file_menu = file_menu
         self.file_dispatch = {}
@@ -132,6 +267,15 @@ class AdwMenus:
 
         self.file_dispatch[menu_de.shortcut] = menu_de
 
+    def TBD(self, _):
+        SlTrace.lg("To be developed")
+
+    def LogFile(self, _):
+        SlTrace.lg("Show LogFile")
+
+    def PropertiesFile(self, _):
+        SlTrace.lg("Show PropertiesFile")
+                
     def file_direct_call(self, short_cut):
         """ Short-cut call direct to option
         :short_cut: one letter option for call 
@@ -182,7 +326,7 @@ class AdwMenus:
         menu_de = self.draw_dispatch[short_cut]
         menu_de.command()
 
-    def draw_help(self):
+    def draw_help(self, _):
         """ Help for drawing
         """
         """ Help - list command (Alt-d) commands
@@ -201,7 +345,7 @@ class AdwMenus:
 
     """ Magnify menu commands  """
 
-    def mag_help(self):
+    def mag_help(self, _):
         """ Help for Alt-m commands
         """
         """ Help - list command (Alt-m) commands
@@ -262,7 +406,7 @@ class AdwMenus:
 
     """ Scanning menu commands  """
 
-    def scan_help(self):
+    def scan_help(self, _):
         """ Help for Alt-s commands
         """
         """ Help - list command (Alt-s) commands
@@ -326,16 +470,16 @@ class AdwMenus:
         scande = self.scan_dispatch[short_cut]
         scande.command()
 
-    def scan_combine_wave(self):
+    def scan_combine_wave(self, _):
         self.set_combine_wave()
 
-    def scan_disable_combine_wave(self):
+    def scan_disable_combine_wave(self, _):
         self.set_combine_wave(val=False)
 
-    def scan_no_item_wait(self):
+    def scan_no_item_wait(self, _):
         self.set_no_item_wait()
 
-    def scan_item_wait(self):
+    def scan_item_wait(self, _):
         """clear no item wait
         """
         self.set_no_item_wait(val=False)
@@ -346,7 +490,7 @@ class AdwMenus:
     """ Navigate support package
     """
 
-    def nav_help(self):
+    def nav_help(self, _):
         """ Help for Alt-n commands
         """
         """ Help - list command (Alt-n) commands
@@ -446,8 +590,8 @@ class AdwMenus:
     Trace support
     """
 
-    def trace_menu(self):
-        """###wxport###TraceControlWindow(tcbase=self.mw)"""
+    def trace_menu(self, _):
+        TraceControlWindow()
 
     """
     Links to front end 
@@ -483,7 +627,7 @@ class AdwMenus:
       most local
     """
 
-    def pgm_exit(self):
+    def pgm_exit(self, _):
         self.fte.pgm_exit()
 
     """
@@ -515,14 +659,15 @@ class AdwMenus:
     """ drawing
     """
 
-    def start_drawing(self):
+    def start_drawing(self, _):
         """ Start/enable drawing
         """
         self.fte.start_drawing()
 
-    def stop_drawing(self):
+    def stop_drawing(self, _):
         """ Stop/disable drawing
         """
+        self.fte.stop_drawing()
 
     """ End of Magnification links """
 
@@ -614,18 +759,61 @@ class AdwMenus:
         """
         self.fte.set_no_item_wait(val=val)
 
-    def flip_skip_space(self):
+    def flip_skip_space(self, _):
         """ Flip skipping spaces
         """
         self.fte.flip_skip_space()
 
-    def flip_skip_run(self):
+    def flip_skip_run(self, _):
         """ Flip skipping run of equals
         """
         self.fte.flip_skip_run()
 
-    def start_scanning(self):
+    def start_scanning(self, _):
         self.fte.start_scanning()
 
-    def stop_scanning(self):
+    def stop_scanning(self, _):
         self.fte.stop_scanning()
+
+if __name__ == "__main__":
+    class FteFake:
+        def pgm_exit(self):
+            SlTrace.lg("fte.pgm_exit()")
+            
+        def speak_text(self, msg, msg_type=None,
+                       dup_stdout=True, rate=None,
+                       volume=None):
+            SlTrace.lg(f"fte.speak_text({msg},"
+                       f"msg_type={msg_type}msg)"
+                       f")")
+
+        def start_drawing(self):
+            SlTrace.lg(f"fte.start_drawing()")
+
+        def stop_drawing(self):
+            SlTrace.lg(f"fte.stop_drawing() is this in fte?")
+        
+        def set_combine_wave(self, val=True):
+            SlTrace.lg("fte.set_combine_wave")
+        
+        def  flip_skip_space(self):
+            SlTrace.lg("fte.flip_skip_space")
+        
+        def  flip_skip_run(self):
+            SlTrace.lg("fte.flip_skip_run")
+        
+        def start_scanning(self):
+            SlTrace.lg("fte.start_scanning")
+                                                                                                                                            
+        def stop_scanning(self):
+            SlTrace.lg("fte.stop_scanning") 
+
+        def set_no_item_wait(self, val=True):
+            SlTrace.lg(f"fte.set_no_item_wait(val={val})") 
+                  
+    app = wx.App()
+    frame = wx.Frame(None)
+    fte = FteFake()
+    menus = AdwMenus(fte, frame=frame)
+
+    app.MainLoop()
