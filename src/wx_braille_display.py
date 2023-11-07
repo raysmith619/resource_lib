@@ -14,12 +14,14 @@ import os
 import re
 import __main__
 import datetime
+import multiprocessing as mp
+import threading as th
 
 import turtle as tur
 import tkinter as tk            # Best approach
 
 from select_trace import SlTrace
-from speaker_control import SpeakerControlLocal
+from wx_speaker_control import SpeakerControlLocal
 from braille_cell import BrailleCell
 from wx_canvas_grid import CanvasGrid
 from magnify_info import MagnifyInfo
@@ -123,6 +125,7 @@ class BrailleDisplay:
         self._braille_print = braille_print
         self._print_cells = print_cells
         self.tu_screen = tur.Screen()
+        self.tu_canvas = self.tu_screen.getcanvas()
         self.blank_char = blank_char
         shift_to_edge = False               # TFD
         self.shift_to_edge = shift_to_edge
@@ -185,9 +188,8 @@ class BrailleDisplay:
         """
         ###wxport### geometry = f"{self.win_width}x{self.win_width}"
         ###wxport### mw.geometry(geometry)
-        tu_canvas = self.tu_screen.getcanvas()
         self.speaker_control = SpeakerControlLocal()   # local access to speech engine
-        self.canvas_grid = CanvasGrid(base=tu_canvas,
+        self.canvas_grid = CanvasGrid(base=self.tu_canvas,
                             pgmExit=self.exit,
                             speaker_control = self.speaker_control,
                             width=self.win_width, height=self.win_height,
@@ -250,11 +252,18 @@ class BrailleDisplay:
         canvas_items = False
         if SlTrace.trace("show_canvas_items"):
             canvas_items = True
-        self.display(title=title,
-                   braille_window=self._braille_window,
-                   braille_print=self._braille_print,
-                   print_cells=self._print_cells,
-                   canvas_items=canvas_items)
+        '''
+        wx_proc = mp.Process(target=self.display, kwargs={
+                    ###"tu_canvas" : self.tu_canvas,
+                    "title" : title,
+                    "braille_window" : self._braille_window,
+                    "braille_print" : self._braille_print,
+                    "print_cells" : self._print_cells,
+                    "canvas_items" : canvas_items},
+                    )
+        '''
+        wx_proc = th.Thread(target=self.display)
+        wx_proc.start()
         tur.done()
         
     def done(self):
@@ -362,6 +371,6 @@ class BrailleDisplay:
     '''    
         
 if __name__ == "__main__":
-    import square_loop_colors
+    import wx_square_loop_colors
     #import braille_display_test2
 

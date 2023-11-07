@@ -21,8 +21,9 @@ from braille_cell import BrailleCell
 from magnify_info import MagnifyInfo, MagnifyDisplayRegion
 from wx_adw_front_end import AdwFrontEnd
 from wx_win import WxWin
+from cell_panel import CellPanel
 
-class AudioDrawWindow:
+class AudioDrawWindow(wx.Frame):
     def __init__(self,
         app=None,
         title=None, speaker_control=None,
@@ -48,6 +49,7 @@ class AudioDrawWindow:
         setup_wx_win = True,
         iy0_is_top=True,        # OBSOLETE
                  ):
+        
         """ Setup audio window
         :app: wx application object
             default: create object
@@ -126,13 +128,21 @@ class AudioDrawWindow:
         if y_min is None:
             y_min = 0
         self.title = title
+        self.cell_pan = CellPanel(self)
         
         # create the audio feedback window
-        self.frame = wx.Frame(None, title=self.title,
+        wx.Frame.__init__(self, None, title=self.title,
                               size=wx.Size(win_width, win_height))
-        self.frame.Show()
-        pnl = wx.Panel(self.frame)
-        
+        self.Show()
+        self.adw_panel = wx.Panel(self)     
+        self.adw_echo_text = wx.TextCtrl(self.adw_panel)
+        self.cell_panel = wx.Panel(self.adw_panel)
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        sizer.Add(self.adw_echo_text, 1, wx.EXPAND|wx.ALL, 5)
+        sizer.Add(self.cell_panel, 1, wx.EXPAND|wx.ALL, 5)
+        self.adw_panel.SetSizer(sizer)
+        cell_panel = wx.Panel(self)
+        self.cell_panel = cell_panel
         if speaker_control is None and setup_wx_win:
             SlTrace.lg("Creating own SpeakerControl")
             speaker_control = SpeakerControlLocal()
@@ -646,7 +656,7 @@ class AudioDrawWindow:
         # Remove current items, if any
         if cell.canv_items:
             for item_id in cell.canv_items:
-                self.canvas.delete(item_id)
+                self.cell_pan.delete(item_id)
             self.update()       # Make change visible
         cell.canv_items = []
 
@@ -726,7 +736,7 @@ class AudioDrawWindow:
             self.display_cell(cell=cell)
             
         return      # Just ignore if missing
-    
+
     def display_cell(self, cell, show_points=False):
         """ Display cell
         :cell: BrailleCell
@@ -737,17 +747,16 @@ class AudioDrawWindow:
         if not cell.is_visible():
             return              # Nothing to show
         
-        canvas = self.canvas
         ix = cell.ix
         iy = cell.iy
         
         cx1,cy1,cx2,cy2 = self.get_win_ullr_at_ixy_canvas((ix,iy))
         SlTrace.lg(f"{ix},{iy}: {cell} :{cx1},{cy1}, {cx2},{cy2} ", "display_cell")
         if cell.mtype==BrailleCell.MARK_UNMARKED:
-            canv_item = canvas.create_rectangle(cx1,cy1,cx2,cy2,
+            canv_item = self.cell_pan.create_rectangle(cx1,cy1,cx2,cy2,
                                     outline="light gray")
         else:
-            canv_item = canvas.create_rectangle(cx1,cy1,cx2,cy2,
+            canv_item = self.cell_pan.create_rectangle(cx1,cy1,cx2,cy2,
                                     fill="dark gray",
                                     outline="dark gray")
         cell.canv_items.append(canv_item)
@@ -767,10 +776,10 @@ class AudioDrawWindow:
                 y0 = dy+dot_size 
                 x1 = dx+dot_radius 
                 y1 = dy
-                canv_item = canvas.create_oval(x0,y0,x1,y1,
+                canv_item = self.cell_pan.create_oval(x0,y0,x1,y1,
                                                 fill=color)
                 cell.canv_items.append(canv_item)
-                SlTrace.lg(f"canvas.create_oval({x0},{y0},{x1},{y1}, fill={color})", "aud_create")
+                SlTrace.lg(f"cell_pan.create_oval({x0},{y0},{x1},{y1}, fill={color})", "aud_create")
             self.update()    # So we can see it now 
             return
             
@@ -801,10 +810,10 @@ class AudioDrawWindow:
             y0 = dy+dot_size 
             x1 = dx+dot_radius 
             y1 = dy
-            canv_item = canvas.create_oval(x0,y0,x1,y1,
+            canv_item = self.cell_pan.create_oval(x0,y0,x1,y1,
                                             fill=color)
             cell.canv_items.append(canv_item) 
-            SlTrace.lg(f"canvas.create_oval({x0},{y0},{x1},{y1}, fill={color})", "aud_create")
+            SlTrace.lg(f"cell_pan.create_oval({x0},{y0},{x1},{y1}, fill={color})", "aud_create")
         self.update()
         pass
                 
@@ -932,7 +941,7 @@ class AudioDrawWindow:
     def win_to_canvas(self, xy):
         """ Convert window coordinates to canvas (min to max) to (0,max)
         :xy: x,y tuple
-        :returns: x,y canvas tuple
+        :returns: x,y canvas tuple (cell_panel)
         """
         x,y = xy
         canvas_x, canvas_y = (x-self.get_x_min(), y-self.get_y_min())
@@ -1133,8 +1142,8 @@ class AudioDrawWindow:
         """
         '''###wxport###self.mw.update()'''
 
-    def mainloop(self):
-        '''###wxport###self.mw.mainloop()'''
+    def MainLoop(self):
+        self.app.MainLoop()
         
     def update_idle(self):
         """ Update pending
@@ -1298,6 +1307,7 @@ class AudioDrawWindow:
         return self.fte.is_silent()
 if __name__ == "__main__":
     SlTrace.clearFlags()
+    app = wx.App()
     menu_str = "n:sh;d:d"
     key_str = (
                 "d"
@@ -1311,14 +1321,13 @@ if __name__ == "__main__":
                 ";w"
             )
     aw = AudioDrawWindow(title="AudioDrawWindow Self-Test",
+                         app=app,
                          menu_str=menu_str,
                          key_str=key_str)
 
     aw.fte.do_menu_str("n:nu;d:s")
     aw.fte.do_key_str("u")
     
+    aw.MainLoop()
     
-    
-    
-    ###wxport###aw.mw.mainloop()
     

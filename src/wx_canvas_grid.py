@@ -66,21 +66,20 @@ class CanvasGrid:
             g_xmin = 0
         self.g_xmin = g_xmin
         if g_xmax is None:
-            g_xmax = g_xmin + self.winfo_width()
+            g_xmax = g_xmin + self.base.winfo_width()
         self.g_xmax = g_xmax
         self.g_width = g_xmax-g_xmin
         if g_ymin is None:
             g_ymin = 0
         self.g_ymin = g_ymin
         if g_ymax is None:
-            g_ymax = g_ymin + self.winfo_height()
+            g_ymax = g_ymin + self.base.winfo_height()
         self.g_ymax = g_ymax
         self.g_height = abs(g_ymax-g_ymin) # No questions
         self.g_nrows = g_nrows
         self.g_ncols = g_ncols
         self.grid_tag = None        # Most recent grid paint tag
         self.set_grid_lims()
-        self.master.withdraw()
         
     def get_grid_lims(self, xmin=None, xmax=None, ymin=None, ymax=None,
                       ncols=None, nrows=None):

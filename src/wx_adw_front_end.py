@@ -113,7 +113,7 @@ class AdwFrontEnd:
                           "4":(-1,0),      "5":(0,0),      "6":(1,0),
                           "1":(-1,y_down), "2":(0,y_down), "3":(1,y_down)}
         self.scanner = AdwScanner(self)
-        self.menus = AdwMenus(self)
+        self.menus = AdwMenus(self, frame=self)
 
     def add_to_goto_cell_list(self, ixy):
         """ Add to goto history
@@ -177,7 +177,7 @@ class AdwFrontEnd:
     def wait_on_output(self):
         """ Wait till queued output speech/tones completed
         """
-
+        return      # TFD
         while True:
             if self.adw.speaker_control.is_busy():
                 self.update()
@@ -428,26 +428,15 @@ class AdwFrontEnd:
         for cmd in menu_cmds:
             cmd = cmd.strip()
             cmd_type, cmd_letters = cmd.split(':')
-            if cmd_type == 'f':
-                for c in cmd_letters:
-                    self.wait_on_output()
-                    self.file_direct_call(c)
-            if cmd_type == 'n':
-                for c in cmd_letters:
-                    self.wait_on_output()
-                    self.nav_direct_call(c)
-            elif cmd_type == 'd':
-                for c in cmd_letters:
-                    self.wait_on_output()
-                    self.draw_direct_call(c)
-            elif cmd_type == 'm':
-                for c in cmd_letters:
-                    self.wait_on_output()
-                    self.mag_direct_call(c)
-            elif cmd_type == 's':
-                for c in cmd_letters:
-                    self.wait_on_output()
-                    self.scan_direct_call(c)
+            menu_scs = self.get_menu_item_scs(cmd_type)
+            if menu_scs is None:
+                raise Exception("No command short cut {cmd_type} in {cmd}")
+            for c in cmd_letters:
+                cmd_command = self.get_menu_cmd(cmd_type, c)
+                if cmd_command is None:
+                    raise Exception("No command {cmd_type}:{c}")
+                self.wait_on_output()
+                cmd_command()
 
     def do_key_str(self, key_str=None):
         """ Execute initial key string, if any
@@ -1599,12 +1588,12 @@ class AdwFrontEnd:
     def update(self):
         """ Update display
         """
-        self.adw.update()
+        #self.adw.update()
 
     def update_idle(self):
         """ Update pending
         """
-        self.adw.update_idle()
+        #self.adw.update_idle()
 
 
     """
@@ -1707,6 +1696,27 @@ class AdwFrontEnd:
                        Links to menus
     ############################################################
     """
+    def get_menu_scs(self):
+        """ Get menu (menubar) short cuts
+        """
+        return self.menus.get_menu_scs()
+
+    def get_menu_item_scs(self, menu_sc):
+        """ Get list of menu item short cuts
+        :menu_sc: menu shortcut
+        :returns: list of menu itme shortcuts
+        """
+        return self.menus.get_menu_item_scs(menu_sc)
+
+    def get_menu_cmd(self, menu_sc, mi_sc):
+        """ get menu cmd
+        :menu_cs: menu shortcut case insensitive
+        :mi_cs: menu item shortcut case insensitive
+        :returns: menu cmd, if none - None
+        """
+        return self.menus.get_menu_cmd(menu_sc, mi_sc)
+    
+     
     def file_direct_call(self, short_cut):
         """ Short-cut call direct to option
         :short_cut: one letter option for call 
