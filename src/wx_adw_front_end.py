@@ -113,7 +113,7 @@ class AdwFrontEnd:
                           "4":(-1,0),      "5":(0,0),      "6":(1,0),
                           "1":(-1,y_down), "2":(0,y_down), "3":(1,y_down)}
         self.scanner = AdwScanner(self)
-        self.menus = AdwMenus(self, frame=self)
+        self.menus = AdwMenus(self, frame=self.adw)
 
     def add_to_goto_cell_list(self, ixy):
         """ Add to goto history

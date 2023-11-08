@@ -29,7 +29,7 @@ class AdwMenus:
         if frame is None:
             frame = wx.Frame(None)
         self.frame = frame
-        frame.Show()
+        self.fte.adw.Show()
         
         self.menu_setup()
 

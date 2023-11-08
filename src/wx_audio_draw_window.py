@@ -135,14 +135,16 @@ class AudioDrawWindow(wx.Frame):
                               size=wx.Size(win_width, win_height))
         self.Show()
         self.adw_panel = wx.Panel(self)     
-        self.adw_echo_text = wx.TextCtrl(self.adw_panel)
+        self.window_sizer = wx.BoxSizer()
+        # Set sizer for the frame, so we can change frame size to match widgets
+        self.window_sizer.Add(self.adw_panel, 1, wx.ALL | wx.EXPAND)
+
+        self.wc_sizer = wx.BoxSizer(wx.VERTICAL)
+        self.adw_echo_text = wx.TextCtrl(self.adw_panel, size=(int(win_width*.9),20))
         self.cell_panel = wx.Panel(self.adw_panel)
-        sizer = wx.BoxSizer(wx.VERTICAL)
-        sizer.Add(self.adw_echo_text, 1, wx.EXPAND|wx.ALL, 5)
-        sizer.Add(self.cell_panel, 1, wx.EXPAND|wx.ALL, 5)
-        self.adw_panel.SetSizer(sizer)
-        cell_panel = wx.Panel(self)
-        self.cell_panel = cell_panel
+        self.wc_sizer.Add(self.adw_echo_text, 0, wx.ALIGN_CENTER_HORIZONTAL)
+        self.wc_sizer.Add(self.cell_panel, 1, wx.EXPAND|wx.EXPAND)
+        self.adw_panel.SetSizer(self.wc_sizer)
         if speaker_control is None and setup_wx_win:
             SlTrace.lg("Creating own SpeakerControl")
             speaker_control = SpeakerControlLocal()

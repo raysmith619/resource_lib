@@ -7,6 +7,11 @@ from select_trace import SlTrace
 class CellPanel:
     def __init__(self, adw):
         self.adw = adw
+        self.win_width = adw.win_width
+        self.win_height = adw.win_height
+        self.grid_width = adw.grid_width
+        self.grid_height = adw.grid_height
+        self.cell_height = adw.win_height/self.grid_height
         
 
     def create_rectangle(self, cx1,cy1,cx2,cy2,
