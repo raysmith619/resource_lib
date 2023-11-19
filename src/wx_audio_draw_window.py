@@ -20,8 +20,7 @@ from grid_path import GridPath
 from braille_cell import BrailleCell
 from magnify_info import MagnifyInfo, MagnifyDisplayRegion
 from wx_adw_front_end import AdwFrontEnd
-from wx_win import WxWin
-from cell_panel import CellPanel
+from canvas_panel import CanvasFrame
 
 class AudioDrawWindow(wx.Frame):
     def __init__(self,
@@ -49,7 +48,8 @@ class AudioDrawWindow(wx.Frame):
         setup_wx_win = True,
         iy0_is_top=True,        # OBSOLETE
                  ):
-        
+        super().__init__(None, title=title)
+        #frame = CanvasFrame(title=mytitle, size=wx.Size(width,height))
         """ Setup audio window
         :app: wx application object
             default: create object
@@ -106,7 +106,6 @@ class AudioDrawWindow(wx.Frame):
                     interpretation is case insensitive
         :look_dist: Max number of cells to look ahead and report
                     default: 1
-        :setup_wx_win:  Setup WxWin True  default: True
         :iy0_is_top: OBSOLETE
         """
         if app is None:
@@ -127,12 +126,11 @@ class AudioDrawWindow(wx.Frame):
             x_min = 0
         if y_min is None:
             y_min = 0
-        self.title = title
-        self.cell_pan = CellPanel(self)
-        
         # create the audio feedback window
-        wx.Frame.__init__(self, None, title=self.title,
+        self.title = title
+        self.cell_pan = CanvasFrame(title=self.title,
                               size=wx.Size(win_width, win_height))
+        
         self.Show()
         self.adw_panel = wx.Panel(self)     
         self.window_sizer = wx.BoxSizer()
@@ -141,9 +139,9 @@ class AudioDrawWindow(wx.Frame):
 
         self.wc_sizer = wx.BoxSizer(wx.VERTICAL)
         self.adw_echo_text = wx.TextCtrl(self.adw_panel, size=(int(win_width*.9),20))
-        self.cell_panel = wx.Panel(self.adw_panel)
+        #self.cell_pan = wx.Panel(self.adw_panel)
         self.wc_sizer.Add(self.adw_echo_text, 0, wx.ALIGN_CENTER_HORIZONTAL)
-        self.wc_sizer.Add(self.cell_panel, 1, wx.EXPAND|wx.EXPAND)
+        self.wc_sizer.Add(self.cell_pan, 1, wx.EXPAND|wx.EXPAND)
         self.adw_panel.SetSizer(self.wc_sizer)
         if speaker_control is None and setup_wx_win:
             SlTrace.lg("Creating own SpeakerControl")

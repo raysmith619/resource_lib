@@ -29,7 +29,7 @@ class AdwMenus:
         if frame is None:
             frame = wx.Frame(None)
         self.frame = frame
-        self.fte.adw.Show()
+        self.frame.Show()
         
         self.menu_setup()
 
@@ -203,22 +203,6 @@ class AdwMenus:
                     menu_item = menu.Append(wx.ID_ANY, menu_item_heading)
                 self.frame.Bind(wx.EVT_MENU, menu_cmd, menu_item)
 
-    def file_menu_setup(self, file_menu):
-        self.file_menu = file_menu
-        self.file_dispatch = {}
-        self.file_menu_add_command(label="Open", command=self.File_Open_tbd,
-                                   underline=0)
-        self.file_menu_add_command(label="Save", command=self.File_Save_tbd,
-                                   underline=0)
-        file_menu.add_separator()
-        self.file_menu_add_command(label="Log", command=self.LogFile,
-                                   underline=0)
-        self.file_menu_add_command(label="Properties", command=self.Properties,
-                                   underline=0)
-        file_menu.add_separator()
-        self.file_menu_add_command(label="Exit", command=self.pgm_exit,
-                                   underline=1)
-
     def get_menu_cmd(self, menu_sc, mi_sc):
         """ get menu cmd
         :menu_cs: menu shortcut case insensitive
@@ -290,40 +274,6 @@ class AdwMenus:
     def File_Save_tbd(self):
         print("File_Save_menu to be determined")
 
-    """ draw_menu setup
-    """
-
-    def draw_menu_setup(self, draw_menu):
-        self.draw_menu = draw_menu
-        self.draw_dispatch = {}
-        self.draw_menu_add_command(label="Help", command=self.draw_help,
-                                   underline=0)
-        self.draw_menu_add_command(label="drawing", command=self.start_drawing,
-                                   underline=0)
-        self.draw_menu_add_command(label="stop_drawing", command=self.stop_drawing,
-                                   underline=0)
-
-    def draw_menu_add_command(self, label, command, underline):
-        """ Setup menu commands, setup dispatch for direct call
-        :label: add_command label
-        :command: command to call
-        :underline: short-cut index in label
-        """
-        self.draw_menu.add_command(label=label, command=command,
-                                   underline=underline)
-        menu_de = MenuDisp(label=label, command=command,
-                           underline=underline)
-
-        self.draw_dispatch[menu_de.shortcut] = menu_de
-
-    def draw_direct_call(self, short_cut):
-        """ Short-cut call direct to option
-        :short_cut: one letter option for call 
-        """
-        if short_cut not in self.draw_dispatch:
-            raise Exception(f"draw option:{short_cut} not recognized")
-        menu_de = self.draw_dispatch[short_cut]
-        menu_de.command()
 
     def draw_help(self, _=None):
         """ Help for drawing
@@ -359,44 +309,6 @@ class AdwMenus:
         """
         self.speak_text(help_str)
 
-    def mag_menu_setup(self, mag_menu):
-        self.mag_menu = mag_menu
-        self.mag_dispatch = {}
-        self.mag_menu_add_command(label="Help", command=self.mag_help,
-                                  underline=0)
-        self.mag_menu_add_command(label="Remove Pos History", command=self.erase_pos_history,
-                                  underline=0)
-        self.mag_menu_add_command(label="Select", command=self.mag_select,
-                                  underline=0)
-        self.mag_menu_add_command(label="Expand Right", command=self.mag_expand_right,
-                                  underline=7)
-        self.mag_menu_add_command(label="Expand Top", command=self.mag_expand_top,
-                                  underline=7)
-        self.mag_menu_add_command(label="View", command=self.mag_view,
-                                  underline=0)
-
-    def mag_menu_add_command(self, label, command, underline):
-        """ Setup menu commands, setup dispatch for direct call
-        :label: add_command label
-        :command: command to call
-        :underline: short-cut index in label
-        """
-        self.mag_menu.add_command(label=label, command=command,
-                                  underline=underline)
-        menu_de = MenuDisp(label=label, command=command,
-                           underline=underline)
-
-        self.mag_dispatch[menu_de.shortcut] = menu_de
-
-    def mag_direct_call(self, short_cut):
-        """ Short-cut call direct to option
-        :short_cut: one letter option for call 
-        """
-        if short_cut not in self.mag_dispatch:
-            raise Exception(f"mag option:{short_cut} not recognized")
-        magde = self.mag_dispatch[short_cut]
-        magde.command()
-
     """ End of Magnify support
     """
 
@@ -422,52 +334,6 @@ class AdwMenus:
         w - wait for items
         """
         self.speak_text(help_str)
-
-    def scan_menu_setup(self, scan_menu):
-        self.scan_menu = scan_menu
-        self.scan_dispatch = {}
-        self.scan_menu_add_command(label="Help", command=self.scan_help,
-                                   underline=0)
-        self.scan_menu_add_command(label="c -  combine wave - faster scan",
-                                   command=self.scan_combine_wave,
-                                   underline=0)
-        self.scan_menu_add_command(label="d - disable combine wave",
-                                   command=self.scan_disable_combine_wave,
-                                   underline=0)
-        self.scan_menu_add_command(label="f - flip skip space", command=self.flip_skip_space,
-                                   underline=0)
-        self.scan_menu_add_command(label="r - flip skip run", command=self.flip_skip_run,
-                                   underline=0)
-        self.scan_menu_add_command(label="Start scanning", command=self.start_scanning,
-                                   underline=0)
-        self.scan_menu_add_command(label="Stop scanning", command=self.stop_scanning,
-                                   underline=1)
-        self.scan_menu_add_command(label="No item wait", command=self.scan_no_item_wait,
-                                   underline=0)
-        self.scan_menu_add_command(label="Wait for item", command=self.scan_item_wait,
-                                   underline=0)
-
-    def scan_menu_add_command(self, label, command, underline):
-        """ Setup menu commands, setup dispatch for direct call
-        :label: add_command label
-        :command: command to call
-        :underline: short-cut index in label
-        """
-        self.scan_menu.add_command(label=label, command=command,
-                                   underline=underline)
-        menu_de = MenuDisp(label=label, command=command,
-                           underline=underline)
-
-        self.scan_dispatch[menu_de.shortcut] = menu_de
-
-    def scan_direct_call(self, short_cut):
-        """ Short-cut call direct to option
-        :short_cut: one letter option for call 
-        """
-        if short_cut not in self.scan_dispatch:
-            raise Exception(f"scan option:{short_cut} not recognized")
-        scande = self.scan_dispatch[short_cut]
-        scande.command()
 
     def scan_combine_wave(self, _=None):
         self.set_combine_wave()
@@ -516,74 +382,6 @@ class AdwMenus:
          Escape - flush pending report output
         """
         self.speak_text(help_str)
-
-    def nav_menu_setup(self, nav_menu):
-        self.nav_menu = nav_menu
-        self.nav_dispatch = {}
-        self.nav_menu_add_command(label="Help", command=self.nav_help,
-                                  underline=0)
-        self.nav_menu.add_command(label="add At loc", command=self.nav_add_loc,
-                                  underline=0)
-        self.nav_menu_add_command(label="b-remove At loc", command=self.nav_no_add_loc,
-                                  underline=0)
-        self.nav_menu_add_command(label="echo input on", command=self.nav_echo_on,
-                                  underline=0)
-        self.nav_menu_add_command(label="echo off", command=self.nav_echo_off,
-                                  underline=5)
-
-        self.nav_menu_add_command(label="visible cells", command=self.nav_make_visible,
-                                  underline=0)
-        self.nav_menu_add_command(label="invisible cells", command=self.nav_make_invisible,
-                                  underline=0)
-        self.nav_menu_add_command(label="marked", command=self.nav_show_marked,
-                                  underline=0)
-        self.nav_menu_add_command(label="noisy", command=self.make_noisy,
-                                  underline=0)
-        self.nav_menu_add_command(label="silent", command=self.make_silent,
-                                  underline=0)
-        self.nav_menu_add_command(label="talking", command=self.nav_make_talk,
-                                  underline=0)
-        self.nav_menu_add_command(label="log talk", command=self.nav_logt,
-                                  underline=0)
-        self.nav_menu_add_command(label="no log talk", command=self.nav_no_logt,
-                                  underline=10)
-        self.nav_menu_add_command(label="position", command=self.nav_say_position,
-                                  underline=0)
-        self.nav_menu_add_command(label="redraw figure", command=self.nav_redraw,
-                                  underline=2)
-        self.nav_menu_add_command(label="audio beep", command=self.nav_audio_beep,
-                                  underline=1)
-        self.nav_menu_add_command(label="q no audio beep",
-                                  command=self.nav_no_audio_beep,
-                                  underline=0)
-        self.nav_menu_add_command(label="x enable mouse navigation",
-                                  command=self.nav_enable_mouse,
-                                  underline=0)
-        self.nav_menu_add_command(label="y disable mouse navigation",
-                                  command=self.nav_disable_mouse,
-                                  underline=0)
-
-    def nav_menu_add_command(self, label, command, underline):
-        """ Setup menu commands, setup dispatch for direct call
-        :label: add_command label
-        :command: command to call
-        :underline: short-cut index in label
-        """
-        self.nav_menu.add_command(label=label, command=command,
-                                  underline=underline)
-        menu_de = MenuDisp(label=label, command=command,
-                           underline=underline)
-
-        self.nav_dispatch[menu_de.shortcut] = menu_de
-
-    def nav_direct_call(self, short_cut):
-        """ Short-cut call direct to option
-        :short_cut: one letter option for call 
-        """
-        if short_cut not in self.nav_dispatch:
-            raise Exception(f"nav option:{short_cut} not recognized")
-        navde = self.nav_dispatch[short_cut]
-        navde.command()
 
     """
     Trace support
@@ -778,6 +576,8 @@ if __name__ == "__main__":
     class FteFake:
         def pgm_exit(self):
             SlTrace.lg("fte.pgm_exit()")
+            import sys
+            sys.exit()
             
         def speak_text(self, msg, msg_type=None,
                        dup_stdout=True, rate=None,
@@ -854,6 +654,10 @@ if __name__ == "__main__":
         men_item_scs = menus.get_menu_item_scs(men_sc)
         for menui_sc in men_item_scs:    
             cmd_command = menus.get_menu_cmd(men_sc, menui_sc)
+            SlTrace.lg(f"Menu:{men_sc} Item:{menui_sc}", "menu")
+            if men_sc == "f" and menui_sc == "e":
+                SlTrace.lg(f"Skipping Menu:{men_sc} Item:{menui_sc}")
+                continue
             cmd_command()
             
         
