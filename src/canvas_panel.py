@@ -7,23 +7,6 @@ from tkinter Canvas use to wxPython.
 import wx
 
 from select_trace import SlTrace 
-
-class Modified_Region:
-    """ Modified region original attriburtes
-    """
-    def __init__(self, master, pos, size, color, style):
-        self.master = master
-        self.pos = pos
-        self.size = size
-        self.color = color
-        self.style = style
-        
-    def restore(self):
-        """ Restore region """
-        dc = wx.PaintDC(self.master)
-        dc.SetBrush(wx.Brush(self.color, self.style))
-        dc.SetPen(wx.Pen(self.color, self.style))
-        dc.DrawRectangle(pt=self.pos, sz=self.size)
     
 class CanvasPanelItem:
     """ Item to display canvas panel item
@@ -98,7 +81,7 @@ class CanvasPanelItem:
         cy1_adj = int(cy1 * self.size_factor[1])
         cy2_adj = int(cy2 * self.size_factor[1])
          
-        dc = wx.PaintDC(self.canvas_panel)
+        dc = wx.PaintDC(self.canvas_panel.grid_panel)
         dc.SetPen(wx.Pen(self.outline, style=wx.SOLID))
         dc.SetBrush(wx.Brush(self.fill, wx.SOLID))
         dc.DrawRectangle(wx.Rect(wx.Point(cx1_adj,cy1_adj),
@@ -117,7 +100,7 @@ class CanvasPanelItem:
         
         
         
-        dc = wx.PaintDC(self.canvas_panel)
+        dc = wx.PaintDC(self.canvas_panel.grid_panel)
         dc.SetPen(wx.Pen(self.outline, style=wx.SOLID))
         dc.SetBrush(wx.Brush(self.fill, wx.SOLID))
         dc.DrawEllipse(x=x0_adj, y=y0_adj, width=x1_adj-x0_adj, height=y1_adj-y0_adj)
@@ -131,7 +114,7 @@ class CanvasPanelItem:
         if len(self.args) == 0:
             return      # empty list
         
-        dc = wx.PaintDC(self.canvas_panel)
+        dc = wx.PaintDC(self.canvas_panel.grid_panel)
         dc.SetPen(wx.Pen(self.fill, style=wx.SOLID, width=self.width))
         points = []
         it_args = iter(self.args)
@@ -150,29 +133,43 @@ class CanvasPanelItem:
 class CanvasPanel(wx.Panel):
     """ Panel in which we can do tkinter like things
     """
-    def __init__(self, *args, **kw):
-        super(CanvasPanel, self).__init__(*args, **kw)
-        self.SetBackgroundColour("green")
-        '''
-        sizer_h = wx.BoxSizer(wx.HORIZONTAL)
+    def __init__(self, frame, color=None, *args, **kw):
+        self.frame = frame
+        super().__init__(frame, *args, **kw)
+        if color is None:
+            color = "light gray"
+        self.SetBackgroundColour(color)
+        self.color = color
+        self.frame_size = frame.GetSize()
+        self.text_entry_panel = wx.Panel(self)
+        self.grid_panel = wx.Panel(self)
+        self.entry = wx.TextCtrl(self.text_entry_panel,
+                                 size=wx.Size(300,20),
+                                 style=wx.TE_PROCESS_ENTER)
         sizer_v = wx.BoxSizer(wx.VERTICAL)
-
-        sizer_h.Add(self, 1, wx.EXPAND)
-        sizer_v.Add(sizer_h, proportion=1, flag=wx.EXPAND)
-        # only set the main sizer if you have more than one
+        sizer_v.Add(self.text_entry_panel, 0, wx.ALIGN_CENTER_HORIZONTAL)
+        sizer_v.Add(self.grid_panel, 1, wx.EXPAND)
         self.SetSizer(sizer_v)
-        '''
+    
         self.Show()
         self.can_id = 0
         self.items_by_id = {}   # Item's index in items[]
         self.items = []         # Items in order drawn
         self.prev_reg = None    # Previously displayed
-        self.Bind(wx.EVT_PAINT, self.OnPaint)
-        self.Bind(wx.EVT_SIZE, self.OnSize)
+        self.grid_panel.Bind(wx.EVT_PAINT, self.OnPaint)
+        self.grid_panel.Bind(wx.EVT_SIZE, self.OnSize)
         self.Show()
-        self.color = "green"
         self.on_paint_skip = 1 # debug - update only every nth
         self.on_paint_count = 0 # count paints
+        frame.SetSize(self.frame_size)
+        panel_size = frame.GetClientSize()
+        frame.Show()
+        self.SetSize(panel_size)
+        self.Refresh()
+        self.Update()
+        self.Show()
+        wx.CallLater(0, self.SetSize, (self.frame.GetSize()))
+        self.Show()
 
     def get_id(self):
         """ Get unique id
@@ -240,26 +237,57 @@ class CanvasPanel(wx.Panel):
 
     def OnSize(self, e):
         self.Refresh()
+        self.Update()
+        SlTrace.lg(f"\nOnSize paint count:{self.on_paint_count}")
+        size = self.GetSize()
+        SlTrace.lg(f"panel size: {size}")
+        e.Skip()
             
     def OnPaint(self, e):
-        self.on_paint_count += 1
-        #if self.on_paint_count % self.on_paint_skip != 0:
-        #    return
         
-        SlTrace.lg("\nOnPaint", "paint")
+        self.on_paint_count += 1
+        SlTrace.lg(f"\nOnPaint {self.on_paint_count}")
+        size = self.GetSize()
+        SlTrace.lg(f"panel size: {size}")
         style = wx.SOLID
-        dc = wx.PaintDC(self)
+        dc = wx.PaintDC(self.grid_panel)
         dc.SetPen(wx.Pen(self.color))
         dc.SetBrush(wx.Brush(self.color, style))
         
+            
         if self.on_paint_count == 1:
             self.orig_pos = self.GetPosition()  # After setup
             self.orig_size = self.GetSize()
             self.cur_pos = self.prev_pos = self.orig_pos
             self.cur_size = self.prev_size = self.orig_size
+            if self.orig_size[0] < 50:
+                self.orig_size = self.frame.GetClientSize()
+                SlTrace.lg(f"use client size: {self.orig_size}")
+                self.cur_size = self.orig_size
+                SlTrace.lg(f"Set cur size: {self.cur_size}")
+
+            SlTrace.lg(f"First Paint size: {self.orig_size}")
+            SlTrace.lg(f"Frame size: {self.frame.GetSize()}")
+            self.Refresh()  # Force second repaint
+            self.Update()
+            SlTrace.lg(f"Refresh Paint panel size: {self.GetSize()}")
+            SlTrace.lg(f"Frame size: {self.frame.GetSize()}")
+            self.Show()
+            self.Hide()
+            self.Show()
+            SlTrace.lg(f"First Paint size: {self.GetSize()}")
+            SlTrace.lg(f"Frame size: {self.frame.GetSize()}")
+            return
+                
         else:
-            self.cur_pos = self.GetPosition()  # New rectangle
             self.cur_size = self.GetSize()
+            if self.cur_size[0] < 50:
+                self.prev_size = self.cur_size = self.frame.GetClientSize()
+                SlTrace.lg(f"use client size: {self.cur_size}")
+                SlTrace.lg(f"Set cur size: {self.cur_size}")
+            SlTrace.lg(f"Further Paint size: {self.GetSize()}")
+            SlTrace.lg(f"Frame size: {self.frame.GetSize()}")
+            pass
 
         dc.DrawRectangle(self.prev_pos, self.prev_size) # clear previous rectangle
         dc.DrawRectangle(self.cur_pos, self.cur_size)   # clear new rectangle
@@ -274,66 +302,16 @@ class CanvasPanel(wx.Panel):
 
 
 
-class CanvasFrame(wx.Frame):
-    def __init__(self, title=None, size=None, panel=None):
-        """Constructor"""
-        wx.Frame.__init__(self, None, title=title,
-                          size=size)
-        
-        if panel is None:
-            panel = CanvasPanel(self)
-        self.panel = panel1 = panel
-        self.SetBackgroundColour("green")
-
-        sizer_h = wx.BoxSizer(wx.HORIZONTAL)
-        sizer_v = wx.BoxSizer(wx.VERTICAL)
-
-        sizer_h.Add(panel1, 1, wx.EXPAND)
-        sizer_v.Add(sizer_h, proportion=1, flag=wx.EXPAND)
-        # only set the main sizer if you have more than one
-        self.SetSizer(sizer_v)
-        
-        self.Show()
-
-
-
-    def create_rectangle(self, cx1,cy1,cx2,cy2,
-                                **kwargs):
-        return self.panel.create_rectangle(cx1,cy1,cx2,cy2,
-                                **kwargs)
-
-    
-    def create_oval(self, x0,y0,x1,y1,
-                        **kwargs):
-        """ Implement create_oval
-            supporting fill, outline, width
-        """
-        return self.panel.create_oval(x0,y0,x1,y1, **kwargs)
-
-    def create_line(self, x0,y0,x1,y1, **kwargs):
-        """ Implement tkinter's create_line
-        :args: x1,y1,...xn,yn
-        :kwargs:  width=, fill=, tags=[]
-        """
-        return self.panel.create_line(x0,y0,x1,y1, **kwargs)
-
-
-    def delete(self, id_tag):
-        """ Delete object in panel
-        :id_tag: if str: "all" - all items, else tag
-                else id
-        """
-        return self.panel.delete(id_tag)
-
 if __name__ == "__main__":
     app = wx.App()
     mytitle = "wx.Frame & wx.Panels"
     width = 400
     height = 500
-    frame = CanvasFrame(title=mytitle, size=wx.Size(width,height))
+    frame = wx.Frame(None, title=mytitle, size=wx.Size(width,height))
+    #frame = CanvasFrame(None, title=mytitle, size=wx.Size(width,height))
     #frame.SetInitialSize(wx.Size(400,400))
     frame.Show()
-    canv_pan = frame
+    canv_pan = CanvasPanel(frame)
     canv_pan.Show()
     canv_pan.create_rectangle(50,100,200,200, fill="red")
     canv_pan.create_rectangle(150,150,300,300, fill="blue")
@@ -348,6 +326,4 @@ if __name__ == "__main__":
     for col in range(1,ncol+1):     # Vertical lines
         x = (col-1)*width/ncol
         canv_pan.create_line(x,0, x, height, fill="purple")
-    
-    canv_pan.Show()
     app.MainLoop()

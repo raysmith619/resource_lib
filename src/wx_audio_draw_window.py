@@ -20,7 +20,8 @@ from grid_path import GridPath
 from braille_cell import BrailleCell
 from magnify_info import MagnifyInfo, MagnifyDisplayRegion
 from wx_adw_front_end import AdwFrontEnd
-from canvas_panel import CanvasFrame
+from wx_adw_menus import AdwMenus
+from canvas_panel import CanvasPanel
 
 class AudioDrawWindow(wx.Frame):
     def __init__(self,
@@ -48,7 +49,8 @@ class AudioDrawWindow(wx.Frame):
         setup_wx_win = True,
         iy0_is_top=True,        # OBSOLETE
                  ):
-        super().__init__(None, title=title)
+        super().__init__(None, title=title,
+                         size=wx.Size(win_width, win_height))
         #frame = CanvasFrame(title=mytitle, size=wx.Size(width,height))
         """ Setup audio window
         :app: wx application object
@@ -128,21 +130,9 @@ class AudioDrawWindow(wx.Frame):
             y_min = 0
         # create the audio feedback window
         self.title = title
-        self.cell_pan = CanvasFrame(title=self.title,
-                              size=wx.Size(win_width, win_height))
         
         self.Show()
-        self.adw_panel = wx.Panel(self)     
-        self.window_sizer = wx.BoxSizer()
-        # Set sizer for the frame, so we can change frame size to match widgets
-        self.window_sizer.Add(self.adw_panel, 1, wx.ALL | wx.EXPAND)
-
-        self.wc_sizer = wx.BoxSizer(wx.VERTICAL)
-        self.adw_echo_text = wx.TextCtrl(self.adw_panel, size=(int(win_width*.9),20))
-        #self.cell_pan = wx.Panel(self.adw_panel)
-        self.wc_sizer.Add(self.adw_echo_text, 0, wx.ALIGN_CENTER_HORIZONTAL)
-        self.wc_sizer.Add(self.cell_pan, 1, wx.EXPAND|wx.EXPAND)
-        self.adw_panel.SetSizer(self.wc_sizer)
+        #self.adw_panel = wx.Panel(self)
         if speaker_control is None and setup_wx_win:
             SlTrace.lg("Creating own SpeakerControl")
             speaker_control = SpeakerControlLocal()
@@ -155,6 +145,8 @@ class AudioDrawWindow(wx.Frame):
 
         self._visible = visible
         self.fte = AdwFrontEnd(self, title=title, silent=silent, color=color)
+        self.menus = AdwMenus(self.fte, frame=self)
+        self.cell_pan = CanvasPanel(self)
         self.set_x_min(x_min)
         self.set_y_min(y_min)
         self.set_x_max(x_min + win_width)
@@ -754,7 +746,8 @@ class AudioDrawWindow(wx.Frame):
         SlTrace.lg(f"{ix},{iy}: {cell} :{cx1},{cy1}, {cx2},{cy2} ", "display_cell")
         if cell.mtype==BrailleCell.MARK_UNMARKED:
             canv_item = self.cell_pan.create_rectangle(cx1,cy1,cx2,cy2,
-                                    outline="light gray")
+                                    fill="#d3d3d3",
+                                    outline="dark gray")
         else:
             canv_item = self.cell_pan.create_rectangle(cx1,cy1,cx2,cy2,
                                     fill="dark gray",
