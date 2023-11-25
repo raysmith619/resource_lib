@@ -397,7 +397,7 @@ class AdwMenus:
     General
     """
 
-    def erase_pos_history(self):
+    def erase_pos_history(self, _=None):
         self.fte.erase_pos_history()
 
     def speak_text(self, msg, dup_stdout=True,
@@ -431,24 +431,24 @@ class AdwMenus:
     Magnification links
     """
 
-    def mag_select(self):
+    def mag_select(self, _=None):
         """ Select magnification region
             -rectangle including all figure cells traveled so far
             :returns: True if some selected else False
         """
         return self.fte.mag_select()
 
-    def mag_expand_right(self):
+    def mag_expand_right(self, _=None):
         """ Expand selection region right and left by 20%
         """
         self.fte.mag_exapnd_right()
 
-    def mag_expand_top(self):
+    def mag_expand_top(self, _=None):
         """ Expand selection region top/bottom by 20%
         """
         self.fte.mag_exapnd_top()
 
-    def mag_view(self):
+    def mag_view(self, _=None):
         """ View selected region, creating a new AudioDrawWindow
         """
         self.fte.mag_view()

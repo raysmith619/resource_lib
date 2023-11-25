@@ -16,7 +16,6 @@ import __main__
 import datetime
 import multiprocessing as mp
 import threading as th
-
 import turtle as tur
 import tkinter as tk            # Best approach
 
@@ -227,7 +226,8 @@ class BrailleDisplay:
             if tib is not None and tib.endswith("-"):
                 tib += " Canvas items"
             self.canvas_grid.show_canvas(title=tib)
-
+        SlTrace.lg("End of display")
+        
     def snapshot(self, title=None, clear_after=False):
         """ Take snapshot of current braille_screen
         :title: title of snapshot
@@ -262,10 +262,16 @@ class BrailleDisplay:
                     "canvas_items" : canvas_items},
                     )
         '''
-        wx_proc = th.Thread(target=self.display)
+        wx_proc = th.Thread(target=self.display_proc)
         wx_proc.start()
         tur.done()
-        
+
+    def display_proc(self):
+        import wx
+        app = wx.App()        
+        self.display()
+        app.MainLoop()
+                
     def done(self):
         self.mainloop()
 

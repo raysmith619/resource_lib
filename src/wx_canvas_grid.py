@@ -33,7 +33,7 @@ for indirect call of tk.Canvas calls:
 
 class CanvasGrid:
         
-    def __init__(self, base=None,
+    def __init__(self, base=None, title="Base Grie",
                  pgmExit=None, speaker_control=None,
                  g_xmin=None, g_xmax=None, g_ymin=None, g_ymax=None,
                  g_nrows=25, g_ncols=40,
@@ -42,6 +42,7 @@ class CanvasGrid:
         :base: tk.Canvas, if present, from which we get
                 canvas item contents
                 default: self
+        :title: window title
         :pgmExit: program main exit if one default: use local (...os._exit)
         :speaker_control: (SpeakerControlLocal) local access to speech facility
                         REQUIRED
@@ -53,6 +54,7 @@ class CanvasGrid:
         :g_ncols: Number of columns default: 40
         """
         self.base = base
+        self.title = title
         if speaker_control is None:
             SlTrace.lg("Creating local SpeakerControl copy")
             speaker_control = SpeakerControlLocal()   # local access to speech engine
@@ -159,6 +161,9 @@ class CanvasGrid:
         :returns: AudioDrawWindow instance or None if no cells
                 Stores number of cells found in self.n_cells_created
         """
+        if title is None:
+            title = self.title
+        self.title = title
         if pgmExit is None:
             pgmExit = self.exit 
 

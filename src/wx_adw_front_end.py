@@ -621,13 +621,6 @@ class AdwFrontEnd:
         keysym = event.keysym
         self.key_press(keysym)
 
-    def on_key_press(self, event):
-        """ Key press event
-        :event: Actual event
-        """
-        keysym = event.keysym
-        self.key_press(keysym)
-
     def key_press(self, keysym):
         """ Actual or simulated key event
         :keysym: Symbolic key value/string

@@ -12,13 +12,18 @@ class CanvasPanelItem:
     """ Item to display canvas panel item
     """
     def __init__(self, canvas_panel,
-                 canv_type, args=None, kwargs=None):
+                 canv_type,
+                 args=None, kwargs=None):
         self.canvas_panel = canvas_panel
         self.canv_id = canvas_panel.get_id()
         self.canv_type = canv_type
+        self.deleted = False
+        self.tags = set()
+        if "tags" in kwargs:
+            self.tags = set(kwargs["tags"])
         self.args = args
         self.kwargs = kwargs
-    
+        
     def __str__(self):
         st = "CanvasPanelItem:"
         st += f"[{self.canv_id}]"
@@ -38,6 +43,9 @@ class CanvasPanelItem:
         """
         # Get current panal position and size
         # and calculate adjustments
+        if self.deleted:
+            return      # Already deleted
+        
         panel = self.canvas_panel
         self.pos_adj = panel.cur_pos-panel.orig_pos
         self.orig_size = panel.orig_size
@@ -126,16 +134,32 @@ class CanvasPanelItem:
             x_adj = int(x * self.size_factor[0])
             y_adj = int(y * self.size_factor[1])
             points.append(wx.Point(x_adj,y_adj))
-        dc.DrawLines(points)    
+        dc.DrawLines(points)
+        
+    def delete(self):
+        """ delete item
+        """
+        self.deleted = True    
             
             
 
 class CanvasPanel(wx.Panel):
     """ Panel in which we can do tkinter like things
     """
-    def __init__(self, frame, color=None, *args, **kw):
+    def __init__(self, frame, color=None,
+                key_press_proc=None,
+                *args, **kw):
+        """
+        :key_press: function(sym) to execute
+                    keyboard command
+                    default: echo sym
+        """
         self.frame = frame
         super().__init__(frame, *args, **kw)
+        self.with_alt = False   # Check next key
+        if key_press_proc is None:
+            key_press_proc = self.key_press
+        self.key_press_proc = key_press_proc
         if color is None:
             color = "light gray"
         self.SetBackgroundColour(color)
@@ -158,6 +182,8 @@ class CanvasPanel(wx.Panel):
         self.prev_reg = None    # Previously displayed
         self.grid_panel.Bind(wx.EVT_PAINT, self.OnPaint)
         self.grid_panel.Bind(wx.EVT_SIZE, self.OnSize)
+        self.grid_panel.Bind(wx.EVT_KEY_DOWN, self.on_key_down)
+        self.grid_panel.Bind(wx.EVT_CHAR_HOOK, self.on_char_hook)
         self.Show()
         self.on_paint_skip = 1 # debug - update only every nth
         self.on_paint_count = 0 # count paints
@@ -219,21 +245,26 @@ class CanvasPanel(wx.Panel):
         return item.canv_id
         
 
-    def delete(self, id_tag):
-        """ Delete object in panel
-        :id_tag: if str: "all" - all items, else tag
+    def delete(self, *id_tags):
+        """ Delete object(s) in panel
+        :id_tags: if str: "all" - all items, else tag
                 else id
         """
-        if  type(id_tag) == str:
-            if id_tag == "all":
-                "TBD delete all"
-        else:
+        for id_tag in id_tags:
             self.delete_id(id_tag)
 
-    def delete_id(self, id):
-        """ Delete item
-        :id:
+    def delete_id(self, id_tag):
+        """ Delete items having id or tag
+        :id_tag: id or tag
         """
+        for item in self.items:
+            if type(id_tag) == int:
+                if id_tag == item.canv_id:
+                    item.deleted = True
+                    break   # id is unique
+            
+                if id_tag in item.tags:
+                    item.deleted = True
 
     def OnSize(self, e):
         self.Refresh()
@@ -300,7 +331,82 @@ class CanvasPanel(wx.Panel):
         self.prev_pos = self.cur_pos
         self.prev_size = self.cur_size
 
+    def on_key_down(self, e):
+        SlTrace.lg(f"on_key_down:{e}")
+        if e.GetKeyCode() == wx.WXK_ALT:
+            if not self.with_alt:
+                SlTrace.lg("wx.WXK_ALT")
+                self.with_alt = True
+            #e.DoAllowNextEvent()
+            #e.Skip()
+            return
+        
+        if self.with_alt:
+            SlTrace.lg(f"ALT-{e.GetKeyCode()}")
+            self.with_alt = False
+            e.Skip()
+            return
+        
+        SlTrace.lg(f"GetUnicodeKey:{e.GetUnicodeKey()}")
+        SlTrace.lg(f"GetRawKeyCode:{e.GetRawKeyCode()}")
+        SlTrace.lg(f"GetKeyCode:{e.GetKeyCode()}")
+        keysym = self.get_keysym(e)
+        self.key_press_proc(keysym)
 
+    def on_char_hook(self, e):
+        SlTrace.lg(f"\non_char_hook:{e}")
+        SlTrace.lg(f"GetUnicodeKey:{e.GetUnicodeKey()}")
+        SlTrace.lg(f"GetRawKeyCode:{e.GetRawKeyCode()}")
+        SlTrace.lg(f"GetKeyCode:{e.GetKeyCode()}")
+        SlTrace.lg(f"chr(GetKeyCode){chr(e.GetKeyCode())}"
+                   f" {ord(chr(e.GetKeyCode()))}")
+        if e.GetUnicodeKey() != 0:
+            e.Skip()    # Pass on regular keys
+            return
+        
+        keysym = self.get_keysym(e)
+        self.key_press_proc(keysym)
+        
+
+    def key_press(self, keysym):
+        """ default/null simulated key event
+        :keysym: Symbolic key value/string
+        """
+        SlTrace.lg(keysym)
+        return
+
+    def get_keysym(self, e):
+        """ Convert key symbol to keysym(tkinter style)
+        :e: key event
+        :returns: keysym(tkinter) string
+        """
+        unicode = e.GetUnicodeKey()
+        raw_key_code = e.GetRawKeyCode()
+        key_code = e.GetKeyCode()
+        ch = chr(unicode)  # lazy - accept all single char
+
+        if (key_code >= wx.WXK_NUMPAD0 and
+            key_code <= wx.WXK_NUMPAD9):
+            return str(key_code-wx.WXK_NUMPAD0)        
+        if key_code == wx.WXK_ALT:
+            return 'Alt_L'
+        if key_code == wx.WXK_ESCAPE:
+            return 'Escape'
+        if key_code == wx.WXK_UP:
+            return 'Up'
+        if key_code == wx.WXK_DOWN:
+            return 'Down'
+        if key_code == wx.WXK_LEFT:
+            return 'Left'
+        if key_code == wx.WXK_RIGHT:
+            return 'Right'
+        if key_code == wx.WXK_WINDOWS_LEFT:
+            return 'win_l'
+
+        if len(ch) == 1:
+            return ch
+        
+        return '???'    # Unrecognized
 
 if __name__ == "__main__":
     app = wx.App()

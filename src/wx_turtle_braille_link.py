@@ -114,4 +114,4 @@ if not src1_in_path or not src2_in_path:
 
 from wx_turtle_braille import *   
 #SlTrace.lg("turtle braille support")
-SlTrace.clearFlags()
+#SlTrace.clearFlags()

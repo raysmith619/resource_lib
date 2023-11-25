@@ -49,8 +49,6 @@ class AudioDrawWindow(wx.Frame):
         setup_wx_win = True,
         iy0_is_top=True,        # OBSOLETE
                  ):
-        super().__init__(None, title=title,
-                         size=wx.Size(win_width, win_height))
         #frame = CanvasFrame(title=mytitle, size=wx.Size(width,height))
         """ Setup audio window
         :app: wx application object
@@ -110,10 +108,12 @@ class AudioDrawWindow(wx.Frame):
                     default: 1
         :iy0_is_top: OBSOLETE
         """
+        # direction for digit pad
         if app is None:
             app = wx.App()
         self.app = app
-        # direction for digit pad
+        super().__init__(None, title=title,
+                         size=wx.Size(win_width, win_height))
         if title is None:
             title = "AudioDrawWindow"
         self.title = title
@@ -146,7 +146,8 @@ class AudioDrawWindow(wx.Frame):
         self._visible = visible
         self.fte = AdwFrontEnd(self, title=title, silent=silent, color=color)
         self.menus = AdwMenus(self.fte, frame=self)
-        self.cell_pan = CanvasPanel(self)
+        self.cell_pan = CanvasPanel(self,
+                                    key_press_proc=self.fte.key_press)
         self.set_x_min(x_min)
         self.set_y_min(y_min)
         self.set_x_max(x_min + win_width)
@@ -750,7 +751,7 @@ class AudioDrawWindow(wx.Frame):
                                     outline="dark gray")
         else:
             canv_item = self.cell_pan.create_rectangle(cx1,cy1,cx2,cy2,
-                                    fill="dark gray",
+                                    fill="#b0b0b0",
                                     outline="dark gray")
         cell.canv_items.append(canv_item)
         self.update()
@@ -1133,7 +1134,7 @@ class AudioDrawWindow(wx.Frame):
     def update(self):
         """ Update display
         """
-        '''###wxport###self.mw.update()'''
+        self.Refresh()
 
     def MainLoop(self):
         self.app.MainLoop()
@@ -1141,7 +1142,7 @@ class AudioDrawWindow(wx.Frame):
     def update_idle(self):
         """ Update pending
         """
-        '''###wxport###self.mw.update_idletasks()'''
+        self.Refresh()
 
     """
          Links to front end functions
@@ -1298,9 +1299,13 @@ class AudioDrawWindow(wx.Frame):
 
     def is_silent(self):
         return self.fte.is_silent()
+
+
 if __name__ == "__main__":
     SlTrace.clearFlags()
     app = wx.App()
+    
+    
     menu_str = "n:sh;d:d"
     key_str = (
                 "d"
