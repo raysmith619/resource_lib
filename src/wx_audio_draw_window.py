@@ -144,10 +144,11 @@ class AudioDrawWindow(wx.Frame):
 
 
         self._visible = visible
+        self.cell_pan = CanvasPanel(self)
         self.fte = AdwFrontEnd(self, title=title, silent=silent, color=color)
+        self.cell_pan.set_key_press_proc(self.fte.key_press)
         self.menus = AdwMenus(self.fte, frame=self)
-        self.cell_pan = CanvasPanel(self,
-                                    key_press_proc=self.fte.key_press)
+        self.fte.cell_pan = self.cell_pan   # set fte link
         self.set_x_min(x_min)
         self.set_y_min(y_min)
         self.set_x_max(x_min + win_width)
@@ -369,10 +370,13 @@ class AudioDrawWindow(wx.Frame):
             ###print(f"{iy:2}", end=":")
             braille_text += line + "\n"
         SlTrace.lg(braille_text)
-        ###wxport###self.mw.clipboard_clear()
-        if title is not None:
-            '''###wxport###self.mw.clipboard_append(f"\n{title}\n")'''
-        ###wxport###self.mw.clipboard_append(braille_text)
+        if wx.TheClipboard.Open():
+            data = f"\n{title}\n"
+            data += braille_text
+            wx.TheClipboard.SetData(wx.TextDataObject(data))
+            wx.TheClipboard.Close()
+        else:
+            SlTrace.lg("Can't paste to clipboard")
 
     def print_cells(self, title=None):
         """ Display current braille in a window

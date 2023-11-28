@@ -146,16 +146,23 @@ class CanvasPanelItem:
 class CanvasPanel(wx.Panel):
     """ Panel in which we can do tkinter like things
     """
-    def __init__(self, frame, color=None,
+    def __init__(self, frame, app=None, color=None,
                 key_press_proc=None,
                 *args, **kw):
         """
+        :frame: parent frame
+        :app: wx.App, default create
+        :color: background color default: :" light gray"
         :key_press: function(sym) to execute
                     keyboard command
                     default: echo sym
         """
         self.frame = frame
+        if app is None:
+            app = wx.App()
+        self.app = app
         super().__init__(frame, *args, **kw)
+        
         self.with_alt = False   # Check next key
         if key_press_proc is None:
             key_press_proc = self.key_press
@@ -197,12 +204,35 @@ class CanvasPanel(wx.Panel):
         wx.CallLater(0, self.SetSize, (self.frame.GetSize()))
         self.Show()
 
+    def set_key_press_proc(self, proc):
+        """ Set key press processing function to facilitating 
+        setting/changing processing function to after initial
+        setup
+        :proc: key processing function type proc(keysym)
+        """
+        self.key_press_proc = proc
+        
     def get_id(self):
         """ Get unique id
         """
         self.can_id += 1
         return self.can_id
+
+    def no_call(self):
+        """ Just a nothing call
+        """
+        return
     
+    def after(self, delay, callback=None):
+        """ Call after delay
+        :delay: delay in milliseconds
+        :callback: function to call
+            default: no function, just delay
+        """
+        if callback is None:
+            callback = self.no_call
+        wx.CallLater(delay, callback)
+            
     def create_rectangle(self, cx1,cy1,cx2,cy2,
                                 **kwargs):
         """ Implement creat_rectangle
@@ -269,17 +299,17 @@ class CanvasPanel(wx.Panel):
     def OnSize(self, e):
         self.Refresh()
         self.Update()
-        SlTrace.lg(f"\nOnSize paint count:{self.on_paint_count}")
+        SlTrace.lg(f"\nOnSize paint count:{self.on_paint_count}", "paint")
         size = self.GetSize()
-        SlTrace.lg(f"panel size: {size}")
+        SlTrace.lg(f"panel size: {size}", "paint")
         e.Skip()
             
     def OnPaint(self, e):
         
         self.on_paint_count += 1
-        SlTrace.lg(f"\nOnPaint {self.on_paint_count}")
+        SlTrace.lg(f"\nOnPaint {self.on_paint_count}", "paint")
         size = self.GetSize()
-        SlTrace.lg(f"panel size: {size}")
+        SlTrace.lg(f"panel size: {size}", "paint")
         style = wx.SOLID
         dc = wx.PaintDC(self.grid_panel)
         dc.SetPen(wx.Pen(self.color))
@@ -293,31 +323,31 @@ class CanvasPanel(wx.Panel):
             self.cur_size = self.prev_size = self.orig_size
             if self.orig_size[0] < 50:
                 self.orig_size = self.frame.GetClientSize()
-                SlTrace.lg(f"use client size: {self.orig_size}")
+                SlTrace.lg(f"use client size: {self.orig_size}", "paint")
                 self.cur_size = self.orig_size
-                SlTrace.lg(f"Set cur size: {self.cur_size}")
+                SlTrace.lg(f"Set cur size: {self.cur_size}", "paint")
 
             SlTrace.lg(f"First Paint size: {self.orig_size}")
             SlTrace.lg(f"Frame size: {self.frame.GetSize()}")
             self.Refresh()  # Force second repaint
             self.Update()
-            SlTrace.lg(f"Refresh Paint panel size: {self.GetSize()}")
-            SlTrace.lg(f"Frame size: {self.frame.GetSize()}")
+            SlTrace.lg(f"Refresh Paint panel size: {self.GetSize()}", "paint")
+            SlTrace.lg(f"Frame size: {self.frame.GetSize()}", "paint")
             self.Show()
             self.Hide()
             self.Show()
-            SlTrace.lg(f"First Paint size: {self.GetSize()}")
-            SlTrace.lg(f"Frame size: {self.frame.GetSize()}")
+            SlTrace.lg(f"First Paint size: {self.GetSize()}", "paint")
+            SlTrace.lg(f"Frame size: {self.frame.GetSize()}", "paint")
             return
                 
         else:
             self.cur_size = self.GetSize()
             if self.cur_size[0] < 50:
                 self.prev_size = self.cur_size = self.frame.GetClientSize()
-                SlTrace.lg(f"use client size: {self.cur_size}")
-                SlTrace.lg(f"Set cur size: {self.cur_size}")
-            SlTrace.lg(f"Further Paint size: {self.GetSize()}")
-            SlTrace.lg(f"Frame size: {self.frame.GetSize()}")
+                SlTrace.lg(f"use client size: {self.cur_size}", "paint")
+                SlTrace.lg(f"Set cur size: {self.cur_size}", "paint")
+            SlTrace.lg(f"Further Paint size: {self.GetSize()}", "paint")
+            SlTrace.lg(f"Frame size: {self.frame.GetSize()}", "paint")
             pass
 
         dc.DrawRectangle(self.prev_pos, self.prev_size) # clear previous rectangle
@@ -409,6 +439,7 @@ class CanvasPanel(wx.Panel):
         return '???'    # Unrecognized
 
 if __name__ == "__main__":
+    SlTrace.clearFlags()
     app = wx.App()
     mytitle = "wx.Frame & wx.Panels"
     width = 400
@@ -417,7 +448,7 @@ if __name__ == "__main__":
     #frame = CanvasFrame(None, title=mytitle, size=wx.Size(width,height))
     #frame.SetInitialSize(wx.Size(400,400))
     frame.Show()
-    canv_pan = CanvasPanel(frame)
+    canv_pan = CanvasPanel(frame, app=app)
     canv_pan.Show()
     canv_pan.create_rectangle(50,100,200,200, fill="red")
     canv_pan.create_rectangle(150,150,300,300, fill="blue")
@@ -432,4 +463,18 @@ if __name__ == "__main__":
     for col in range(1,ncol+1):     # Vertical lines
         x = (col-1)*width/ncol
         canv_pan.create_line(x,0, x, height, fill="purple")
+        
+    def test_msg_before(msg="Before delay"):
+        SlTrace.lg(msg)
+        
+    def test_msg_after(msg="After delay"):
+        SlTrace.lg(msg)
+    
+    SlTrace.setFlags("stdouthasts,decpl=2")    
+    delay = 3000    # milliseconds
+    SlTrace.lg(f"Delay {delay} milliseconds")
+    canv_pan.after(0, test_msg_before)
+    canv_pan.after(delay, test_msg_after)
+ 
     app.MainLoop()
+    

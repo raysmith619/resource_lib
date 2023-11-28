@@ -92,7 +92,7 @@ class AdwScanner:
         self.fte = fte
         self.adw = fte.adw
         self.speaker_control = self.adw.speaker_control
-        ###wxport###self.canvas = self.adw.canvas
+        self.cell_pan = self.adw.cell_pan
         self.cell_time = cell_time
         self.space_time = space_time
         self.sample_rate = sample_rate

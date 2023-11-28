@@ -284,9 +284,9 @@ class AdwFrontEnd:
     def remove_mag_selection(self):
         """ Remove magnify selection and marker
         """
-        ###wxport###canvas = self.adw.canvas
+        cell_pan = self.cell_pan
         if self.adw.mag_selection_tag is not None:
-            ###wxport###canvas.delete(self.adw.mag_selection_tag)
+            cell_pan.delete(self.adw.mag_selection_tag)
             self.adw.mag_selection_tag = None
             self.update()       # View change
 
@@ -298,16 +298,16 @@ class AdwFrontEnd:
         :iy_max: maximum iy index
         """
         select = mag_info.select
-        ###wxport###canvas = self.adw.canvas
+        cell_pan = self.cell_pan
         self.remove_mag_selection()
         ixy_ul = (select.ix_min,select.iy_min)
         ul_cx1,ul_cy1,_,_ = self.get_win_ullr_at_ixy_canvas(ixy_ul)
 
         ixy_lr = (select.ix_max,select.iy_max)
         _,_,lr_cx2,lr_cy2 = self.get_win_ullr_at_ixy_canvas(ixy_lr)
-        ###wxport###self.adw.mag_selection_tag = canvas.create_rectangle(ul_cx1,ul_cy1,
-        ###wxport###                                                     lr_cx2,lr_cy2,
-        ###wxport###                                                     outline="dark blue", width=4)
+        self.adw.mag_selection_tag = cell_pan.create_rectangle(ul_cx1,ul_cy1,
+                                                             lr_cx2,lr_cy2,
+                                                             outline="dark blue", width=4)
 
 
 
@@ -477,7 +477,7 @@ class AdwFrontEnd:
             if now > last_time + 30:
                 print(f"pause time left:{end_time-now:.2f}")
                 last_time = now
-            ###wxport###self.mw.update()
+            self.update()
 
 
     """ key / mouse operation
@@ -869,9 +869,8 @@ class AdwFrontEnd:
 
     def key_exit(self):
         self.speak_text("Quitting Program")
-        ###wxport###self.update()     # Process any pending events
-        ###wxport###self.mw.destroy()
-        ###wxport###self.mw.quit()
+        self.update()     # Process any pending events
+        self.adw.Destroy()
         sys.exit(0)         # Quit  program
 
     def key_color_cell(self, set_val=True):
@@ -1548,7 +1547,7 @@ class AdwFrontEnd:
         """ Update cursor (current position) display
         """
         if self._cursor_item is not None:
-            ###wxport###self.canvas.delete(self._cursor_item)
+            self.cell_pan.delete(self._cursor_item)
             self._cursor_item = None
         rd = 5
         pos_x,pos_y = self.get_xy_canvas()
@@ -1557,9 +1556,9 @@ class AdwFrontEnd:
         x1 = pos_x+rd
         y0 = pos_y-rd
         y1 = pos_y+rd
-        ###wxport###self._cursor_item = self.canvas.create_oval(x0,y0,x1,y1,
-        ###wxport###                                            fill="red")
-        ###wxport###self.update()
+        self._cursor_item = self.cell_pan.create_oval(x0,y0,x1,y1,
+                                                    fill="red")
+        self.update()
 
     def is_using_audio_beep(self):
         return self._using_audio_beep
@@ -1582,12 +1581,12 @@ class AdwFrontEnd:
     def update(self):
         """ Update display
         """
-        #self.adw.update()
+        self.adw.update()
 
     def update_idle(self):
         """ Update pending
         """
-        #self.adw.update_idle()
+        self.adw.update_idle()
 
 
     """

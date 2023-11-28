@@ -14,6 +14,7 @@ Provide list of canvas items overlapping a region (display cell rectangle).
 
 """
 import tkinter as tk
+import wx
 import sys
 import os
 import copy
@@ -33,12 +34,14 @@ for indirect call of tk.Canvas calls:
 
 class CanvasGrid:
         
-    def __init__(self, base=None, title="Base Grie",
+    def __init__(self, app=None,
+                 base=None, title="Base Grie",
                  pgmExit=None, speaker_control=None,
                  g_xmin=None, g_xmax=None, g_ymin=None, g_ymax=None,
                  g_nrows=25, g_ncols=40,
                  **kwargs):
         """ Set up canvas object with grid
+        :app: wx application default: generate
         :base: tk.Canvas, if present, from which we get
                 canvas item contents
                 default: self
@@ -53,6 +56,9 @@ class CanvasGrid:
         :g_nrows: Number of rows default: 25
         :g_ncols: Number of columns default: 40
         """
+        if app is None:
+            app = wx.App()
+        self.app = app
         self.base = base
         self.title = title
         if speaker_control is None:
@@ -138,12 +144,13 @@ class CanvasGrid:
         """
         self.grid_xs, self.grid_ys = self.get_grid_lims()
 
-    def create_audio_window(self, title=None,
+    def create_audio_window(self, app=None, title=None,
                  xmin=None, xmax=None, ymin=None, ymax=None,
                  nrows=None, ncols=None, mag_info=None, pgmExit=None,
                  require_cells=False,
                  silent=False):
         """ Create AudioDrawWindow to navigate canvas from the section
+        :app: wx application default: create
         :title: optinal title
                 region (xmin,ymin, xmax,ymax) with nrows, ncols
         :speaker_control: (SpeakerControlLocal) local access to centralized speech facility
@@ -161,6 +168,9 @@ class CanvasGrid:
         :returns: AudioDrawWindow instance or None if no cells
                 Stores number of cells found in self.n_cells_created
         """
+        if app is None:
+            app = wx.App()
+        self.app = app
         if title is None:
             title = self.title
         self.title = title
@@ -198,8 +208,11 @@ class CanvasGrid:
             if require_cells:
                 return None
                 
-        adw = AudioDrawWindow(title=title, speaker_control=self.speaker_control,
-                              iy0_is_top=True, mag_info=mag_info, pgmExit=pgmExit,
+        adw = AudioDrawWindow(app=self.app,
+                              title=title,
+                              speaker_control=self.speaker_control,
+                              iy0_is_top=True, mag_info=mag_info,
+                              pgmExit=pgmExit,
                               x_min=self.g_xmin, y_min=self.g_ymin,
                               silent=silent)
         adw.draw_cells(cells=braille_cells)

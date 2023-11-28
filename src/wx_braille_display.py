@@ -12,6 +12,7 @@ Uses CanvasGrid for canvas scanning
 """
 import os
 import re
+import wx
 import __main__
 import datetime
 import multiprocessing as mp
@@ -98,6 +99,7 @@ class BrailleDisplay:
         :canvas_items: print whole canvas item info default: False
         :silent: starting val default: False
         """
+        self.display_depth = 0
         if title is None:
             title = "Braille Display"
         self.title = title
@@ -137,7 +139,7 @@ class BrailleDisplay:
         """
         return BrailleCell.color_str(color)
 
-    def display(self, braille_window=True, braille_print=True,
+    def display(self, app=None, braille_window=True, braille_print=True,
                braille_title=None,
                print_cells=False, title=None,
                points_window=False,
@@ -145,6 +147,7 @@ class BrailleDisplay:
                canvas_items=False,
                silent=False):
         """ display grid
+        :app: wx app, default: create
         :braille_window: True - make window display of braille
                         default:True
         :braille_print: True - print braille
@@ -164,6 +167,15 @@ class BrailleDisplay:
                     default: self.canvas_items - False
         :silent: quiet mode default: False
         """
+        SlTrace.lg("self.display()")
+        self.display_depth += 1
+        if self.display_depth > 1:
+            self.display_depth -= 1
+            return
+        
+        if app is None:
+            app = wx.App()
+        self.app = app
         file_base_name = os.path.basename(__main__.__file__)
         current_time = str(datetime.datetime.now())
         mt = re.match(r'(.*):\d+\.\d+$', current_time)
@@ -189,6 +201,7 @@ class BrailleDisplay:
         ###wxport### mw.geometry(geometry)
         self.speaker_control = SpeakerControlLocal()   # local access to speech engine
         self.canvas_grid = CanvasGrid(base=self.tu_canvas,
+                            app=self.app,
                             pgmExit=self.exit,
                             speaker_control = self.speaker_control,
                             width=self.win_width, height=self.win_height,
@@ -227,6 +240,9 @@ class BrailleDisplay:
                 tib += " Canvas items"
             self.canvas_grid.show_canvas(title=tib)
         SlTrace.lg("End of display")
+        self.display_depth -= 1
+        
+        
         
     def snapshot(self, title=None, clear_after=False):
         """ Take snapshot of current braille_screen
@@ -243,33 +259,24 @@ class BrailleDisplay:
 
     """ Turtle "Shaddow" Functions
     """
-
+    def tk_updates(self):
+        """ Update tk stuff, but don't block
+        """
+        self.tk.update_idletasks()
+        self.tk.update()
+        wx.CallLater(10, self.tk_updates)    #loop
     
     def mainloop(self):
         title = self.title
         if title is None:
             title = "Braille Display -"
-        canvas_items = False
-        if SlTrace.trace("show_canvas_items"):
-            canvas_items = True
-        '''
-        wx_proc = mp.Process(target=self.display, kwargs={
-                    ###"tu_canvas" : self.tu_canvas,
-                    "title" : title,
-                    "braille_window" : self._braille_window,
-                    "braille_print" : self._braille_print,
-                    "print_cells" : self._print_cells,
-                    "canvas_items" : canvas_items},
-                    )
-        '''
-        wx_proc = th.Thread(target=self.display_proc)
-        wx_proc.start()
-        tur.done()
 
-    def display_proc(self):
-        import wx
-        app = wx.App()        
-        self.display()
+        self.tk = tk.Tk()
+        app = wx.App()
+
+        self.tk_updates()
+        self.display(app=app)
+        
         app.MainLoop()
                 
     def done(self):

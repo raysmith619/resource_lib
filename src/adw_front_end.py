@@ -285,7 +285,7 @@ class AdwFrontEnd:
     def remove_mag_selection(self):
         """ Remove magnify selection and marker
         """
-        canvas = self.adw.canvas
+        canvas = self.canvas
         if self.adw.mag_selection_tag is not None:
             canvas.delete(self.adw.mag_selection_tag)
             self.adw.mag_selection_tag = None
