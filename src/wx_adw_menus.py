@@ -99,7 +99,7 @@ class AdwMenus:
                 {"name" : "Log",   "cmd" : self.LogFile},
                 {"name" : "Properties",   "cmd" : self.PropertiesFile},
                 SEP,
-                {"name" : "Exit",  "cmd" : self.pgm_exit},
+                {"name" : "E&xit",  "cmd" : self.pgm_exit},
                 ],
             "magnify" :
                 [

@@ -1,4 +1,5 @@
-# canvas_panel.py 08Nov2023  crs
+# wx_canvas_panel.py 28Nov2023  crs, rename canvas_panel.py
+#                    08Nov2023  crs
 """
 Support for very limited list of tkinter Canvas type actions
 on wxPython Panel  Our attempt here was to ease a port
@@ -7,141 +8,7 @@ from tkinter Canvas use to wxPython.
 import wx
 
 from select_trace import SlTrace 
-    
-class CanvasPanelItem:
-    """ Item to display canvas panel item
-    """
-    def __init__(self, canvas_panel,
-                 canv_type,
-                 args=None, kwargs=None):
-        self.canvas_panel = canvas_panel
-        self.canv_id = canvas_panel.get_id()
-        self.canv_type = canv_type
-        self.deleted = False
-        self.tags = set()
-        if "tags" in kwargs:
-            self.tags = set(kwargs["tags"])
-        self.args = args
-        self.kwargs = kwargs
-        
-    def __str__(self):
-        st = "CanvasPanelItem:"
-        st += f"[{self.canv_id}]"
-        st += f"{self.canv_type}"
-        if self.canvas_panel.orig_pos != (0,0):
-            st += f" orig: {self.canvas_panel.orig_pos}"
-        st += f" orig: {self.canvas_panel.orig_size}"
-        if self.args:
-            st += f" args: {self.args}"
-        if self.kwargs:
-            st += f" kwargs: {self.kwargs}"
-        return st
-        
-
-    def draw(self):
-        """ Draw canvas item
-        """
-        # Get current panal position and size
-        # and calculate adjustments
-        if self.deleted:
-            return      # Already deleted
-        
-        panel = self.canvas_panel
-        self.pos_adj = panel.cur_pos-panel.orig_pos
-        self.orig_size = panel.orig_size
-        self.cur_size = panel.cur_size
-        self.size_factor = (self.cur_size.x/self.orig_size.x,
-                                   self.cur_size.y/self.orig_size.y)
-
-        self.fill = panel.color
-        if "fill" in self.kwargs:
-            self.fill = self.kwargs["fill"]
-
-        self.outline = "black"        
-        if "outline" in self.kwargs:
-            self.outline = self.kwargs["outline"]
-            
-        self.width = 2
-        if "width" in self.kwargs:
-            self.width = self.kwargs["width"]
-
-        if "tags" in self.kwargs:
-            self.tags = self.kwargs["tags"]
-        
-        if self.canv_type == "create_rectangle":
-            ret = self.create_rectangle_draw()
-        elif self.canv_type == "create_oval":
-            ret = self.create_oval_draw()
-        elif self.canv_type == "create_line":
-            ret = self.create_line_draw()
-        else:
-            raise Exception(f"draw: unrecognized type: {self.canv_type}")
-        
-        return ret
-    
-    def create_rectangle_draw(self):
-        """ Simulate tkinter canvas create_rectangle drawing
-        """
-            
-        cx1,cy1,cx2,cy2 = self.args
-        cx1_adj = int(cx1 * self.size_factor[0])
-        cx2_adj = int(cx2 * self.size_factor[0])
-        cy1_adj = int(cy1 * self.size_factor[1])
-        cy2_adj = int(cy2 * self.size_factor[1])
-         
-        dc = wx.PaintDC(self.canvas_panel.grid_panel)
-        dc.SetPen(wx.Pen(self.outline, style=wx.SOLID))
-        dc.SetBrush(wx.Brush(self.fill, wx.SOLID))
-        dc.DrawRectangle(wx.Rect(wx.Point(cx1_adj,cy1_adj),
-                                 wx.Point(cx2_adj,cy2_adj)))
-        SlTrace.lg(f"DrawRect: {wx.Point(cx1_adj,cy1_adj)},"
-                   f"  {wx.Point(cx2_adj,cy2_adj)}", "draw_rect")
-
-    def create_oval_draw(self):
-        """ Simulate tkinter canvas create_oval
-        """
-        x0,y0,x1,y1 = self.args
-        x0_adj = int(x0 * self.size_factor[0])
-        x1_adj = int(x1 * self.size_factor[0])
-        y0_adj = int(y0 * self.size_factor[1])
-        y1_adj = int(y1 * self.size_factor[1])
-        
-        
-        
-        dc = wx.PaintDC(self.canvas_panel.grid_panel)
-        dc.SetPen(wx.Pen(self.outline, style=wx.SOLID))
-        dc.SetBrush(wx.Brush(self.fill, wx.SOLID))
-        dc.DrawEllipse(x=x0_adj, y=y0_adj, width=x1_adj-x0_adj, height=y1_adj-y0_adj)
-        
-
-    def create_line_draw(self):
-        """ Implement tkinter's create_line
-        :args: x1,y1,...xn,yn
-        :kwargs:  width=, fill=, tags=[]
-        """
-        if len(self.args) == 0:
-            return      # empty list
-        
-        dc = wx.PaintDC(self.canvas_panel.grid_panel)
-        dc.SetPen(wx.Pen(self.fill, style=wx.SOLID, width=self.width))
-        points = []
-        it_args = iter(self.args)
-        for arg in it_args:
-            if arg is tuple:
-                x,y = arg
-            else:
-                x,y = arg,next(it_args)
-            x_adj = int(x * self.size_factor[0])
-            y_adj = int(y * self.size_factor[1])
-            points.append(wx.Point(x_adj,y_adj))
-        dc.DrawLines(points)
-        
-    def delete(self):
-        """ delete item
-        """
-        self.deleted = True    
-            
-            
+from wx_canvas_panel_item import CanvasPanelItem            
 
 class CanvasPanel(wx.Panel):
     """ Panel in which we can do tkinter like things
@@ -162,8 +29,6 @@ class CanvasPanel(wx.Panel):
             app = wx.App()
         self.app = app
         super().__init__(frame, *args, **kw)
-        
-        self.with_alt = False   # Check next key
         if key_press_proc is None:
             key_press_proc = self.key_press
         self.key_press_proc = key_press_proc
@@ -191,6 +56,14 @@ class CanvasPanel(wx.Panel):
         self.grid_panel.Bind(wx.EVT_SIZE, self.OnSize)
         self.grid_panel.Bind(wx.EVT_KEY_DOWN, self.on_key_down)
         self.grid_panel.Bind(wx.EVT_CHAR_HOOK, self.on_char_hook)
+        
+        self.motion_level = 0   # Track possible recursive calls
+        self.grid_panel.Bind(wx.EVT_MOTION, self.on_mouse_motion)
+        self.grid_panel.Bind(wx.EVT_LEFT_DOWN, self.on_mouse_left_down)
+        self._multi_key_progress = False    # True - processing multiple keys
+        self._multi_key_cmd = None          # Set if in progress
+        
+        
         self.Show()
         self.on_paint_skip = 1 # debug - update only every nth
         self.on_paint_count = 0 # count paints
@@ -204,13 +77,6 @@ class CanvasPanel(wx.Panel):
         wx.CallLater(0, self.SetSize, (self.frame.GetSize()))
         self.Show()
 
-    def set_key_press_proc(self, proc):
-        """ Set key press processing function to facilitating 
-        setting/changing processing function to after initial
-        setup
-        :proc: key processing function type proc(keysym)
-        """
-        self.key_press_proc = proc
         
     def get_id(self):
         """ Get unique id
@@ -361,41 +227,147 @@ class CanvasPanel(wx.Panel):
         self.prev_pos = self.cur_pos
         self.prev_size = self.cur_size
 
-    def on_key_down(self, e):
-        SlTrace.lg(f"on_key_down:{e}")
-        if e.GetKeyCode() == wx.WXK_ALT:
-            if not self.with_alt:
-                SlTrace.lg("wx.WXK_ALT")
-                self.with_alt = True
-            #e.DoAllowNextEvent()
-            #e.Skip()
-            return
+    """
+    ----------------------- Mouse Control --------------------
+    """
+    # mouse_left_down
+    def on_mouse_left_down(self, e):
+        """ Mouse down
+        """
+        loc = e.Position
+        self.mouse_left_down_proc(loc.x, loc.y)
         
-        if self.with_alt:
-            SlTrace.lg(f"ALT-{e.GetKeyCode()}")
-            self.with_alt = False
-            e.Skip()
-            return
-        
-        SlTrace.lg(f"GetUnicodeKey:{e.GetUnicodeKey()}")
-        SlTrace.lg(f"GetRawKeyCode:{e.GetRawKeyCode()}")
-        SlTrace.lg(f"GetKeyCode:{e.GetKeyCode()}")
-        keysym = self.get_keysym(e)
-        self.key_press_proc(keysym)
+    def mouse_left_down_proc(self, x, y):
+        """ process mouse left down event
+        Replaced for external processing
+        :x: mouse x coordiante
+        :y: mouse y coordinate
+        """
+        SlTrace.lg(f"mouse_left_down_proc x={x}, y={y}")
+    
+    def set_mouse_left_down_proc(self, proc):
+        """ Set link to front end processing of
+        mouse left down event
+        :proc: mouse processing function type proc(x,y)
+        """
+        self.mouse_left_down_proc = proc
 
+    # mouse motion and mouse down motion
+    def on_mouse_motion(self, e):
+        """ Mouse motion in  window
+        we convert <B1-Motion> into on_button_1_motion calls
+        """
+        loc = e.Position
+        if e.Dragging():
+            self.mouse_b1_motion_proc(loc.x, loc.y)
+        else:
+            self.mouse_motion_proc(loc.x, loc.y)
+
+    def mouse_motion_proc(self, x, y):
+        """ Set to connect to remote processing
+        """
+        SlTrace.lg(f"mouse_motion_proc(x={x}, y={y})", "motion")
+
+    def mouse_b1_motion_proc(self, x, y):
+        """ Set to connect to remote processing
+        """
+        SlTrace.lg(f"mouse_b1_motion_proc(x={x}, y={y})")
+    
+    def set_mouse_motion_proc(self, proc):
+        """ Set link to front end processing of
+        mouse motion event
+        :proc: mouse processing function type proc(x,y)
+        """
+        self.mouse_motion_proc = proc
+   
+    def set_mouse_b1_motion_proc(self, proc):
+        """ Set link to front end processing of
+        mouse b1 down motion event
+        :proc: mouse processing function type proc(x,y)
+        """
+        self.mouse_b1_motion_proc = proc
+    
+
+
+
+    """
+    ----------------------- Keyboard Control --------------------
+    """
+
+    def set_key_press_proc(self, proc):
+        """ Set key press processing function to facilitating 
+        setting/changing processing function to after initial
+        setup
+        :proc: key processing function type proc(keysym)
+        """
+        self.key_press_proc = proc
+
+       
     def on_char_hook(self, e):
-        SlTrace.lg(f"\non_char_hook:{e}")
-        SlTrace.lg(f"GetUnicodeKey:{e.GetUnicodeKey()}")
-        SlTrace.lg(f"GetRawKeyCode:{e.GetRawKeyCode()}")
-        SlTrace.lg(f"GetKeyCode:{e.GetKeyCode()}")
+        SlTrace.lg(f"\non_char_hook:{e}", "keys")
+        
+        if e.AltDown():
+            SlTrace.lg(f"{self.get_mod_str(e)}", "keys")
+            e.Skip()    # Pass up to e.g., Menu
+            return
+        
+        SlTrace.lg(f"sym: {self.get_mod_str(e)}", "keys")
+        SlTrace.lg(f"GetUnicodeKey:{e.GetUnicodeKey()}", "keys")
+        SlTrace.lg(f"GetRawKeyCode:{e.GetRawKeyCode()}", "keys")
+        SlTrace.lg(f"GetKeyCode:{e.GetKeyCode()}", "keys")
         SlTrace.lg(f"chr(GetKeyCode){chr(e.GetKeyCode())}"
-                   f" {ord(chr(e.GetKeyCode()))}")
+                   f" {ord(chr(e.GetKeyCode()))}", "keys")
         if e.GetUnicodeKey() != 0:
             e.Skip()    # Pass on regular keys
             return
         
         keysym = self.get_keysym(e)
         self.key_press_proc(keysym)
+
+    def on_key_down(self, e):
+        SlTrace.lg(f"on_key_down:{e}")
+        SlTrace.lg(f"sym: {self.get_mod_str(e)}", "keys")
+        if e.AltDown():
+            SlTrace.lg(f"{self.get_mod_str(e)}", "keys")
+            e.Skip()    # Pass up to e.g., Menu
+            return
+        
+        SlTrace.lg(f"GetUnicodeKey:{e.GetUnicodeKey()}", "keys")
+        SlTrace.lg(f"GetRawKeyCode:{e.GetRawKeyCode()}", "keys")
+        SlTrace.lg(f"GetKeyCode:{e.GetKeyCode()}", "keys")
+        keysym = self.get_keysym(e)
+        self.key_press_proc(keysym)
+
+    def get_mod_str(self, e):
+        """ return modifier list string
+        :e: event
+        :returns: "[mod1-][mod2-][...]key_sym"
+        """
+        mod_str = ""
+        if e.HasModifiers():
+            mods = e.GetModifiers()
+            if mods & wx.MOD_ALT:
+                if mod_str != "": mod_str += "-"
+                mod_str += "ALT"
+            if mods & wx.MOD_CONTROL:
+                if mod_str != "": mod_str += "-"
+                mod_str += "CTL"
+            if mods & wx.MOD_SHIFT:
+                if mod_str != "": mod_str += "-"
+                mod_str += "SHIFT"
+            if mods & wx.MOD_ALTGR and mods == wx.MOD_ALTGR:
+                if mod_str != "": mod_str += "-"
+                mod_str += "ALTGR"
+            if mods & wx.MOD_META:
+                if mod_str != "": mod_str += "-"
+                mod_str += "META"
+            if mods & wx.MOD_WIN:
+                if mod_str != "": mod_str += "-"
+                mod_str += "WIN"
+        ret = mod_str
+        if ret != "": ret += "-"
+        ret += self.get_keysym(e)
+        return ret
         
 
     def key_press(self, keysym):
@@ -438,6 +410,8 @@ class CanvasPanel(wx.Panel):
         
         return '???'    # Unrecognized
 
+
+
 if __name__ == "__main__":
     SlTrace.clearFlags()
     app = wx.App()
@@ -445,11 +419,28 @@ if __name__ == "__main__":
     width = 400
     height = 500
     frame = wx.Frame(None, title=mytitle, size=wx.Size(width,height))
-    #frame = CanvasFrame(None, title=mytitle, size=wx.Size(width,height))
-    #frame.SetInitialSize(wx.Size(400,400))
     frame.Show()
     canv_pan = CanvasPanel(frame, app=app)
     canv_pan.Show()
+
+    """
+    Setup frame level key processing
+    Exercising keys passed up from CanvasPanel
+    """    
+    def frame_on_key_down(e):
+        """ process frame level key presses
+        """
+        SlTrace.lg(f"frame: {canv_pan.get_mod_str(e)}")
+        
+    def frame_on_char_hook(e):
+        """ process frame level key presses
+        """
+        SlTrace.lg(f"frame hook: {canv_pan.get_mod_str(e)}")
+        
+    frame.Bind(wx.EVT_KEY_DOWN, frame_on_key_down)
+    frame.Bind(wx.EVT_CHAR_HOOK, frame_on_char_hook)
+
+    
     canv_pan.create_rectangle(50,100,200,200, fill="red")
     canv_pan.create_rectangle(150,150,300,300, fill="blue")
     canv_pan.create_oval(50,200,100,300, fill="orange")
@@ -471,7 +462,7 @@ if __name__ == "__main__":
         SlTrace.lg(msg)
     
     SlTrace.setFlags("stdouthasts,decpl=2")    
-    delay = 3000    # milliseconds
+    delay = 1000    # milliseconds
     SlTrace.lg(f"Delay {delay} milliseconds")
     canv_pan.after(0, test_msg_before)
     canv_pan.after(delay, test_msg_after)

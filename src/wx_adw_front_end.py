@@ -65,6 +65,10 @@ class AdwFrontEnd:
         :menu_str: initial menu command string default: none
         """
         self.adw = adw
+        cell_pan = self.cell_pan = adw.cell_pan   # set fte link
+        cell_pan.set_mouse_left_down_proc(self.on_button_1)
+        cell_pan.set_mouse_motion_proc(self.motion)
+        cell_pan.set_mouse_b1_motion_proc(self.on_button_1_motion)
         self.speaker_control = self.get_speaker_control()
         if title is None:
             title = "Audio Menu"
@@ -144,17 +148,6 @@ class AdwFrontEnd:
         prev_val = self._silent
         self._silent = val
         return prev_val
-
-    def do_complete(self, menu_str=None, key_str=None):
-        """ Complete menu process
-        """
-        self.motion_level = 0   # Track possible recursive calls
-        ###wxport###self.canvas.bind('<Motion>', self.motion)
-        ###wxport###self.canvas.bind('<Button-1>', self.on_button_1)
-        ###wxport###self.canvas.bind('<B1-Motion>', self.on_button_1_motion)
-        ###wxport###self.mw.bind('<KeyPress>', self.on_key_press)
-        self._multi_key_progress = False    # True - processing multiple keys
-        self._multi_key_cmd = None          # Set if in progress
 
 
         self.do_menu_str(menu_str)
@@ -484,7 +477,7 @@ class AdwFrontEnd:
     and those actions close to that
     """
 
-    def motion(self, event):
+    def motion(self, x, y):
         """ Mouse motion in  window
         """
         if not self.is_enable_mouse():
@@ -495,7 +488,7 @@ class AdwFrontEnd:
             self.motion_level = 0
             return
 
-        self.set_xy((event.x,event.y))
+        self.set_xy((x, y))
         x,y = self.get_xy()
         x,y = x + self.x_min, y + self.y_min
         self.win_x,self.win_y = x,y
@@ -580,10 +573,10 @@ class AdwFrontEnd:
         return self.x_max
 
 
-    def on_button_1(self, event):
+    def on_button_1(self, x, y):
         """ Mouse button in window
         """
-        self.set_xy((event.x, event.y))
+        self.set_xy((x, y))
         x,y = self.get_xy()
         x,y = x + self.x_min, y + self.y_min
         self.win_x,self.win_y = x,y
@@ -607,12 +600,12 @@ class AdwFrontEnd:
             self.pos_check()
         self.update()
 
-    def on_button_1_motion(self, event):
-        """ Motion will button down is
+    def on_button_1_motion(self, x, y):
+        """ Motion with button down is
         treated as mouse click at point
         """
         if self.is_enable_mouse():
-            self.on_button_1(event=event)
+            self.on_button_1(x, y)
 
     def on_key_press(self, event):
         """ Key press event

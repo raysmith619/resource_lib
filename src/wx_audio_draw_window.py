@@ -21,7 +21,7 @@ from braille_cell import BrailleCell
 from magnify_info import MagnifyInfo, MagnifyDisplayRegion
 from wx_adw_front_end import AdwFrontEnd
 from wx_adw_menus import AdwMenus
-from canvas_panel import CanvasPanel
+from wx_canvas_panel import CanvasPanel
 
 class AudioDrawWindow(wx.Frame):
     def __init__(self,
@@ -148,7 +148,6 @@ class AudioDrawWindow(wx.Frame):
         self.fte = AdwFrontEnd(self, title=title, silent=silent, color=color)
         self.cell_pan.set_key_press_proc(self.fte.key_press)
         self.menus = AdwMenus(self.fte, frame=self)
-        self.fte.cell_pan = self.cell_pan   # set fte link
         self.set_x_min(x_min)
         self.set_y_min(y_min)
         self.set_x_max(x_min + win_width)
@@ -193,7 +192,6 @@ class AudioDrawWindow(wx.Frame):
         self.blank_char = blank_char
         self.shift_to_edge = shift_to_edge
         self.set_look_dist(look_dist)
-        self.fte.do_complete(menu_str=menu_str, key_str=key_str)
         #self.pos_check()            # Startup possition check loop
         self.update()     # Make visible
 
