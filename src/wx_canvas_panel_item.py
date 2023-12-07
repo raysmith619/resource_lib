@@ -48,6 +48,7 @@ class CanvasPanelItem:
         self.pos_adj = panel.cur_pos-panel.orig_pos
         self.orig_size = panel.orig_size
         self.cur_size = panel.cur_size
+        SlTrace.lg(f"orig_size: {self.orig_size} cur_size: {self.cur_size}", "item")
         self.size_factor = (self.cur_size.x/self.orig_size.x,
                                    self.cur_size.y/self.orig_size.y)
 
@@ -86,14 +87,19 @@ class CanvasPanelItem:
         cx2_adj = int(cx2 * self.size_factor[0])
         cy1_adj = int(cy1 * self.size_factor[1])
         cy2_adj = int(cy2 * self.size_factor[1])
-         
+     
+        panel_loc1 = wx.Point(cx1_adj, cy1_adj)    
+        panel_loc2 = wx.Point(cx2_adj, cy2_adj)
+        screen_loc1 = self.get_screen_loc(panel_loc1)    
+        screen_loc2 = self.get_screen_loc(panel_loc2)    
+        
         dc = wx.PaintDC(self.canvas_panel.grid_panel)
         dc.SetPen(wx.Pen(self.outline, style=wx.SOLID))
         dc.SetBrush(wx.Brush(self.fill, wx.SOLID))
-        dc.DrawRectangle(wx.Rect(wx.Point(cx1_adj,cy1_adj),
-                                 wx.Point(cx2_adj,cy2_adj)))
-        SlTrace.lg(f"DrawRect: {wx.Point(cx1_adj,cy1_adj)},"
-                   f"  {wx.Point(cx2_adj,cy2_adj)}", "draw_rect")
+        dc.DrawRectangle(wx.Rect(screen_loc1,
+                                 screen_loc2))
+        SlTrace.lg(f"DrawRect: {screen_loc1},"
+                   f"  {screen_loc2}", "draw_rect")
 
     def create_oval_draw(self):
         """ Simulate tkinter canvas create_oval
@@ -104,12 +110,15 @@ class CanvasPanelItem:
         y0_adj = int(y0 * self.size_factor[1])
         y1_adj = int(y1 * self.size_factor[1])
         
-        
+        panel_adj0 = wx.Point(x0_adj,y0_adj)
+        screen_adj0 = self.get_screen_loc(panel_adj0)        
         
         dc = wx.PaintDC(self.canvas_panel.grid_panel)
         dc.SetPen(wx.Pen(self.outline, style=wx.SOLID))
         dc.SetBrush(wx.Brush(self.fill, wx.SOLID))
-        dc.DrawEllipse(x=x0_adj, y=y0_adj, width=x1_adj-x0_adj, height=y1_adj-y0_adj)
+        dc.DrawEllipse(pt=screen_adj0,
+                size=wx.Size(x1_adj-x0_adj,
+                            y1_adj-y0_adj))
         
 
     def create_line_draw(self):
@@ -131,11 +140,21 @@ class CanvasPanelItem:
                 x,y = arg,next(it_args)
             x_adj = int(x * self.size_factor[0])
             y_adj = int(y * self.size_factor[1])
-            points.append(wx.Point(x_adj,y_adj))
+            panel_adj = wx.Point(x_adj,y_adj)
+            screen_adj = self.get_screen_loc(panel_adj)
+            points.append(screen_adj)
         dc.DrawLines(points)
+        self.canvas_panel.grid_panel.Show()
         
     def delete(self):
         """ delete item
         """
-        self.deleted = True    
+        self.deleted = True
+        
+    """
+    ------------------------ link to canvas_panel
+    """
+    
+    def get_screen_loc(self, panel_loc):
+        return self.canvas_panel.get_screen_loc(panel_loc)    
             

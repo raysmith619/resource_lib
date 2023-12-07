@@ -572,69 +572,75 @@ class AdwMenus:
     def stop_scanning(self, _=None):
         self.fte.stop_scanning()
 
+"""
+Used to stub out FTE
+"""
+class FteFake:
+    def pgm_exit(self):
+        SlTrace.lg("fte.pgm_exit()")
+        import sys
+        sys.exit()
+        
+    def speak_text(self, msg, msg_type=None,
+                    dup_stdout=True, rate=None,
+                    volume=None):
+        SlTrace.lg(f"fte.speak_text({msg},"
+                    f"msg_type={msg_type}msg)"
+                    f")")
+
+    """ mag support"""
+    def erase_pos_history(self):
+        SlTrace.lg("fte.erase_pos_history")
+    def mag_select(self):
+        SlTrace.lg("mag_select")    
+    def mag_exapnd_right(self):
+        SlTrace.lg("mag_exapnd_right")    
+    def mag_exapnd_top(self):
+        SlTrace.lg("mag_exapnd_top")    
+    def mag_view(self):
+        SlTrace.lg("mag_view")    
+
+    """ nav support"""
+    
+    def nav_add_loc(self):
+        SlTrace.lg("fte.nav_add_loc()")
+    
+    def nav_no_add_loc(self):
+        SlTrace.lg("fte.nav_no_add_loc()")
+    
+    def nav_echo_on(self):
+        SlTrace.lg("fte.nav_echo_on()")
+    
+    def nav_echo_off(self):
+        SlTrace.lg("fte.nav_echo_off()")
+        
+    def start_drawing(self):
+        SlTrace.lg(f"fte.start_drawing()")
+
+    def stop_drawing(self):
+        SlTrace.lg(f"fte.stop_drawing() is this in fte?")
+    
+    def set_combine_wave(self, val=True):
+        SlTrace.lg("fte.set_combine_wave")
+    
+    def  flip_skip_space(self):
+        SlTrace.lg("fte.flip_skip_space")
+    
+    def  flip_skip_run(self):
+        SlTrace.lg("fte.flip_skip_run")
+    
+    def start_scanning(self):
+        SlTrace.lg("fte.start_scanning")
+                                                                                                                                        
+    def stop_scanning(self):
+        SlTrace.lg("fte.stop_scanning") 
+
+    def set_no_item_wait(self, val=True):
+        SlTrace.lg(f"fte.set_no_item_wait(val={val})") 
+
+
 if __name__ == "__main__":
-    class FteFake:
-        def pgm_exit(self):
-            SlTrace.lg("fte.pgm_exit()")
-            import sys
-            sys.exit()
-            
-        def speak_text(self, msg, msg_type=None,
-                       dup_stdout=True, rate=None,
-                       volume=None):
-            SlTrace.lg(f"fte.speak_text({msg},"
-                       f"msg_type={msg_type}msg)"
-                       f")")
-
-        """ mag support"""
-        def erase_pos_history(self):
-            SlTrace.lg("fte.erase_pos_history")
-        def mag_select(self):
-            SlTrace.lg("mag_select")    
-        def mag_exapnd_right(self):
-            SlTrace.lg("mag_exapnd_right")    
-        def mag_exapnd_top(self):
-            SlTrace.lg("mag_exapnd_top")    
-        def mag_view(self):
-            SlTrace.lg("mag_view")    
-
-        """ nav support"""
-        
-        def nav_add_loc(self):
-            SlTrace.lg("fte.nav_add_loc()")
-        
-        def nav_no_add_loc(self):
-            SlTrace.lg("fte.nav_no_add_loc()")
-        
-        def nav_echo_on(self):
-            SlTrace.lg("fte.nav_echo_on()")
-        
-        def nav_echo_off(self):
-            SlTrace.lg("fte.nav_echo_off()")
-            
-        def start_drawing(self):
-            SlTrace.lg(f"fte.start_drawing()")
-
-        def stop_drawing(self):
-            SlTrace.lg(f"fte.stop_drawing() is this in fte?")
-        
-        def set_combine_wave(self, val=True):
-            SlTrace.lg("fte.set_combine_wave")
-        
-        def  flip_skip_space(self):
-            SlTrace.lg("fte.flip_skip_space")
-        
-        def  flip_skip_run(self):
-            SlTrace.lg("fte.flip_skip_run")
-        
-        def start_scanning(self):
-            SlTrace.lg("fte.start_scanning")
-                                                                                                                                            
-        def stop_scanning(self):
-            SlTrace.lg("fte.stop_scanning") 
-
-        def set_no_item_wait(self, val=True):
-            SlTrace.lg(f"fte.set_no_item_wait(val={val})") 
+    from wx_adw_menus import AdwMenus, FteFake
                   
     app = wx.App()
     frame = wx.Frame(None)
@@ -655,7 +661,7 @@ if __name__ == "__main__":
         for menui_sc in men_item_scs:    
             cmd_command = menus.get_menu_cmd(men_sc, menui_sc)
             SlTrace.lg(f"Menu:{men_sc} Item:{menui_sc}", "menu")
-            if men_sc == "f" and menui_sc == "e":
+            if men_sc == "f" and menui_sc.lower() == "x":
                 SlTrace.lg(f"Skipping Menu:{men_sc} Item:{menui_sc}")
                 continue
             cmd_command()

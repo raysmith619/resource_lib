@@ -6,8 +6,7 @@ on wxPython Panel  Our attempt here was to ease a port
 from tkinter Canvas use to wxPython.
 """
 import wx
-
-from select_trace import SlTrace 
+from select_trace import SlTrace, SelectError 
 from wx_canvas_panel_item import CanvasPanelItem            
 
 class CanvasPanel(wx.Panel):
@@ -29,6 +28,9 @@ class CanvasPanel(wx.Panel):
             app = wx.App()
         self.app = app
         super().__init__(frame, *args, **kw)
+        self.mouse_left_down_proc = self.mouse_left_down_def
+        self.mouse_motion_proc = self.mouse_motion_def
+        self.mouse_b1_motion_proc = self.mouse_b1_motion_def
         if key_press_proc is None:
             key_press_proc = self.key_press
         self.key_press_proc = key_press_proc
@@ -46,7 +48,7 @@ class CanvasPanel(wx.Panel):
         sizer_v.Add(self.text_entry_panel, 0, wx.ALIGN_CENTER_HORIZONTAL)
         sizer_v.Add(self.grid_panel, 1, wx.EXPAND)
         self.SetSizer(sizer_v)
-    
+        self.grid_panel_offset = 53 # menu + text TBD
         self.Show()
         self.can_id = 0
         self.items_by_id = {}   # Item's index in items[]
@@ -59,6 +61,8 @@ class CanvasPanel(wx.Panel):
         
         self.motion_level = 0   # Track possible recursive calls
         self.grid_panel.Bind(wx.EVT_MOTION, self.on_mouse_motion)
+        self.frame.Bind(wx.EVT_LEFT_DOWN, self.on_mouse_left_down_frame)
+        self.Bind(wx.EVT_LEFT_DOWN, self.on_mouse_left_down_win)
         self.grid_panel.Bind(wx.EVT_LEFT_DOWN, self.on_mouse_left_down)
         self._multi_key_progress = False    # True - processing multiple keys
         self._multi_key_cmd = None          # Set if in progress
@@ -76,7 +80,7 @@ class CanvasPanel(wx.Panel):
         self.Show()
         wx.CallLater(0, self.SetSize, (self.frame.GetSize()))
         self.Show()
-
+        self.grid_panel.SetFocus() # Give grid_panel focus
         
     def get_id(self):
         """ Get unique id
@@ -171,6 +175,8 @@ class CanvasPanel(wx.Panel):
         e.Skip()
             
     def OnPaint(self, e):
+        """ Response to paint event
+        """
         
         self.on_paint_count += 1
         SlTrace.lg(f"\nOnPaint {self.on_paint_count}", "paint")
@@ -185,10 +191,12 @@ class CanvasPanel(wx.Panel):
         if self.on_paint_count == 1:
             self.orig_pos = self.GetPosition()  # After setup
             self.orig_size = self.GetSize()
+            SlTrace.lg(f"Set orig_size:{self.orig_size}")
             self.cur_pos = self.prev_pos = self.orig_pos
             self.cur_size = self.prev_size = self.orig_size
             if self.orig_size[0] < 50:
                 self.orig_size = self.frame.GetClientSize()
+                SlTrace.lg(f"Set orig_size:{self.orig_size}")
                 SlTrace.lg(f"use client size: {self.orig_size}", "paint")
                 self.cur_size = self.orig_size
                 SlTrace.lg(f"Set cur size: {self.cur_size}", "paint")
@@ -219,6 +227,7 @@ class CanvasPanel(wx.Panel):
         dc.DrawRectangle(self.prev_pos, self.prev_size) # clear previous rectangle
         dc.DrawRectangle(self.cur_pos, self.cur_size)   # clear new rectangle
         self.Show()
+        SlTrace.lg(f"orig_size: {self.orig_size} cur_size: {self.cur_size}", "paint")
         for item in self.items:
             SlTrace.lg(f"item: {item}", "item")
             item.draw()
@@ -227,23 +236,118 @@ class CanvasPanel(wx.Panel):
         self.prev_pos = self.cur_pos
         self.prev_size = self.cur_size
 
+    def itemconfig(self, tags, **kwargs):
+        """ Adjust items with tags with kwargs
+        :tags: tag or tag list of items to change
+        :kwargs: new attributes
+                    supporting: outline
+        """
+        if type(tags) != list:
+            tags = [tags]
+            
+        for item in self.items:
+            ins = item.tags.intersection(tags)
+            if len(ins) > 0:   # item have tag?
+                for kw in  kwargs:
+                    val = kwargs[kw]
+                    if kw == "outline":
+                        item.kwargs[kw] = val
+                    else:
+                        raise SelectError(f"itemconfig doesn't support {kw} (val:{val})")    
     """
     ----------------------- Mouse Control --------------------
     """
+    def get_panel_loc(self, e):
+        """ Get mouse location in panel coordinates
+        """
+        screen_loc = e.Position
+        panel_loc = wx.Point(screen_loc.x,
+                            screen_loc.y+
+                            self.grid_panel_offset)
+        return panel_loc
+    
+    def get_screen_loc(self, panel_loc):
+        """ Convert panel location to screen location
+        :panel_loc: wx.Point of location
+        :returns: wx.Point on screen
+        """
+        screen_loc = wx.Point(panel_loc.x,
+                              panel_loc.y-
+                              self.grid_panel_offset)
+        return screen_loc
+    
+    import pyautogui   #??? comment this line
+                       #??? and first click causes
+                       #??? the window to shrink
     # mouse_left_down
     def on_mouse_left_down(self, e):
         """ Mouse down
         """
-        loc = e.Position
-        self.mouse_left_down_proc(loc.x, loc.y)
+                
+        loc = self.get_panel_loc(e)
+        SlTrace.lg(f"\non_mouse_left_down panel({loc.x},{loc.y})"
+                   f" [{e.Position.x}, {e.Position.y}]"
+                   f"window: pos: {self.GetPosition()}"
+                   f" size: {self.GetSize()}"
+                   f" GetClientAreaOrigin: {self.GetClientAreaOrigin()}"
+                   )
+        #??? Without the above live import pyautogui,
+        # the first mouse click shrinks window.
+        import pyautogui
+        screenWidth, screenHeight = pyautogui.size()
+        SlTrace.lg(f"screen width:{screenWidth}, hight: {screenHeight}")
+        currentMouseX, currentMouseY = pyautogui.position()
+        SlTrace.lg(f"mouse x,y: {currentMouseX}, {currentMouseY}")
+        #'''
+        #e.Skip()
         
-    def mouse_left_down_proc(self, x, y):
+        self.mouse_left_down_proc(loc.x, loc.y)
+        self.grid_panel.SetFocus() # Give grid_panel focus
+
+
+    def on_mouse_left_down_win(self, e):
+        """ Mouse down in window
+        """
+                
+        loc = wx.Point(e.Position)
+        SlTrace.lg(f"\non_mouse_left_down_win ({loc.x},{loc.y})"
+                   f" [{e.Position.x}, {e.Position.y}]"
+                   f"window: pos: {self.GetPosition()}"
+                   f" size: {self.GetSize()}"
+                   f" GetClientAreaOrigin: {self.GetClientAreaOrigin()}"
+                   )
+        import pyautogui
+        screenWidth, screenHeight = pyautogui.size()
+        SlTrace.lg(f"screen width:{screenWidth}, hight: {screenHeight}")
+        currentMouseX, currentMouseY = pyautogui.position()
+        SlTrace.lg(f"mouse x,y: {currentMouseX}, {currentMouseY}")
+        e.Skip()
+
+    def on_mouse_left_down_frame(self, e):
+        """ Mouse down in window
+        """
+                
+        loc = wx.Point(e.Position)
+        SlTrace.lg(f"\non_mouse_left_down_frame ({loc.x},{loc.y})"
+                   f" [{e.Position.x}, {e.Position.y}]"
+                   f"window: pos: {self.GetPosition()}"
+                   f" size: {self.GetSize()}"
+                   f" GetClientAreaOrigin: {self.GetClientAreaOrigin()}"
+                   )
+        import pyautogui
+        screenWidth, screenHeight = pyautogui.size()
+        SlTrace.lg(f"screen width:{screenWidth}, hight: {screenHeight}")
+        currentMouseX, currentMouseY = pyautogui.position()
+        SlTrace.lg(f"mouse x,y: {currentMouseX}, {currentMouseY}")
+        e.Skip()
+        
+    def mouse_left_down_def(self, x, y):
         """ process mouse left down event
         Replaced for external processing
         :x: mouse x coordiante
         :y: mouse y coordinate
         """
-        SlTrace.lg(f"mouse_left_down_proc x={x}, y={y}")
+        SlTrace.lg(f"mouse_left_down_proc x={x}, y={y}", "mouse_proc")
     
     def set_mouse_left_down_proc(self, proc):
         """ Set link to front end processing of
@@ -257,24 +361,24 @@ class CanvasPanel(wx.Panel):
         """ Mouse motion in  window
         we convert <B1-Motion> into on_button_1_motion calls
         """
-        loc = e.Position
+        loc = self.get_panel_loc(e)
         if e.Dragging():
             self.mouse_b1_motion_proc(loc.x, loc.y)
         else:
             self.mouse_motion_proc(loc.x, loc.y)
 
-    def mouse_motion_proc(self, x, y):
+    def mouse_motion_def(self, x, y):
         """ Set to connect to remote processing
         """
         SlTrace.lg(f"mouse_motion_proc(x={x}, y={y})", "motion")
 
-    def mouse_b1_motion_proc(self, x, y):
-        """ Set to connect to remote processing
+    def mouse_b1_motion_def(self, x, y):
+        """ Default mouse_b1_motion event proceessing
         """
         SlTrace.lg(f"mouse_b1_motion_proc(x={x}, y={y})")
     
     def set_mouse_motion_proc(self, proc):
-        """ Set link to front end processing of
+        """ Default mouse_motion event processing
         mouse motion event
         :proc: mouse processing function type proc(x,y)
         """
@@ -317,15 +421,13 @@ class CanvasPanel(wx.Panel):
         SlTrace.lg(f"GetKeyCode:{e.GetKeyCode()}", "keys")
         SlTrace.lg(f"chr(GetKeyCode){chr(e.GetKeyCode())}"
                    f" {ord(chr(e.GetKeyCode()))}", "keys")
-        if e.GetUnicodeKey() != 0:
-            e.Skip()    # Pass on regular keys
-            return
         
         keysym = self.get_keysym(e)
         self.key_press_proc(keysym)
+        self.grid_panel.SetFocus() # Give grid_panel focus
 
     def on_key_down(self, e):
-        SlTrace.lg(f"on_key_down:{e}")
+        SlTrace.lg(f"on_key_down:{e}", "keys")
         SlTrace.lg(f"sym: {self.get_mod_str(e)}", "keys")
         if e.AltDown():
             SlTrace.lg(f"{self.get_mod_str(e)}", "keys")
@@ -413,13 +515,28 @@ class CanvasPanel(wx.Panel):
 
 
 if __name__ == "__main__":
+    add_menus = True     # True add menus to frame
+    add_after_test = True   # Test delay
+    
+    if add_menus:
+        # Provide Menubar to capture Alt-<key>s
+        from wx_adw_menus import AdwMenus, FteFake
+        
     SlTrace.clearFlags()
+    #SlTrace.setFlags("paint")
+    SlTrace.setFlags("keys")
     app = wx.App()
-    mytitle = "wx.Frame & wx.Panels"
+    mytitle = "CanvasPanel Selftest"
     width = 400
     height = 500
+    if add_menus:
+        mytitle += " Using AdwMenus"
+        width += 100
     frame = wx.Frame(None, title=mytitle, size=wx.Size(width,height))
     frame.Show()
+    if add_menus:
+        fte = FteFake()
+        menus = AdwMenus(fte, frame=frame)
     canv_pan = CanvasPanel(frame, app=app)
     canv_pan.Show()
 
@@ -436,9 +553,15 @@ if __name__ == "__main__":
         """ process frame level key presses
         """
         SlTrace.lg(f"frame hook: {canv_pan.get_mod_str(e)}")
+    
+    def key_press_proc(key_sym):
+        """ Process keys sent from CanvasPanel
+        """
+        SlTrace.lg(f"key_press: {key_sym}")
         
-    frame.Bind(wx.EVT_KEY_DOWN, frame_on_key_down)
-    frame.Bind(wx.EVT_CHAR_HOOK, frame_on_char_hook)
+    if not add_menus:   # if no menu to catch    
+        frame.Bind(wx.EVT_KEY_DOWN, frame_on_key_down)
+        frame.Bind(wx.EVT_CHAR_HOOK, frame_on_char_hook)
 
     
     canv_pan.create_rectangle(50,100,200,200, fill="red")
@@ -460,12 +583,15 @@ if __name__ == "__main__":
         
     def test_msg_after(msg="After delay"):
         SlTrace.lg(msg)
+    if add_after_test:
+        SlTrace.lg("Test after() function")
+        SlTrace.setFlags("stdouthasts,decpl=2")    
+        delay = 1000    # milliseconds
+        SlTrace.lg(f"Delay {delay} milliseconds")
+        canv_pan.after(0, test_msg_before)
+        canv_pan.after(delay, test_msg_after)
+
+    canv_pan.set_key_press_proc(key_press_proc)
     
-    SlTrace.setFlags("stdouthasts,decpl=2")    
-    delay = 1000    # milliseconds
-    SlTrace.lg(f"Delay {delay} milliseconds")
-    canv_pan.after(0, test_msg_before)
-    canv_pan.after(delay, test_msg_after)
- 
     app.MainLoop()
     

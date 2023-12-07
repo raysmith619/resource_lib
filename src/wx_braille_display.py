@@ -264,7 +264,7 @@ class BrailleDisplay:
         """
         self.tk.update_idletasks()
         self.tk.update()
-        wx.CallLater(10, self.tk_updates)    #loop
+        wx.CallLater(1, self.tk_updates)    #loop
     
     def mainloop(self):
         title = self.title
@@ -274,8 +274,8 @@ class BrailleDisplay:
         self.tk = tk.Tk()
         app = wx.App()
 
-        self.tk_updates()
         self.display(app=app)
+        self.tk_updates()
         
         app.MainLoop()
                 

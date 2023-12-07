@@ -65,10 +65,10 @@ class AdwFrontEnd:
         :menu_str: initial menu command string default: none
         """
         self.adw = adw
-        cell_pan = self.cell_pan = adw.cell_pan   # set fte link
-        cell_pan.set_mouse_left_down_proc(self.on_button_1)
-        cell_pan.set_mouse_motion_proc(self.motion)
-        cell_pan.set_mouse_b1_motion_proc(self.on_button_1_motion)
+        canv_pan = self.canv_pan = adw.canv_pan   # set fte link
+        canv_pan.set_mouse_left_down_proc(self.on_button_1)
+        canv_pan.set_mouse_motion_proc(self.motion)
+        canv_pan.set_mouse_b1_motion_proc(self.on_button_1_motion)
         self.speaker_control = self.get_speaker_control()
         if title is None:
             title = "Audio Menu"
@@ -277,12 +277,13 @@ class AdwFrontEnd:
     def remove_mag_selection(self):
         """ Remove magnify selection and marker
         """
-        cell_pan = self.cell_pan
+        canv_pan = self.canv_pan
         if self.adw.mag_selection_tag is not None:
-            cell_pan.delete(self.adw.mag_selection_tag)
+            canv_pan.delete(self.adw.mag_selection_tag)
             self.adw.mag_selection_tag = None
             self.update()       # View change
-
+            self.canv_pan.Refresh()
+            
     def show_mag_selection(self, mag_info):
         """ Display selected region
         :ix_min: minimum ix index
@@ -291,17 +292,21 @@ class AdwFrontEnd:
         :iy_max: maximum iy index
         """
         select = mag_info.select
-        cell_pan = self.cell_pan
+        canv_pan = self.canv_pan
         self.remove_mag_selection()
         ixy_ul = (select.ix_min,select.iy_min)
         ul_cx1,ul_cy1,_,_ = self.get_win_ullr_at_ixy_canvas(ixy_ul)
 
         ixy_lr = (select.ix_max,select.iy_max)
         _,_,lr_cx2,lr_cy2 = self.get_win_ullr_at_ixy_canvas(ixy_lr)
-        self.adw.mag_selection_tag = cell_pan.create_rectangle(ul_cx1,ul_cy1,
-                                                             lr_cx2,lr_cy2,
-                                                             outline="dark blue", width=4)
-
+        self.adw.mag_selection_tag = canv_pan.create_line(ul_cx1,ul_cy1,
+                                                          lr_cx2,ul_cy1,
+                                                          lr_cx2,lr_cy2,
+                                                          ul_cx1,lr_cy2,
+                                                          ul_cx1,ul_cy1,
+                                                          fill="#00008b",
+                                                          width=4)
+        canv_pan.Refresh()
 
 
     """ End of Magnify support
@@ -1540,7 +1545,7 @@ class AdwFrontEnd:
         """ Update cursor (current position) display
         """
         if self._cursor_item is not None:
-            self.cell_pan.delete(self._cursor_item)
+            self.canv_pan.delete(self._cursor_item)
             self._cursor_item = None
         rd = 5
         pos_x,pos_y = self.get_xy_canvas()
@@ -1549,7 +1554,7 @@ class AdwFrontEnd:
         x1 = pos_x+rd
         y0 = pos_y-rd
         y1 = pos_y+rd
-        self._cursor_item = self.cell_pan.create_oval(x0,y0,x1,y1,
+        self._cursor_item = self.canv_pan.create_oval(x0,y0,x1,y1,
                                                     fill="red")
         self.update()
 

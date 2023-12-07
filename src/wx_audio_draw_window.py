@@ -144,9 +144,9 @@ class AudioDrawWindow(wx.Frame):
 
 
         self._visible = visible
-        self.cell_pan = CanvasPanel(self)
+        self.canv_pan = CanvasPanel(self)
         self.fte = AdwFrontEnd(self, title=title, silent=silent, color=color)
-        self.cell_pan.set_key_press_proc(self.fte.key_press)
+        self.canv_pan.set_key_press_proc(self.fte.key_press)
         self.menus = AdwMenus(self.fte, frame=self)
         self.set_x_min(x_min)
         self.set_y_min(y_min)
@@ -651,18 +651,19 @@ class AudioDrawWindow(wx.Frame):
         # Remove current items, if any
         if cell.canv_items:
             for item_id in cell.canv_items:
-                self.cell_pan.delete(item_id)
+                self.canv_pan.delete(item_id)
             self.update()       # Make change visible
         cell.canv_items = []
 
     def erase_pos_history(self):
         """ Remove history, undo history marking
         """
-        canvas = self.canvas
+        canv_pan = self.canv_pan
         for cell_ixy in self.pos_history:
             if not cell_ixy in self.cells:
                 continue
             cell = self.cells[cell_ixy]
+            self.mark_cell(cell, BrailleCell.MARK_UNMARKED)
             self.display_cell(cell)
             '''
             for item_id in cell.canv_items:
@@ -672,11 +673,7 @@ class AudioDrawWindow(wx.Frame):
                     canvas.tag_lower(item_id)
             '''
         self.pos_history = []
-        canvas = self.canvas
-        if self.mag_selection_tag is not None:
-            canvas.itemconfig(self.mag_selection_tag, outline="red")
-        self.is_selected = False         # Flag as unselected
-            
+        self.remove_mag_selection()    
         self.update()
                 
     def display_reposition_hack(self, cx1,cx2,cy1,cy2, force=False):
@@ -748,11 +745,11 @@ class AudioDrawWindow(wx.Frame):
         cx1,cy1,cx2,cy2 = self.get_win_ullr_at_ixy_canvas((ix,iy))
         SlTrace.lg(f"{ix},{iy}: {cell} :{cx1},{cy1}, {cx2},{cy2} ", "display_cell")
         if cell.mtype==BrailleCell.MARK_UNMARKED:
-            canv_item = self.cell_pan.create_rectangle(cx1,cy1,cx2,cy2,
+            canv_item = self.canv_pan.create_rectangle(cx1,cy1,cx2,cy2,
                                     fill="#d3d3d3",
                                     outline="dark gray")
         else:
-            canv_item = self.cell_pan.create_rectangle(cx1,cy1,cx2,cy2,
+            canv_item = self.canv_pan.create_rectangle(cx1,cy1,cx2,cy2,
                                     fill="#b0b0b0",
                                     outline="dark gray")
         cell.canv_items.append(canv_item)
@@ -772,10 +769,10 @@ class AudioDrawWindow(wx.Frame):
                 y0 = dy+dot_size 
                 x1 = dx+dot_radius 
                 y1 = dy
-                canv_item = self.cell_pan.create_oval(x0,y0,x1,y1,
+                canv_item = self.canv_pan.create_oval(x0,y0,x1,y1,
                                                 fill=color)
                 cell.canv_items.append(canv_item)
-                SlTrace.lg(f"cell_pan.create_oval({x0},{y0},{x1},{y1}, fill={color})", "aud_create")
+                SlTrace.lg(f"canv_pan.create_oval({x0},{y0},{x1},{y1}, fill={color})", "aud_create")
             self.update()    # So we can see it now 
             return
             
@@ -806,10 +803,10 @@ class AudioDrawWindow(wx.Frame):
             y0 = dy+dot_size 
             x1 = dx+dot_radius 
             y1 = dy
-            canv_item = self.cell_pan.create_oval(x0,y0,x1,y1,
+            canv_item = self.canv_pan.create_oval(x0,y0,x1,y1,
                                             fill=color)
             cell.canv_items.append(canv_item) 
-            SlTrace.lg(f"cell_pan.create_oval({x0},{y0},{x1},{y1}, fill={color})", "aud_create")
+            SlTrace.lg(f"canv_pan.create_oval({x0},{y0},{x1},{y1}, fill={color})", "aud_create")
         self.update()
         pass
                 
@@ -937,7 +934,7 @@ class AudioDrawWindow(wx.Frame):
     def win_to_canvas(self, xy):
         """ Convert window coordinates to canvas (min to max) to (0,max)
         :xy: x,y tuple
-        :returns: x,y canvas tuple (cell_panel)
+        :returns: x,y canvas tuple (canv_panel)
         """
         x,y = xy
         canvas_x, canvas_y = (x-self.get_x_min(), y-self.get_y_min())
@@ -1149,6 +1146,11 @@ class AudioDrawWindow(wx.Frame):
     """
          Links to front end functions
     """
+
+    def remove_mag_selection(self):
+        """ Remove magnify selection and marker
+        """
+        self.fte.remove_mag_selection()
 
     def set_show_marked(self,val=True):
         """ Show marked "invisible" cells

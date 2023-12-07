@@ -29,9 +29,9 @@ class CellPanel:
     def create_oval(self, x0,y0,x1,y1,
                                     fill=None, outline=None):
         """Create rectangle ala canvas.create_oval
-        in cell_panel
+        in canv_panel
         """
-        SlTrace.lg(f"TBD: cell_panel_create_oval(" 
+        SlTrace.lg(f"TBD: canv_panel_create_oval(" 
                    f" {x0},{y0},{x1},{y1}," 
                    f" fill={fill}, outline={outline})")
 
@@ -39,4 +39,4 @@ class CellPanel:
         """ Delete object in panel
         :obj: object to be deleted
         """
-        SlTrace.lg("cell_panel_delete({obj})")        
+        SlTrace.lg("canv_panel_delete({obj})")        

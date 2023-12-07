@@ -253,7 +253,7 @@ class SpeakerControl(Singleton):
             SlTrace.lg(f"cmd: {cmd}", "speech")
             SlTrace.lg(f"cmd: {cmd}", "sound_queue")
             if cmd.cmd_type == "CMD_MSG":
-                SlTrace.lg(f"CMD_MSG: {cmd}")
+                SlTrace.lg(f"CMD_MSG: {cmd}", "CMD_MSG")
                 self.sc_sound_queue.put(cmd)
             elif cmd.cmd_type == "CMD_TONE":
                 self.sc_sound_queue.put(cmd)
@@ -542,7 +542,7 @@ class SpeakerControl(Singleton):
         if msg_type is None:
             msg_type = "REPORT"
         SlTrace.lg(f"""sc: speak_text(msg={msg}, msg_type={msg_type},"""
-                   f""" rate={rate}, volume={volume})""")
+                   f""" rate={rate}, volume={volume})""", "speak_text")
         cmd = SpeechMakerCmd(msg=msg, msg_type=msg_type,
                  rate=rate, volume=volume)
         self.pyttsx_proc.make_cmd(cmd)
