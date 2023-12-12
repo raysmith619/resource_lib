@@ -7,9 +7,10 @@ from tkinter Canvas use to wxPython.
 """
 import wx
 from select_trace import SlTrace, SelectError 
-from wx_canvas_panel_item import CanvasPanelItem            
+from wx_canvas_panel_item import CanvasPanelItem, wx_Point            
 
 class CanvasPanel(wx.Panel):
+    
     """ Panel in which we can do tkinter like things
     """
     def __init__(self, frame, app=None, color=None,
@@ -48,7 +49,7 @@ class CanvasPanel(wx.Panel):
         sizer_v.Add(self.text_entry_panel, 0, wx.ALIGN_CENTER_HORIZONTAL)
         sizer_v.Add(self.grid_panel, 1, wx.EXPAND)
         self.SetSizer(sizer_v)
-        self.grid_panel_offset = 53 # menu + text TBD
+        self.grid_panel_offset = 0 # menu + text TBD
         self.Show()
         self.can_id = 0
         self.items_by_id = {}   # Item's index in items[]
@@ -82,6 +83,29 @@ class CanvasPanel(wx.Panel):
         self.Show()
         self.grid_panel.SetFocus() # Give grid_panel focus
         
+    def scale_points(self, pts, sfx=None, sfy=None):
+        """ scale a list of two dimensional points
+        :pts: list of wx.Points
+        :sfx: x scale factor  default: 1
+        :sfy: y scale factor default: 1
+        :returns: scaled points list
+        """
+        if sfx is None:
+            sfx = self.sfx
+        if sfy is None:
+            sfy = self.sfy
+        pts_s = []
+        if len(pts) == 0:
+            return pts_s
+        
+        x0,y0 = pts[0]
+        for i in range(len(pts)):
+            x,y = pts[i]
+            x_s = x0 + int((x-x0)*sfx)
+            y_s = y0 + int((y-y0)*sfy)
+            pts_s.append(wx_Point(x_s,y_s))
+        return pts_s
+      
     def get_id(self):
         """ Get unique id
         """
@@ -131,6 +155,20 @@ class CanvasPanel(wx.Panel):
         self.items_by_id[item.canv_id] = len(self.items)    # next index
         self.items.append(item)
         return item.canv_id
+    
+    def create_point(self, x0,y0, radius=2,
+                        **kwargs):
+        """ Helper function to create a point
+            Shortcut using create_oval
+            supporting fill, outline, width
+        """
+        px0 = x0-radius
+        py0 = y0-radius
+        px1 = x0+radius
+        py1 = y0+radius
+        item_id = self.create_oval(px0,py0,px1,py1,
+                                **kwargs)
+        return item_id
 
     def create_line(self, *args, **kwargs):
         """ Implement tkinter's create_line
@@ -139,6 +177,18 @@ class CanvasPanel(wx.Panel):
         """
         item = CanvasPanelItem(self, "create_line",
                                args=args,
+                               kwargs=kwargs)
+        self.items_by_id[item.canv_id] = len(self.items)    # next index
+        self.items.append(item)
+        return item.canv_id
+    
+    def create_text(self, x0,y0,
+                        **kwargs):
+        """ Implement create_text
+            supporting fill, font
+        """
+        item = CanvasPanelItem(self, "create_text",
+                               args=[x0,y0],
                                kwargs=kwargs)
         self.items_by_id[item.canv_id] = len(self.items)    # next index
         self.items.append(item)
@@ -173,7 +223,37 @@ class CanvasPanel(wx.Panel):
         size = self.GetSize()
         SlTrace.lg(f"panel size: {size}", "paint")
         e.Skip()
-            
+
+    def draw_items(self):
+        """ Draw scalled items
+        """
+        self.pos_adj = self.cur_pos-self.orig_pos
+        SlTrace.lg(f"orig_size: {self.orig_size} cur_size: {self.cur_size}", "item")
+        self.sfx = self.cur_size.x/self.orig_size.x
+        self.sfy = self.cur_size.y/self.orig_size.y
+        if len(self.items) == 0:
+            return      # Short circuit if no items
+        
+        items_points = self.get_items_points()
+        items_points_scaled = self.scale_points(items_points)
+        ipo = 0     # current offset into items_points_scaled
+        for item in self.items:
+            npts = len(item.points)
+            points = items_points_scaled[ipo:ipo+npts]
+            SlTrace.lg(f"item: {item}", "item")
+            item.draw(points=points)
+            ipo += npts # move to next item
+
+    def get_items_points(self):
+        """ Get all drawing points, or embeded figures
+        characterization
+        points
+        """
+        points = []
+        for item in self.items:
+            points += item.points
+        return points
+                    
     def OnPaint(self, e):
         """ Response to paint event
         """
@@ -226,12 +306,7 @@ class CanvasPanel(wx.Panel):
 
         dc.DrawRectangle(self.prev_pos, self.prev_size) # clear previous rectangle
         dc.DrawRectangle(self.cur_pos, self.cur_size)   # clear new rectangle
-        self.Show()
-        SlTrace.lg(f"orig_size: {self.orig_size} cur_size: {self.cur_size}", "paint")
-        for item in self.items:
-            SlTrace.lg(f"item: {item}", "item")
-            item.draw()
-            self.Show()
+        self.draw_items()
 
         self.prev_pos = self.cur_pos
         self.prev_size = self.cur_size
@@ -262,7 +337,7 @@ class CanvasPanel(wx.Panel):
         """
         screen_loc = e.Position
         panel_loc = wx.Point(screen_loc.x,
-                            screen_loc.y+
+                            screen_loc.y-
                             self.grid_panel_offset)
         return panel_loc
     
@@ -272,11 +347,11 @@ class CanvasPanel(wx.Panel):
         :returns: wx.Point on screen
         """
         screen_loc = wx.Point(panel_loc.x,
-                              panel_loc.y-
+                              panel_loc.y+
                               self.grid_panel_offset)
         return screen_loc
     
-    import pyautogui   #??? comment this line
+    #import pyautogui   #??? comment this line
                        #??? and first click causes
                        #??? the window to shrink
     # mouse_left_down
@@ -284,13 +359,14 @@ class CanvasPanel(wx.Panel):
         """ Mouse down
         """
                 
-        loc = self.get_panel_loc(e)
+        loc = self.get_panel_loc(e) # grid relative
         SlTrace.lg(f"\non_mouse_left_down panel({loc.x},{loc.y})"
                    f" [{e.Position.x}, {e.Position.y}]"
                    f"window: pos: {self.GetPosition()}"
                    f" size: {self.GetSize()}"
                    f" GetClientAreaOrigin: {self.GetClientAreaOrigin()}"
                    )
+        '''
         #??? Without the above live import pyautogui,
         # the first mouse click shrinks window.
         import pyautogui
@@ -299,9 +375,11 @@ class CanvasPanel(wx.Panel):
         currentMouseX, currentMouseY = pyautogui.position()
         SlTrace.lg(f"mouse x,y: {currentMouseX}, {currentMouseY}")
         #'''
+
         #e.Skip()
-        
-        self.mouse_left_down_proc(loc.x, loc.y)
+        pts = self.scale_points([wx_Point(e.Position.x, e.Position.y)])
+        pt = pts[0]
+        self.mouse_left_down_proc(pt.x, pt.y)
         self.grid_panel.SetFocus() # Give grid_panel focus
 
 
@@ -316,11 +394,6 @@ class CanvasPanel(wx.Panel):
                    f" size: {self.GetSize()}"
                    f" GetClientAreaOrigin: {self.GetClientAreaOrigin()}"
                    )
-        import pyautogui
-        screenWidth, screenHeight = pyautogui.size()
-        SlTrace.lg(f"screen width:{screenWidth}, hight: {screenHeight}")
-        currentMouseX, currentMouseY = pyautogui.position()
-        SlTrace.lg(f"mouse x,y: {currentMouseX}, {currentMouseY}")
         e.Skip()
 
     def on_mouse_left_down_frame(self, e):
@@ -334,11 +407,6 @@ class CanvasPanel(wx.Panel):
                    f" size: {self.GetSize()}"
                    f" GetClientAreaOrigin: {self.GetClientAreaOrigin()}"
                    )
-        import pyautogui
-        screenWidth, screenHeight = pyautogui.size()
-        SlTrace.lg(f"screen width:{screenWidth}, hight: {screenHeight}")
-        currentMouseX, currentMouseY = pyautogui.position()
-        SlTrace.lg(f"mouse x,y: {currentMouseX}, {currentMouseY}")
         e.Skip()
         
     def mouse_left_down_def(self, x, y):
@@ -517,6 +585,7 @@ class CanvasPanel(wx.Panel):
 if __name__ == "__main__":
     add_menus = True     # True add menus to frame
     add_after_test = True   # Test delay
+    add_after_test = False
     
     if add_menus:
         # Provide Menubar to capture Alt-<key>s
@@ -527,8 +596,8 @@ if __name__ == "__main__":
     SlTrace.setFlags("keys")
     app = wx.App()
     mytitle = "CanvasPanel Selftest"
-    width = 400
-    height = 500
+    width = 600
+    height = 800
     if add_menus:
         mytitle += " Using AdwMenus"
         width += 100
@@ -568,16 +637,17 @@ if __name__ == "__main__":
     canv_pan.create_rectangle(150,150,300,300, fill="blue")
     canv_pan.create_oval(50,200,100,300, fill="orange")
     canv_pan.create_oval(150,300,250,350, fill="purple")
-    nrow = 5
-    ncol = 6
-    for row in range(1,nrow+1):     # Horizontal lines
-        y = (row-1)*height/nrow
+    square_size = 100
+    for row in range(1,height//square_size+1):     # Horizontal lines
+        y = (row-1)*square_size
         canv_pan.create_line(0,y, width, y, fill="grey")
-        
-    for col in range(1,ncol+1):     # Vertical lines
-        x = (col-1)*width/ncol
+        canv_pan.create_point(0,y)
+        canv_pan.create_text(0,y,text=f"{y}")
+    for col in range(1,width//square_size+1):     # Vertical lines
+        x = (col-1)*square_size
         canv_pan.create_line(x,0, x, height, fill="purple")
-        
+        canv_pan.create_point(x,0)
+        canv_pan.create_text(x+2,3,text=f"{x}")
     def test_msg_before(msg="Before delay"):
         SlTrace.lg(msg)
         
@@ -593,5 +663,27 @@ if __name__ == "__main__":
 
     canv_pan.set_key_press_proc(key_press_proc)
     
+    ci = 0
+    colors = ["red","orange","yellow",
+              "green","blue", "indigo",
+              "violet", "white","black"]
+    def mouse_left_down_proc(x,y):
+        """ Process mouse left down event
+        Create point to exercise scaling
+        :x,y: grid relative location 
+        """
+        SlTrace.lg(f"mouse:{x},{y}")
+        global ci
+        ci += 1
+        color = colors[ci%len(colors)]
+        screen_pt = canv_pan.get_screen_loc(wx.Point(x,y))
+        canv_pan.create_point(screen_pt.x,screen_pt.y,
+                              radius=4, fill=color)
+        canv_pan.create_text(screen_pt.x+1,screen_pt.y+2, text=f"{x},{y}")
+        canv_pan.Refresh()
+        SlTrace.lg(f" mouse:{x},{y} create_point({screen_pt.x},{screen_pt.y})")
+        SlTrace.lg(f"panel.sfx,sfy: {canv_pan.sfx},{canv_pan.sfy})")
+    canv_pan.set_mouse_left_down_proc(mouse_left_down_proc)
+            
     app.MainLoop()
     

@@ -5,6 +5,15 @@ CanvasPanel item which is used to create/recreate display
 import wx
 
 from select_trace import SlTrace
+
+
+def wx_Point(x, y):
+    """ Force int args
+    :x: x value
+    :y: y value
+    :returns: wx.Point
+    """
+    return wx.Point(int(x), int(y))
    
 class CanvasPanelItem:
     """ Item to display canvas panel item
@@ -22,6 +31,28 @@ class CanvasPanelItem:
         self.args = args
         self.kwargs = kwargs
         
+        if self.canv_type == "create_rectangle":
+            self.points = [wx_Point(args[0],args[1]),
+                           wx_Point(args[2],args[3])]
+        elif self.canv_type == "create_oval":
+            self.points = [wx_Point(args[0],args[1]),
+                           wx_Point(args[2],args[3])]
+        elif self.canv_type == "create_line":
+            points = []
+            it_args = iter(self.args)
+            for arg in it_args:
+                if arg is tuple:
+                    x,y = arg
+                else:
+                    x,y = arg,next(it_args)
+                pt = wx_Point(x,y)
+                points.append(pt)
+            self.points = points
+        elif self.canv_type == "create_text":
+            self.points = [wx_Point(args[0],args[1])]
+        else:
+            raise Exception(f"draw: unrecognized type: {self.canv_type}")
+
     def __str__(self):
         st = "CanvasPanelItem:"
         st += f"[{self.canv_id}]"
@@ -33,25 +64,25 @@ class CanvasPanelItem:
             st += f" args: {self.args}"
         if self.kwargs:
             st += f" kwargs: {self.kwargs}"
+        if self.points is not None:
+            st += f" points: {self.points}"
         return st
         
 
-    def draw(self):
+    def draw(self, points=None):
         """ Draw canvas item
+        scaled drawings if points is not None
+        
+        :points: characterizing points for figure
+                default: self.points (initialized points)
         """
-        # Get current panal position and size
-        # and calculate adjustments
         if self.deleted:
             return      # Already deleted
         
+        if points is None:
+            points = self.points
+            
         panel = self.canvas_panel
-        self.pos_adj = panel.cur_pos-panel.orig_pos
-        self.orig_size = panel.orig_size
-        self.cur_size = panel.cur_size
-        SlTrace.lg(f"orig_size: {self.orig_size} cur_size: {self.cur_size}", "item")
-        self.size_factor = (self.cur_size.x/self.orig_size.x,
-                                   self.cur_size.y/self.orig_size.y)
-
         self.fill = panel.color
         if "fill" in self.kwargs:
             self.fill = self.kwargs["fill"]
@@ -68,93 +99,98 @@ class CanvasPanelItem:
             self.tags = self.kwargs["tags"]
         
         if self.canv_type == "create_rectangle":
-            ret = self.create_rectangle_draw()
+            ret = self.create_rectangle_draw(points)
         elif self.canv_type == "create_oval":
-            ret = self.create_oval_draw()
+            ret = self.create_oval_draw(points)
         elif self.canv_type == "create_line":
-            ret = self.create_line_draw()
+            ret = self.create_line_draw(points)
+        elif self.canv_type == "create_text":
+            ret = self.create_text_draw(points)
         else:
             raise Exception(f"draw: unrecognized type: {self.canv_type}")
         
         return ret
-    
-    def create_rectangle_draw(self):
+
+    ###### create_rectangle    
+    def create_rectangle_draw(self, points):
         """ Simulate tkinter canvas create_rectangle drawing
         """
+        if points is None:
+            points = self.points
+        if len(points) < 2:
+            return
             
-        cx1,cy1,cx2,cy2 = self.args
-        cx1_adj = int(cx1 * self.size_factor[0])
-        cx2_adj = int(cx2 * self.size_factor[0])
-        cy1_adj = int(cy1 * self.size_factor[1])
-        cy2_adj = int(cy2 * self.size_factor[1])
-     
-        panel_loc1 = wx.Point(cx1_adj, cy1_adj)    
-        panel_loc2 = wx.Point(cx2_adj, cy2_adj)
-        screen_loc1 = self.get_screen_loc(panel_loc1)    
-        screen_loc2 = self.get_screen_loc(panel_loc2)    
-        
         dc = wx.PaintDC(self.canvas_panel.grid_panel)
         dc.SetPen(wx.Pen(self.outline, style=wx.SOLID))
         dc.SetBrush(wx.Brush(self.fill, wx.SOLID))
-        dc.DrawRectangle(wx.Rect(screen_loc1,
-                                 screen_loc2))
-        SlTrace.lg(f"DrawRect: {screen_loc1},"
-                   f"  {screen_loc2}", "draw_rect")
+        dc.DrawRectangle(wx.Rect(points[0], points[1]))
+        SlTrace.lg(f"DrawRect: {points[0]},"
+                   f"  {points[1]}", "draw_rect")
 
-    def create_oval_draw(self):
+    ###### create_oval
+    def create_oval_draw(self, points=None):
         """ Simulate tkinter canvas create_oval
+        :points: wx.Point(x0,y0), wx.Point(x1,y1)
+                default: self.points
         """
-        x0,y0,x1,y1 = self.args
-        x0_adj = int(x0 * self.size_factor[0])
-        x1_adj = int(x1 * self.size_factor[0])
-        y0_adj = int(y0 * self.size_factor[1])
-        y1_adj = int(y1 * self.size_factor[1])
-        
-        panel_adj0 = wx.Point(x0_adj,y0_adj)
-        screen_adj0 = self.get_screen_loc(panel_adj0)        
-        
+        if points is None:
+            points = self.points
+        if len(points) < 2:
+            return
         dc = wx.PaintDC(self.canvas_panel.grid_panel)
         dc.SetPen(wx.Pen(self.outline, style=wx.SOLID))
         dc.SetBrush(wx.Brush(self.fill, wx.SOLID))
-        dc.DrawEllipse(pt=screen_adj0,
-                size=wx.Size(x1_adj-x0_adj,
-                            y1_adj-y0_adj))
+        dc.DrawEllipse(pt=points[0],
+                size=wx.Size(points[1].x-points[0].x,
+                            points[1].y-points[0].y))
         
-
-    def create_line_draw(self):
+    #### create_line
+    def create_line_draw(self, points=None):
         """ Implement tkinter's create_line
         :args: x1,y1,...xn,yn
         :kwargs:  width=, fill=, tags=[]
         """
-        if len(self.args) == 0:
+        if points is None:
+            points = self.points
+        if len(points) == 0:
             return      # empty list
         
         dc = wx.PaintDC(self.canvas_panel.grid_panel)
         dc.SetPen(wx.Pen(self.fill, style=wx.SOLID, width=self.width))
-        points = []
-        it_args = iter(self.args)
-        for arg in it_args:
-            if arg is tuple:
-                x,y = arg
-            else:
-                x,y = arg,next(it_args)
-            x_adj = int(x * self.size_factor[0])
-            y_adj = int(y * self.size_factor[1])
-            panel_adj = wx.Point(x_adj,y_adj)
-            screen_adj = self.get_screen_loc(panel_adj)
-            points.append(screen_adj)
         dc.DrawLines(points)
-        self.canvas_panel.grid_panel.Show()
+
+    ####### create_text
+    def create_text_draw(self, points=None):
+        """ Simulate tkinter canvas create_text
+        """
+        if points is None:
+            points = self.points
+        if len(points) < 1:
+            return
+        
+        if "font" not in self.kwargs:
+            font = wx.Font(10, wx.ROMAN, wx.ITALIC, wx.NORMAL) 
+        else:
+            font = wx.Font(self.kwargs["font"])
+            
+        
+        dc = wx.PaintDC(self.canvas_panel.grid_panel)
+        dc.SetPen(wx.Pen(self.outline, style=wx.SOLID))
+        dc.SetBrush(wx.Brush(self.fill, wx.SOLID))
+        
+        text = self.kwargs["text"]
+        dc.SetFont(font)
+        title_pt = points[0]
+        dc.DrawText(text=text, pt=title_pt)
+                
         
     def delete(self):
         """ delete item
         """
         self.deleted = True
-        
     """
     ------------------------ link to canvas_panel
     """
     
     def get_screen_loc(self, panel_loc):
         return self.canvas_panel.get_screen_loc(panel_loc)    
-            
