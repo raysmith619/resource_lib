@@ -440,8 +440,7 @@ class AudioDrawWindow(wx.Frame):
         
         self.set_xy((x,y))      # All we do is set coordinate memory
         loc_ixiy = self.get_ixy_at()
-        self.pos_history.append(loc_ixiy)   # location history
-        SlTrace.lg(f"pos_history:{loc_ixiy}", "pos_tracking")
+        self.add_to_pos_history(loc_ixiy)
         cell_ixiy = self.get_cell_at()
         if cell_ixiy is not None:
             self.cell_history.append(cell_ixiy)
@@ -658,20 +657,11 @@ class AudioDrawWindow(wx.Frame):
     def erase_pos_history(self):
         """ Remove history, undo history marking
         """
-        canv_pan = self.canv_pan
         for cell_ixy in self.pos_history:
-            if not cell_ixy in self.cells:
-                continue
-            cell = self.cells[cell_ixy]
-            self.mark_cell(cell, BrailleCell.MARK_UNMARKED)
-            self.display_cell(cell)
-            '''
-            for item_id in cell.canv_items:
-                item_type = canvas.type(item_id)
-                if item_type == "rectangle":
-                    canvas.itemconfigure(item_id, fill='')
-                    canvas.tag_lower(item_id)
-            '''
+            if cell_ixy in self.cells:
+                cell = self.cells[cell_ixy]
+                self.mark_cell(cell, BrailleCell.MARK_UNMARKED)
+                self.display_cell(cell)
         self.pos_history = []
         self.remove_mag_selection()    
         self.update()
@@ -1056,6 +1046,14 @@ class AudioDrawWindow(wx.Frame):
             audio_beep.announce_can_not_do(msg=msg, val=val)
         else:
             self.say_text(msg)
+    
+    def add_to_pos_history(self, loc_ixiy):
+        """ Accumulate position history
+        :loc_ixiy: (ix,iy) of current location
+        """
+        self.pos_history.append(loc_ixiy)   # location history
+        SlTrace.lg(f"pos_history:{loc_ixiy}", "pos_tracking")
+
     
     def braille_for_color(self, color):
         """ Return dot list for color

@@ -1790,7 +1790,13 @@ class AdwFrontEnd:
         :returns: created/modified cell
         """
         return self.adw.complete_cell(cell=cell, color=color)
-
+    
+    def add_to_pos_history(self, loc_ixiy):
+        """ Accumulate position history
+        :loc_ixiy: (ix,iy) of current location
+        """
+        self.adw.add_to_pos_history(loc_ixiy)
+        
     def erase_pos_history(self):
         """ Remove history, undo history marking
         """
@@ -2067,6 +2073,7 @@ class AdwFrontEnd:
         for loc in loc_list:        # Mark cells we've traversed
             cell = loc[1]
             if not self.is_drawing():
+                self.add_to_pos_history(loc[0])   # location history
                 self.mark_cell(cell)
         lc = len(loc_list)
         if lc > 1:
