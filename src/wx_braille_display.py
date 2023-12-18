@@ -259,7 +259,7 @@ class BrailleDisplay:
     def tk_updates(self):
         """ Update tk stuff, but don't block
         """
-        #tur.update()
+        tur.update()
         wx.CallLater(100, self.tk_updates)    #loop
     
     def mainloop(self):
@@ -268,7 +268,7 @@ class BrailleDisplay:
             title = "Braille Display -"
         self.display()
         #tur.speed(0)    # Turn off animation
-        #self.tk_updates()        
+        self.tk_updates()        
         self.app.MainLoop()
         SlTrace.lg("After app.MainLoop()")
                 
