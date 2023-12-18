@@ -45,7 +45,8 @@ class SineWaveBeep:
         
         return cls.color_pitches[color]
 
-    def __init__(self, dur=None, silence_checker=None):
+    def __init__(self, awin, dur=None, silence_checker=None):
+        self.awin = awin
         if dur is None:
             dur = self.dur_base
         self.dur = dur

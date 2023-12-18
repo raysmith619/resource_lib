@@ -90,6 +90,14 @@ class CanvasPanel(wx.Panel):
         :sfy: y scale factor default: 1
         :returns: scaled points list
         """
+        """ TFD Return original points unscalled
+        """
+        use_orig_points = True
+        use_orig_points = False
+        if use_orig_points:
+            SlTrace.lg("use_orig_points")
+            return pts[:]   # Copy of original points, unchanged
+        
         if sfx is None:
             sfx = self.sfx
         if sfy is None:
@@ -98,6 +106,10 @@ class CanvasPanel(wx.Panel):
         if len(pts) == 0:
             return pts_s
         
+        scale_1to1 = True
+        if scale_1to1:
+            sfx = sfy = 1.0
+            SlTrace.lg(f"Force sfx:{sfx} sfy:{sfy}")
         x0,y0 = pts[0]
         for i in range(len(pts)):
             x,y = pts[i]
@@ -377,7 +389,10 @@ class CanvasPanel(wx.Panel):
         #'''
 
         #e.Skip()
-        pts = self.scale_points([wx_Point(e.Position.x, e.Position.y)])
+        size = self.grid_panel.GetSize()
+        pts = self.scale_points([wx_Point(e.Position.x, e.Position.y),
+                                 wx_Point(0,0), wx_Point(size.x,0),
+                                 wx_Point(0,size.y), wx_Point(size.x,size.y)])
         pt = pts[0]
         self.mouse_left_down_proc(pt.x, pt.y)
         self.grid_panel.SetFocus() # Give grid_panel focus
@@ -642,12 +657,21 @@ if __name__ == "__main__":
         y = (row-1)*square_size
         canv_pan.create_line(0,y, width, y, fill="grey")
         canv_pan.create_point(0,y)
-        canv_pan.create_text(0,y,text=f"{y}")
+        canv_pan.create_text(0,y+3,text=f"{y}")
     for col in range(1,width//square_size+1):     # Vertical lines
         x = (col-1)*square_size
         canv_pan.create_line(x,0, x, height, fill="purple")
         canv_pan.create_point(x,0)
-        canv_pan.create_text(x+2,3,text=f"{x}")
+        canv_pan.create_text(x+3,3,text=f"{x}")
+    # Dots at cross points
+    for row in range(1,height//square_size+1):     # Horizontal lines
+        y = (row-1)*square_size
+        for col in range(1,width//square_size+1):     # Vertical lines
+            x = (col-1)*square_size
+            canv_pan.create_point(x, y, fill="white")
+            if x == y:
+                canv_pan.create_text(x+3,y+3,text=f"{x}")
+
     def test_msg_before(msg="Before delay"):
         SlTrace.lg(msg)
         

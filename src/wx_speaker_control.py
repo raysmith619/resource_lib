@@ -222,6 +222,7 @@ class SpeakerControl(Singleton):
         self.cmds_size = cmds_size
         self.sound_size = sound_size
         self.sample_rate = sample_rate
+        self.vol_adj = 0.0      # Central volume adjustment factor
         self.start_control()
         
     def start_control(self):
@@ -287,6 +288,22 @@ class SpeakerControl(Singleton):
         :returns: number of entries
         """
         return self.sc_sound_queue.qsize()
+
+    def get_vol_adj(self):
+        """ Get current volume adjustment
+        :returns: current vol_adjustment in db
+        """
+        return self.vol_adj
+
+    def report_vol_adj(self):
+        SlTrace.lg(f"vol_adj: {self.vol_adj}")
+
+    def set_vol_adj(self, adj=0.0):
+        """ Set volume adjustment
+        :adj: db adjustment default:0.0
+        """
+        self.vol_adj = adj
+        self.report_vol_adj()
         
     def clear(self):
         """ Clear queue
@@ -637,6 +654,12 @@ class SpeakerControlLocal:
         """
         return self.sc.get_cmd_queue_size()
 
+    def get_vol_adj(self):
+        """ Get current volume adjustment ??? Thread Safe ???
+        :returns: current vol_adjustment in db
+        """
+        return self.sc.get_vol_adj()
+
     def is_busy(self):
         """ Check if if busy or anything is pending
         """
@@ -762,6 +785,9 @@ class SpeakerControlLocal:
         self.speak_text_stop()    
 
 if __name__ == "__main__":
+    import os
+    import time
+    
     from wx_win import WxWin
     adw = None
     wx_win = WxWin(adw, "wx_speaker_control Self Test")
@@ -769,6 +795,27 @@ if __name__ == "__main__":
     SlTrace.setFlags("speech,sound_queue")
     scl = SpeakerControlLocal()
     scl.wait_while_busy()
+    long_msg = """
+    line one
+    line two
+    line three
+    line four
+    line five
+    line six
+    line seven
+    line eight
+    line nine
+    line ten
+    """
+    long_msg_group = long_msg.split("\n")
+    for msg in long_msg_group:
+        scl.speak_text(msg)
+        time.sleep(1)
+    scl.wait_while_busy()
+
+    scl.speak_text(long_msg)
+    scl.wait_while_busy()
+    
     scl.speak_text("Hello World!")
     scl.wait_while_busy()
     scl.speak_text("How are you?")
@@ -780,4 +827,4 @@ if __name__ == "__main__":
     scl.clear()
     scl.speak_text("Just cleared")
     time.sleep(2)
-    wx_win.MainLoop()
+    scl.wait_while_busy()

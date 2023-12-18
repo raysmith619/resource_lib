@@ -1,0 +1,347 @@
+Microsoft Windows [Version 10.0.19045.3803]
+(c) Microsoft Corporation. All rights reserved.
+
+C:\Users\raysm>cd vscode\resource_lib\src
+
+C:\Users\raysm\vscode\resource_lib\src>python wx_square_loop_colors.py
+Found resource_lib in sys.path: ['C:\\Users\\raysm\\vscode\\resource_lib\\src', 'C:\\Users\\raysm\\vscode\\resource_lib\\src', 'C:\\Users\\raysm\\AppData\\Local\\Programs\\Python\\Python312\\python312.zip', 'C:\\Users\\raysm\\AppData\\Local\\Programs\\Python\\Python312\\DLLs', 'C:\\Users\\raysm\\AppData\\Local\\Programs\\Python\\Python312\\Lib', 'C:\\Users\\raysm\\AppData\\Local\\Programs\\Python\\Python312', 'C:\\Users\\raysm\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\site-packages', 'C:\\Users\\raysm\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\site-packages\\win32', 'C:\\Users\\raysm\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\site-packages\\win32\\lib', 'C:\\Users\\raysm\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\site-packages\\Pythonwin']
+resource_lib/src is already in path
+path:C:\Users\raysm\vscode\resource_lib\src
+resource_lib/src is already in path
+path:C:\Users\raysm\vscode\resource_lib\src
+cwd:C:\Users\raysm\vscode\resource_lib\src
+wd_dirs:('C:\\', 'Users', 'raysm', 'vscode', 'resource_lib', 'src')
+Found:C:\Users\raysm\vscode\resource_lib\src
+Found:C:\Users\raysm\vscode\pysinewave_master
+Adding import path: C:\Users\raysm\vscode\resource_lib\src
+Adding import path: C:\Users\raysm\vscode\pysinewave_master
+ Trace levels from properties file C:\Users\raysm\vscode\resource_lib\wx_square_loop_colors.properties
+ 20231217_210019_196 loadTraceFlags: decpl,stdouthasts,aud_create,aud_motion,cmd_msg,display_cell,draw_rect,get_items,item,keys,list_props,motion,mouse_cell,paint,pos_tracking,prop_change,show_canvas_items,slow_key_str,sound_queue,speak_text,speech,talk_cmd,trace_flags,win_items
+ 20231217_210019_196 decpl = True
+ 20231217_210019_196 stdouthasts = True
+ 20231217_210019_196 aud_create = True
+ 20231217_210019_196 aud_motion = True
+ 20231217_210019_196 cmd_msg = True
+ 20231217_210019_196 display_cell = True
+ 20231217_210019_196 draw_rect = True
+ 20231217_210019_196 get_items = True
+ 20231217_210019_196 item = True
+ 20231217_210019_196 keys = True
+ 20231217_210019_196 list_props = True
+ 20231217_210019_196 motion = True
+ 20231217_210019_196 mouse_cell = True
+ 20231217_210019_196 paint = True
+ 20231217_210019_196 pos_tracking = True
+ 20231217_210019_196 prop_change = True
+ 20231217_210019_196 show_canvas_items = True
+ 20231217_210019_196 slow_key_str = True
+ 20231217_210019_196 sound_queue = True
+ 20231217_210019_196 speak_text = True
+ 20231217_210019_196 speech = True
+ 20231217_210019_212 talk_cmd = True
+ 20231217_210019_212 trace_flags = True
+ 20231217_210019_212 win_items = True
+ 20231217_210019_212 Creating Log File Name: C:\Users\raysm\vscode\resource_lib\log\wx_square_loop_colors_20231217_210019.sllog
+ 20231217_210019_212 Trace levels from properties file C:\Users\raysm\vscode\resource_lib\wx_square_loop_colors.properties
+ 20231217_210019_212 loadTraceFlags: decpl,stdouthasts,aud_create,aud_motion,cmd_msg,display_cell,draw_rect,get_items,item,keys,list_props,motion,mouse_cell,paint,pos_tracking,prop_change,show_canvas_items,slow_key_str,sound_queue,speak_text,speech,talk_cmd,trace_flags,win_items
+ 20231217_210019_212 decpl = True
+ 20231217_210019_227 stdouthasts = True
+ 20231217_210019_227 aud_create = True
+ 20231217_210019_227 aud_motion = True
+ 20231217_210019_227 cmd_msg = True
+ 20231217_210019_227 display_cell = True
+ 20231217_210019_227 draw_rect = True
+ 20231217_210019_227 get_items = True
+ 20231217_210019_227 item = True
+ 20231217_210019_227 keys = True
+ 20231217_210019_227 list_props = True
+ 20231217_210019_227 motion = True
+ 20231217_210019_227 mouse_cell = True
+ 20231217_210019_227 paint = True
+ 20231217_210019_227 pos_tracking = True
+ 20231217_210019_227 prop_change = True
+ 20231217_210019_227 show_canvas_items = True
+ 20231217_210019_227 slow_key_str = True
+ 20231217_210019_227 sound_queue = True
+ 20231217_210019_227 speak_text = True
+ 20231217_210019_227 speech = True
+ 20231217_210019_227 talk_cmd = True
+ 20231217_210019_227 trace_flags = True
+ 20231217_210019_243 win_items = True
+ self.display()
+ braille_title: File: wx_square_loop_colors.py  Date: 2023-12-17 21:00  User: raysm
+ sc_sounc_proc_thread running
+ Set orig_size:(784, 761)
+ First Paint size: (784, 761)
+ Frame size: (800, 800)
+ sc_sounc_proc_thread running
+Found resource_lib in sys.path: ['C:\\Users\\raysm\\vscode\\resource_lib\\src', 'C:\\Users\\raysm\\vscode\\resource_lib\\src', 'C:\\Users\\raysm\\AppData\\Local\\Programs\\Python\\Python312\\python312.zip', 'C:\\Users\\raysm\\AppData\\Local\\Programs\\Python\\Python312\\DLLs', 'C:\\Users\\raysm\\AppData\\Local\\Programs\\Python\\Python312\\Lib', 'C:\\Users\\raysm\\AppData\\Local\\Programs\\Python\\Python312', 'C:\\Users\\raysm\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\site-packages', 'C:\\Users\\raysm\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\site-packages\\win32', 'C:\\Users\\raysm\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\site-packages\\win32\\lib', 'C:\\Users\\raysm\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\site-packages\\Pythonwin', 'C:\\Users\\raysm\\vscode\\resource_lib\\src', 'C:\\Users\\raysm\\vscode\\pysinewave_master']
+resource_lib/src is already in path
+path:C:\Users\raysm\vscode\resource_lib\src
+resource_lib/src is already in path
+path:C:\Users\raysm\vscode\resource_lib\src
+resource_lib/src is already in path
+path:C:\Users\raysm\vscode\resource_lib\src
+pysinewave_master is already in path
+path2:C:\Users\raysm\vscode\pysinewave_master
+Found resource_lib in sys.path: ['C:\\Users\\raysm\\vscode\\resource_lib\\src', 'C:\\Users\\raysm\\vscode\\resource_lib\\src', 'C:\\Users\\raysm\\AppData\\Local\\Programs\\Python\\Python312\\python312.zip', 'C:\\Users\\raysm\\AppData\\Local\\Programs\\Python\\Python312\\DLLs', 'C:\\Users\\raysm\\AppData\\Local\\Programs\\Python\\Python312\\Lib', 'C:\\Users\\raysm\\AppData\\Local\\Programs\\Python\\Python312', 'C:\\Users\\raysm\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\site-packages', 'C:\\Users\\raysm\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\site-packages\\win32', 'C:\\Users\\raysm\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\site-packages\\win32\\lib', 'C:\\Users\\raysm\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\site-packages\\Pythonwin', 'C:\\Users\\raysm\\vscode\\resource_lib\\src', 'C:\\Users\\raysm\\vscode\\pysinewave_master']
+resource_lib/src is already in path
+path:C:\Users\raysm\vscode\resource_lib\src
+resource_lib/src is already in path
+path:C:\Users\raysm\vscode\resource_lib\src
+resource_lib/src is already in path
+path:C:\Users\raysm\vscode\resource_lib\src
+pysinewave_master is already in path
+path2:C:\Users\raysm\vscode\pysinewave_master
+ Trace levels from properties file C:\Users\raysm\vscode\resource_lib\wx_square_loop_colors.properties
+ Trace levels from properties file C:\Users\raysm\vscode\resource_lib\wx_square_loop_colors.properties
+ 20231217_210022_444 loadTraceFlags: decpl,stdouthasts,aud_create,aud_motion,cmd_msg,display_cell,draw_rect,get_items,item,keys,list_props,motion,mouse_cell,paint,pos_tracking,prop_change,show_canvas_items,slow_key_str,sound_queue,speak_text,speech,talk_cmd,trace_flags,win_items
+ 20231217_210022_448 loadTraceFlags: decpl,stdouthasts,aud_create,aud_motion,cmd_msg,display_cell,draw_rect,get_items,item,keys,list_props,motion,mouse_cell,paint,pos_tracking,prop_change,show_canvas_items,slow_key_str,sound_queue,speak_text,speech,talk_cmd,trace_flags,win_items
+ 20231217_210022_448 decpl = True
+ 20231217_210022_457 decpl = True
+ 20231217_210022_458 stdouthasts = True
+ 20231217_210022_459 stdouthasts = True
+ 20231217_210022_462 aud_create = True
+ 20231217_210022_466 aud_create = True
+ 20231217_210022_468 aud_motion = True
+ 20231217_210022_473 aud_motion = True
+ 20231217_210022_491 cmd_msg = True
+ 20231217_210022_491 cmd_msg = True
+ 20231217_210022_492 display_cell = True
+ 20231217_210022_493 display_cell = True
+ 20231217_210022_506 draw_rect = True
+ 20231217_210022_511 draw_rect = True
+ 20231217_210022_512 get_items = True
+ 20231217_210022_513 get_items = True
+ 20231217_210022_513 item = True
+ 20231217_210022_515 item = True
+ 20231217_210022_516 keys = True
+ 20231217_210022_517 keys = True
+ 20231217_210022_517 list_props = True
+ 20231217_210022_519 list_props = True
+ 20231217_210022_520 motion = True
+ 20231217_210022_521 motion = True
+ 20231217_210022_522 mouse_cell = True
+ 20231217_210022_525 mouse_cell = True
+ 20231217_210022_535 paint = True
+ 20231217_210022_538 paint = True
+ 20231217_210022_539 pos_tracking = True
+ 20231217_210022_540 pos_tracking = True
+ 20231217_210022_541 prop_change = True
+ 20231217_210022_544 prop_change = True
+ 20231217_210022_545 show_canvas_items = True
+ File: wx_square_loop_colors.py  Date: 2023-12-17 21:00  User: raysm
+ 20231217_210022_547 show_canvas_items = True
+ 20231217_210022_548 slow_key_str = True
+
+AudioDrawWindow() mag_info:
+MagI: select: ix_min:None iy_min:None ix_max:None iy_max:None
+    top:x_min:-400.0 y_min:-400.0 x_max:880.0 y_max:680.0 ncols:32 nrows:25
+    display:x_min:-400.0 y_min:-400.0 x_max:680.0 y_max:680.0 ncols:32 nrows:25
+    no parent
+    0 children
+ 20231217_210022_549 slow_key_str = True
+ 20231217_210022_550 sound_queue = True
+
+ 20231217_210022_551 sound_queue = True
+ 20231217_210022_552 speak_text = True
+ draw_cells
+ 20231217_210022_553 speak_text = True
+ 20231217_210022_554 speech = True
+ x_min:-400.0 y_min: -400.0
+ 20231217_210022_555 speech = True
+ 20231217_210022_556 talk_cmd = True
+ Lower left: min_x:-220 min_y:-48
+ 20231217_210022_561 talk_cmd = True
+ 20231217_210022_561 trace_flags = True
+ Upper Right: max_x:-80 max_y:112
+ 20231217_210022_561 trace_flags = True
+ 20231217_210022_561 win_items = True
+ 40 cells
+ 20231217_210022_561 win_items = True
+ 20231217_210022_561 Creating Log File Name: C:\Users\raysm\vscode\resource_lib\log\wx_square_loop_colors_20231217_210022.sllog
+ 20231217_210022_561 Creating Log File Name: C:\Users\raysm\vscode\resource_lib\log\wx_square_loop_colors_20231217_210022.sllog
+ 20231217_210022_561 Trace levels from properties file C:\Users\raysm\vscode\resource_lib\wx_square_loop_colors.properties
+ 20231217_210022_561 Trace levels from properties file C:\Users\raysm\vscode\resource_lib\wx_square_loop_colors.properties
+ 20231217_210022_561 loadTraceFlags: decpl,stdouthasts,aud_create,aud_motion,cmd_msg,display_cell,draw_rect,get_items,item,keys,list_props,motion,mouse_cell,paint,pos_tracking,prop_change,show_canvas_items,slow_key_str,sound_queue,speak_text,speech,talk_cmd,trace_flags,win_items
+ 20231217_210022_561 loadTraceFlags: decpl,stdouthasts,aud_create,aud_motion,cmd_msg,display_cell,draw_rect,get_items,item,keys,list_props,motion,mouse_cell,paint,pos_tracking,prop_change,show_canvas_items,slow_key_str,sound_queue,speak_text,speech,talk_cmd,trace_flags,win_items
+ 20231217_210022_561 decpl = True
+ 20231217_210022_577 decpl = True
+ 20231217_210022_577 stdouthasts = True
+ green at row 12 column 11
+ 20231217_210022_577 stdouthasts = True
+ 20231217_210022_577 aud_create = True
+File: wx_square_loop_colors.py  Date: 2023-12-17 21:00  User: raysm
+ 20231217_210022_577 aud_create = True
+ 20231217_210022_577 aud_motion = True
+
+,,ggrrro
+,,ggrrro
+,,gg,,,o
+,,gg,,,o
+,,gg,,,o
+,,ggyyyy
+,,ggyyyy
+ 20231217_210022_577 aud_motion = True
+ 20231217_210022_577 cmd_msg = True
+
+ 20231217_210022_577 cmd_msg = True
+ 20231217_210022_592 display_cell = True
+ 20231217_210022_592 draw_rect = True
+ 20231217_210022_592 get_items = True
+ 20231217_210022_592 display_cell = True
+ 20231217_210022_592 item = True
+ End of display
+ 20231217_210022_592 draw_rect = True
+ 20231217_210022_592 keys = True
+ 20231217_210022_608 get_items = True
+ 20231217_210022_608 list_props = True
+ 20231217_210022_608 item = True
+ Force sfx:1.0 sfy:1.0
+ 20231217_210022_608 motion = True
+ 20231217_210022_608 mouse_cell = True
+ 20231217_210022_608 paint = True
+ 20231217_210022_623 pos_tracking = True
+ 20231217_210022_608 keys = True
+ 20231217_210022_623 list_props = True
+ 20231217_210022_623 motion = True
+ 20231217_210022_623 mouse_cell = True
+ 20231217_210022_623 prop_change = True
+ 20231217_210022_623 paint = True
+ 20231217_210022_639 pos_tracking = True
+ 20231217_210022_639 prop_change = True
+ 20231217_210022_639 show_canvas_items = True
+ 20231217_210022_639 show_canvas_items = True
+ 20231217_210022_639 slow_key_str = True
+ 20231217_210022_639 slow_key_str = True
+ 20231217_210022_639 sound_queue = True
+ 20231217_210022_639 speak_text = True
+ 20231217_210022_639 speech = True
+ 20231217_210022_639 sound_queue = True
+ 20231217_210022_639 talk_cmd = True
+ 20231217_210022_639 speak_text = True
+ 20231217_210022_639 trace_flags = True
+ 20231217_210022_639 speech = True
+ 20231217_210022_639 win_items = True
+ 20231217_210022_639 talk_cmd = True
+ 20231217_210022_639 trace_flags = True
+ 20231217_210022_639 win_items = True
+ Force sfx:1.0 sfy:1.0
+ self.display()
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "C:\Users\raysm\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\spawn.py", line 122, in spawn_main
+    exitcode = _main(fd, parent_sentinel)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\raysm\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\spawn.py", line 131, in _main
+    prepare(preparation_data)
+  File "C:\Users\raysm\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\spawn.py", line 246, in prepare
+    _fixup_main_from_path(data['init_main_from_path'])
+  File "C:\Users\raysm\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\spawn.py", line 297, in _fixup_main_from_path
+    main_content = runpy.run_path(main_path,
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen runpy>", line 286, in run_path
+  File "<frozen runpy>", line 98, in _run_module_code
+  File "<frozen runpy>", line 88, in _run_code
+  File "C:\Users\raysm\vscode\resource_lib\src\wx_square_loop_colors.py", line 14, in <module>
+    done()                  # Complete drawings
+ self.display()
+    ^^^^^^
+Traceback (most recent call last):
+  File "C:\Users\raysm\vscode\resource_lib\src\wx_turtle_braille.py", line 35, in done
+  File "<string>", line 1, in <module>
+    bd.done()
+  File "C:\Users\raysm\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\spawn.py", line 122, in spawn_main
+  File "C:\Users\raysm\vscode\resource_lib\src\wx_braille_display.py", line 275, in done
+    exitcode = _main(fd, parent_sentinel)
+    self.mainloop()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\raysm\vscode\resource_lib\src\wx_braille_display.py", line 269, in mainloop
+  File "C:\Users\raysm\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\spawn.py", line 131, in _main
+    self.display()
+    prepare(preparation_data)
+  File "C:\Users\raysm\vscode\resource_lib\src\wx_braille_display.py", line 176, in display
+  File "C:\Users\raysm\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\spawn.py", line 246, in prepare
+    file_base_name = os.path.basename(__main__.__file__)
+    _fixup_main_from_path(data['init_main_from_path'])
+                                      ^^^^^^^^^^^^^^^^^
+  File "C:\Users\raysm\AppData\Local\Programs\Python\Python312\Lib\multiprocessing\spawn.py", line 297, in _fixup_main_from_path
+AttributeError: module '__main__' has no attribute '__file__'. Did you mean: '__name__'?
+    main_content = runpy.run_path(main_path,
+onexit
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^
+Executing save_propfile
+  File "<frozen runpy>", line 286, in run_path
+ Saving properties file  C:\Users\raysm\vscode\resource_lib\wx_square_loop_colors.properties  20231217_210025
+  File "<frozen runpy>", line 98, in _run_module_code
+  File "<frozen runpy>", line 88, in _run_code
+  File "C:\Users\raysm\vscode\resource_lib\src\wx_square_loop_colors.py", line 14, in <module>
+    done()                  # Complete drawings
+    ^^^^^^
+  File "C:\Users\raysm\vscode\resource_lib\src\wx_turtle_braille.py", line 35, in done
+ Trace levels from properties file C:\Users\raysm\vscode\resource_lib\wx_square_loop_colors.properties
+    bd.done()
+ 20231217_210025_418 loadTraceFlags: decpl,stdouthasts,aud_create,aud_motion,cmd_msg,display_cell,draw_rect,get_items,item,keys,list_props,motion,mouse_cell,paint,pos_tracking,prop_change,show_canvas_items,slow_key_str,sound_queue,speak_text,speech,talk_cmd,trace_flags,win_items
+  File "C:\Users\raysm\vscode\resource_lib\src\wx_braille_display.py", line 275, in done
+ 20231217_210025_418 decpl = True
+    self.mainloop()
+ 20231217_210025_433 stdouthasts = True
+  File "C:\Users\raysm\vscode\resource_lib\src\wx_braille_display.py", line 269, in mainloop
+ 20231217_210025_433 aud_create = True
+    self.display()
+ 20231217_210025_433 aud_motion = True
+  File "C:\Users\raysm\vscode\resource_lib\src\wx_braille_display.py", line 176, in display
+ 20231217_210025_433 cmd_msg = True
+ 20231217_210025_449 display_cell = True
+    file_base_name = os.path.basename(__main__.__file__)
+ 20231217_210025_449 draw_rect = True
+                                      ^^^^^^^^^^^^^^^^^
+ 20231217_210025_449 get_items = True
+AttributeError: module '__main__' has no attribute '__file__'. Did you mean: '__name__'?
+ 20231217_210025_449 item = True
+onexit
+ 20231217_210025_449 keys = True
+Executing save_propfile
+ 20231217_210025_464 list_props = True
+ Saving properties file  C:\Users\raysm\vscode\resource_lib\wx_square_loop_colors.properties  20231217_210025
+ 20231217_210025_464 motion = True
+ 20231217_210025_464 mouse_cell = True
+ 20231217_210025_464 paint = True
+ 20231217_210025_464 pos_tracking = True
+ 20231217_210025_464 prop_change = True
+ 20231217_210025_464 show_canvas_items = True
+ Trace levels from properties file C:\Users\raysm\vscode\resource_lib\wx_square_loop_colors.properties
+ 20231217_210025_480 slow_key_str = True
+ 20231217_210025_480 loadTraceFlags: decpl,stdouthasts,aud_create,aud_motion,cmd_msg,display_cell,draw_rect,get_items,item,keys,list_props,motion,mouse_cell,paint,pos_tracking,prop_change,show_canvas_items,slow_key_str,sound_queue,speak_text,speech,talk_cmd,trace_flags,win_items
+ 20231217_210025_480 sound_queue = True
+ 20231217_210025_480 decpl = True
+ 20231217_210025_480 speak_text = True
+ 20231217_210025_480 stdouthasts = True
+ 20231217_210025_480 speech = True
+ 20231217_210025_480 aud_create = True
+ 20231217_210025_480 talk_cmd = True
+ 20231217_210025_496 trace_flags = True
+ 20231217_210025_480 aud_motion = True
+ 20231217_210025_496 win_items = True
+ 20231217_210025_496 cmd_msg = True
+ 20231217_210025_496 Closing log file C:\Users\raysm\vscode\resource_lib\log\wx_square_loop_colors_20231217_210022.sllog
+ 20231217_210025_496 display_cell = True
+ 20231217_210025_511 draw_rect = True
+ 20231217_210025_511 get_items = True
+ 20231217_210025_511 item = True
+ 20231217_210025_511 keys = True
+ 20231217_210025_511 list_props = True
+ 20231217_210025_511 motion = True
+ 20231217_210025_511 mouse_cell = True
+ 20231217_210025_527 paint = True
+ 20231217_210025_527 pos_tracking = True
+ 20231217_210025_527 prop_change = True
+ 20231217_210025_527 show_canvas_items = True
+ 20231217_210025_527 slow_key_str = True
+ 20231217_210025_527 sound_queue = True
+ 20231217_210025_527 speak_text = True
+ 20231217_210025_543 speech = True
+ 20231217_210025_543 talk_cmd = True
+ 20231217_210025_543 trace_flags = True
+ 20231217_210025_543 win_items = True
+ 20231217_210025_543 Closing log file C:\Users\raysm\vscode\resource_lib\log\wx_square_loop_colors_20231217_210022.sllog

@@ -1,0 +1,65 @@
+Microsoft Windows [Version 10.0.19045.3803]
+(c) Microsoft Corporation. All rights reserved.
+
+C:\Users\raysm>cd vscode\resource_lib\src
+
+C:\Users\raysm\vscode\resource_lib\src>python wx_braille_display.py
+Found resource_lib in sys.path: ['C:\\Users\\raysm\\vscode\\resource_lib\\src', 'C:\\Users\\raysm\\vscode\\resource_lib\\src', 'C:\\Users\\raysm\\AppData\\Local\\Programs\\Python\\Python312\\python312.zip', 'C:\\Users\\raysm\\AppData\\Local\\Programs\\Python\\Python312\\DLLs', 'C:\\Users\\raysm\\AppData\\Local\\Programs\\Python\\Python312\\Lib', 'C:\\Users\\raysm\\AppData\\Local\\Programs\\Python\\Python312', 'C:\\Users\\raysm\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\site-packages', 'C:\\Users\\raysm\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\site-packages\\win32', 'C:\\Users\\raysm\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\site-packages\\win32\\lib', 'C:\\Users\\raysm\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\site-packages\\Pythonwin']
+resource_lib/src is already in path
+path:C:\Users\raysm\vscode\resource_lib\src
+resource_lib/src is already in path
+path:C:\Users\raysm\vscode\resource_lib\src
+cwd:C:\Users\raysm\vscode\resource_lib\src
+wd_dirs:('C:\\', 'Users', 'raysm', 'vscode', 'resource_lib', 'src')
+Found:C:\Users\raysm\vscode\resource_lib\src
+Found:C:\Users\raysm\vscode\pysinewave_master
+Adding import path: C:\Users\raysm\vscode\resource_lib\src
+Adding import path: C:\Users\raysm\vscode\pysinewave_master
+ Trace levels from properties file C:\Users\raysm\vscode\resource_lib\wx_braille_display.properties
+ loadTraceFlags: decpl,stdouthasts,aud_create,aud_motion,bounds,cmd_msg,display_cell,draw_rect,get_items,item,keys,list_props,motion,mouse_cell,paint,play_tone,pos_tracking,prop_change,scanning,show_canvas_items,slow_key_str,sound,sound_queue,sound_volume,speak_text,speech,ssquare_list,ssquares_list,talk_cmd,trace_flags,track_perimeter,win_items
+ Creating Log File Name: C:\Users\raysm\vscode\resource_lib\log\wx_braille_display_20231217_205453.sllog
+ Trace levels from properties file C:\Users\raysm\vscode\resource_lib\wx_braille_display.properties
+ loadTraceFlags: decpl,stdouthasts,aud_create,aud_motion,bounds,cmd_msg,display_cell,draw_rect,get_items,item,keys,list_props,motion,mouse_cell,paint,play_tone,pos_tracking,prop_change,scanning,show_canvas_items,slow_key_str,sound,sound_queue,sound_volume,speak_text,speech,ssquare_list,ssquares_list,talk_cmd,trace_flags,track_perimeter,win_items
+ self.display()
+ braille_title: File: wx_braille_display.py  Date: 2023-12-17 20:54  User: raysm
+ sc_sounc_proc_thread running
+ Set orig_size:(784, 761)
+ First Paint size: (784, 761)
+ Frame size: (800, 800)
+ sc_sounc_proc_thread running
+ File: wx_braille_display.py  Date: 2023-12-17 20:54  User: raysm
+
+AudioDrawWindow() mag_info:
+MagI: select: ix_min:None iy_min:None ix_max:None iy_max:None
+    top:x_min:-400.0 y_min:-400.0 x_max:880.0 y_max:680.0 ncols:32 nrows:25
+    display:x_min:-400.0 y_min:-400.0 x_max:680.0 y_max:680.0 ncols:32 nrows:25
+    no parent
+    0 children
+
+ draw_cells
+ x_min:-400.0 y_min: -400.0
+ Lower left: min_x:-220 min_y:-48
+ Upper Right: max_x:-80 max_y:112
+ 40 cells
+ green at row 12 column 11
+File: wx_braille_display.py  Date: 2023-12-17 20:54  User: raysm
+
+,,ggrrro
+,,ggrrro
+,,gg,,,o
+,,gg,,,o
+,,gg,,,o
+,,ggyyyy
+,,ggyyyy
+
+ End of display
+ Force sfx:1.0 sfy:1.0
+ Force sfx:1.0 sfy:1.0
+ Trace levels from properties file C:\Users\raysm\vscode\resource_lib\wx_braille_display.properties
+ loadTraceFlags: talk_cmd,decpl,stdouthasts,aud_create,aud_motion,bounds,cmd_msg,display_cell,draw_rect,get_items,item,keys,list_props,motion,mouse_cell,paint,play_tone,pos_tracking,prop_change,scanning,show_canvas_items,slow_key_str,sound,sound_queue,sound_volume,speak_text,speech,ssquare_list,ssquares_list,trace_flags,track_perimeter,win_items
+ Creating Log File Name: C:\Users\raysm\vscode\resource_lib\log\wx_braille_display_20231217_205456.sllog
+ Trace levels from properties file C:\Users\raysm\vscode\resource_lib\wx_braille_display.properties
+ loadTraceFlags: talk_cmd,decpl,stdouthasts,aud_create,aud_motion,bounds,cmd_msg,display_cell,draw_rect,get_items,item,keys,list_props,motion,mouse_cell,paint,play_tone,pos_tracking,prop_change,scanning,show_canvas_items,slow_key_str,sound,sound_queue,sound_volume,speak_text,speech,ssquare_list,ssquares_list,trace_flags,track_perimeter,win_items
+ Trace levels from properties file C:\Users\raysm\vscode\resource_lib\wx_braille_display.properties
+ loadTraceFlags: talk_cmd,decpl,stdouthasts,aud_create,aud_motion,bounds,cmd_msg,display_cell,draw_rect,get_items,item,keys,list_props,motion,mouse_cell,paint,play_tone,pos_tracking,prop_change,scanning,show_canvas_items,slow_key_str,sound,sound_queue,sound_volume,speak_text,speech,ssquare_list,ssquares_list,trace_flags,track_perimeter,win_items
+

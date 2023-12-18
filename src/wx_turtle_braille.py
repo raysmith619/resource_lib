@@ -13,10 +13,10 @@ from turtle import *
 
 from select_trace import SlTrace
 SlTrace.clearFlags()
-from wx_braille_display import BrailleDisplay
+import wx_braille_display
 
 
-bd = BrailleDisplay(win_width=None,
+bd = wx_braille_display.BrailleDisplay(win_width=None,
                     win_height=None,
                     grid_width=32,
                     grid_height=25)
@@ -29,9 +29,11 @@ Some day may model after turtle's _make_global_funcs
 
 
 def mainloop():
-    return bd.mainloop()
+    bd.mainloop()
+
 def done():
-    return bd.done()
+    bd.done()
+    
 ### special functions
 def set_blank(blank_char):
     """ Set blank replacement

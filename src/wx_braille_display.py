@@ -18,7 +18,7 @@ import datetime
 import multiprocessing as mp
 import threading as th
 import turtle as tur
-import tkinter as tk            # Best approach
+#import tkinter as tk            # Best approach
 
 from select_trace import SlTrace
 from wx_speaker_control import SpeakerControlLocal
@@ -132,14 +132,15 @@ class BrailleDisplay:
         self.shift_to_edge = shift_to_edge
         self.tk_items = tk_items
         self.canvas_items = canvas_items
-
+        self.app = wx.App()
+        
     def color_str(self, color):
         """ convert turtle colors arg(s) to color string
         :color: turtle color arg
         """
         return BrailleCell.color_str(color)
 
-    def display(self, app=None, braille_window=True, braille_print=True,
+    def display(self, braille_window=True, braille_print=True,
                braille_title=None,
                print_cells=False, title=None,
                points_window=False,
@@ -147,7 +148,6 @@ class BrailleDisplay:
                canvas_items=False,
                silent=False):
         """ display grid
-        :app: wx app, default: create
         :braille_window: True - make window display of braille
                         default:True
         :braille_print: True - print braille
@@ -173,9 +173,6 @@ class BrailleDisplay:
             self.display_depth -= 1
             return
         
-        if app is None:
-            app = wx.App()
-        self.app = app
         file_base_name = os.path.basename(__main__.__file__)
         current_time = str(datetime.datetime.now())
         mt = re.match(r'(.*):\d+\.\d+$', current_time)
@@ -262,22 +259,18 @@ class BrailleDisplay:
     def tk_updates(self):
         """ Update tk stuff, but don't block
         """
-        self.tk.update_idletasks()
-        self.tk.update()
-        wx.CallLater(1, self.tk_updates)    #loop
+        #tur.update()
+        wx.CallLater(100, self.tk_updates)    #loop
     
     def mainloop(self):
         title = self.title
         if title is None:
             title = "Braille Display -"
-
-        self.tk = tk.Tk()
-        app = wx.App()
-
-        self.display(app=app)
-        self.tk_updates()
-        
-        app.MainLoop()
+        self.display()
+        #tur.speed(0)    # Turn off animation
+        #self.tk_updates()        
+        self.app.MainLoop()
+        SlTrace.lg("After app.MainLoop()")
                 
     def done(self):
         self.mainloop()

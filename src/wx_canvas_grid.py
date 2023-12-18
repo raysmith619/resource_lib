@@ -144,13 +144,12 @@ class CanvasGrid:
         """
         self.grid_xs, self.grid_ys = self.get_grid_lims()
 
-    def create_audio_window(self, app=None, title=None,
+    def create_audio_window(self, title=None,
                  xmin=None, xmax=None, ymin=None, ymax=None,
                  nrows=None, ncols=None, mag_info=None, pgmExit=None,
                  require_cells=False,
                  silent=False):
         """ Create AudioDrawWindow to navigate canvas from the section
-        :app: wx application default: create
         :title: optinal title
                 region (xmin,ymin, xmax,ymax) with nrows, ncols
         :speaker_control: (SpeakerControlLocal) local access to centralized speech facility
@@ -168,9 +167,6 @@ class CanvasGrid:
         :returns: AudioDrawWindow instance or None if no cells
                 Stores number of cells found in self.n_cells_created
         """
-        if app is None:
-            app = wx.App()
-        self.app = app
         if title is None:
             title = self.title
         self.title = title

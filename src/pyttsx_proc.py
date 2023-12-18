@@ -12,7 +12,7 @@ import pyttsx4 as pyttsxN    # Can use pyttsx4 instead
 from select_trace import SlTrace
 
 class PyttsxProc:
-    def __init__(self, qlen=10):
+    def __init__(self, qlen=100):    # 10 USUALY
         """ Setup for interprocess communication
         :qlen: input/output queue length
                 default: 10
@@ -36,7 +36,7 @@ class PyttsxProc:
         """
         self.pyt_proc = mp.Process(target=self.pyt_proc_proc)
         self.pyt_queue = mp.Queue(self.qlen)  # speech queue of SpeakerControlCmd
-        self.pyt_out_queue = mp.Queue(self.qlen)
+        self.pyt_out_queue = mp.Queue(2*self.qlen)
         self.pyt_engine_busy = False   # Updated with status 
         self.pyt_proc.start()
         
@@ -81,6 +81,11 @@ class PyttsxProc:
             self.quit()
             return
         
+        while self.pyt_queue.qsize() >= self.qlen:
+            SlTrace.lg(f"talk queue size "
+                       f" {self.pyt_queue.qsize()}"
+                       f" dropping {cmd.msg}")
+            return
         self.pyt_queue.put(cmd)
         SlTrace.lg(f"make_cmd - queue size: {self.pyt_queue.qsize()}", "talk_cmd")
             
@@ -100,7 +105,7 @@ class PyttsxProc:
             self.engine.setProperty('rate', cmd.rate)
         if cmd.volume is not None:
             self.engine.setProperty('volume', cmd.volume)
-        if cmd.msg is not None:
+        if cmd.msg is not None and cmd.msg != '':
             self.engine.say(cmd.msg)
             SlTrace.lg(f"After eng.say({cmd.msg})", "talk_cmd")
             self.engine.runAndWait()
@@ -116,10 +121,15 @@ class PyttsxProc:
         """ Check if busy talking or
         getting ready to talk
         """
+        if not self.is_alive():
+            return False
+        
         if self.pyt_queue.qsize()>0:
             return True
         
         while self.pyt_out_queue.qsize() > 0:
+            if not self.is_alive():
+                return False
             self.pyt_engine_busy = self.pyt_out_queue.get()
         return self.pyt_engine_busy
         
@@ -140,10 +150,37 @@ if __name__ == "__main__":
     import time
     
     SlTrace.clearFlags()
-    #SlTrace.setFlags("talk_cmd")
+    SlTrace.setFlags("talk_cmd")
     
     SlTrace.lg("\nTest Start")
     tt = PyttsxProc()
+    
+    # Test from wx_speaker_control.py
+    # Looking at bug: talking stops after 4th line
+    #
+    scl = PyttsxProc()
+    long_msg = """
+    line one
+    line two
+    line three
+    line four
+    line five
+    line six
+    line seven
+    line eight
+    line nine
+    line ten
+    """
+    long_msg_group = long_msg.split("\n")
+    for msg in long_msg_group:
+        scl.talk(msg)
+        time.sleep(1)
+    scl.wait_while_busy()   # Replaces wx_win.MainLoop()
+
+    scl.talk(long_msg)
+    scl.wait_while_busy()   # Replaces wx_win.MainLoop()
+    
+    
     tt.talk("Hello World")
     for i in range(8):
         print(i, "\a")
