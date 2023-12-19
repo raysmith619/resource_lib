@@ -378,16 +378,6 @@ class CanvasPanel(wx.Panel):
                    f" size: {self.GetSize()}"
                    f" GetClientAreaOrigin: {self.GetClientAreaOrigin()}"
                    )
-        '''
-        #??? Without the above live import pyautogui,
-        # the first mouse click shrinks window.
-        import pyautogui
-        screenWidth, screenHeight = pyautogui.size()
-        SlTrace.lg(f"screen width:{screenWidth}, hight: {screenHeight}")
-        currentMouseX, currentMouseY = pyautogui.position()
-        SlTrace.lg(f"mouse x,y: {currentMouseX}, {currentMouseY}")
-        #'''
-
         #e.Skip()
         size = self.grid_panel.GetSize()
         pts = self.scale_points([wx_Point(e.Position.x, e.Position.y),

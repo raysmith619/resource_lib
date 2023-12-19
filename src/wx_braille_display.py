@@ -11,9 +11,9 @@ Supports writing out braille stream
 Uses CanvasGrid for canvas scanning
 """
 import os
+import sys
 import re
 import wx
-import __main__
 import datetime
 import multiprocessing as mp
 import threading as th
@@ -173,7 +173,8 @@ class BrailleDisplay:
             self.display_depth -= 1
             return
         
-        file_base_name = os.path.basename(__main__.__file__)
+        pgm_file = sys.modules['__main__'].__file__
+        file_base_name = os.path.basename(pgm_file)
         current_time = str(datetime.datetime.now())
         mt = re.match(r'(.*):\d+\.\d+$', current_time)
         if mt is not None:

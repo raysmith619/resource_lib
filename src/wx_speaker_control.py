@@ -423,7 +423,7 @@ class SpeakerControl(Singleton):
             if cmd.cmd_type == "CLEAR":
                 continue
             elif cmd.cmd_type == "QUIT":
-                self.pyttsx3_proc.quit()
+                self.pyttsx_proc.quit()
                 break
 
             elif cmd.cmd_type == "CMD_MSG":
