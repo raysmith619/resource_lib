@@ -12,7 +12,6 @@ Uses CanvasGrid for canvas scanning
 """
 import os
 import re
-import __main__
 import datetime
 
 import turtle as tur
@@ -162,7 +161,8 @@ class BrailleDisplay:
                     default: self.canvas_items - False
         :silent: quiet mode default: False
         """
-        file_base_name = os.path.basename(__main__.__file__)
+        pgm_file = sys.modules['__main__'].__file__
+        file_base_name = os.path.basename(pgm_file)
         current_time = str(datetime.datetime.now())
         mt = re.match(r'(.*):\d+\.\d+$', current_time)
         if mt is not None:

@@ -8,7 +8,6 @@ Supports writing out braille stream
 """
 import os
 import re
-import __main__
 import datetime
 
 from math import sin, cos, pi, atan, sqrt
@@ -994,7 +993,9 @@ class BrailleDisplay:
         :tk_items: True - display tkinter obj in cell
                     default: False
         """
-        file_base_name = os.path.basename(__main__.__file__)
+        
+        pgm_file = sys.modules['__main__'].__file__
+        file_base_name = os.path.basename(pgm_file)
         current_time = str(datetime.datetime.now())
         mt = re.match(r'(.*):\d+\.\d+$', current_time)
         if mt is not None:
