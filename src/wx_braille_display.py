@@ -33,7 +33,7 @@ class BrailleDisplay:
     
 
     def __init__(self, title="Braille Display",
-                 tu=None,       # Not used
+                 tur=None,       # Link to turtle instance
                  win_width=800, win_height=800,
                  grid_width=40, grid_height=25,
                  use_full_cells= True,
@@ -53,7 +53,7 @@ class BrailleDisplay:
                  ):
         """ Setup display
         :title: display screen title
-        :tu: turtle instance    NOT USED
+        :tur: turtle instance
             default: create one
         :win_width: display window width in pixels
             default: 800
@@ -125,6 +125,7 @@ class BrailleDisplay:
         self._braille_window = braille_window
         self._braille_print = braille_print
         self._print_cells = print_cells
+        self.tur = tur
         self.tu_screen = tur.Screen()
         self.tu_canvas = self.tu_screen.getcanvas()
         self.blank_char = blank_char
@@ -260,7 +261,7 @@ class BrailleDisplay:
     def tk_updates(self):
         """ Update tk stuff, but don't block
         """
-        tur.update()
+        self.tur.update()
         wx.CallLater(100, self.tk_updates)    #loop
     
     def mainloop(self):
@@ -287,95 +288,6 @@ class BrailleDisplay:
         return ret
 
         
-'''    
-    """ Turtle "Shaddow" Functions No longer needed
-    """
-    
-    
-    def filling(self):
-        return self.tu.filling()
-    
-    def begin_fill(self):
-        return self.tu.begin_fill()
-    
-    def end_fill(self):
-        return self.tu.end_fill()
-        
-    def dot(self, size=None, *color):
-        return self.tu.dot(size, *color)
-                        
-    def forward(self, length):
-        return self.tu.forward(length)
-    def fd(self, length):
-        return self.forward(length)
-    
-    def goto(self, x, y=None):
-        return self.tu.goto(x, y=y)
-    def setpos(self, x, y=None):
-        return self.goto(x, y=None)
-    def setposition(self, x,  y=None):
-        return self.goto(x, y=None)
-    
-    def heading(self):
-        return self.tu.heading()
-        
-    def backward(self, length):
-        return self.tu.backward(length)                
-    def bk(self, length):
-        return self.backward(length)    
-    def back(self, length):
-        return self.backward(length)
-    
-    def circle(self, radius, extent=None, steps=None):
-        return self.tu.circle(radius, extent=extent, steps=steps)
-    
-    def right(self, angle):
-        return self.tu.right(angle)
-    def rt(self, angle):
-        return self.right(angle)
-    
-    def pendown(self):
-        return self.tu.pendown()
-    
-    def penup(self):
-        return self.tu.penup()
-        
-    def speed(self, speed):
-        return self.tu.speed(speed)    
-    
-    def left(self, angle):
-        return self.tu.left(angle)
-    
-    def lt(self, angle):
-        return self.tu.left(angle)
-    
-    def color(self, *args):
-        return self.tu.color(*args)
-
-    def fillcolor(self, *args):
-        return self.tu.fillcolor(*args)
-    
-    def pensize(self, width=None):
-        return self.tu.pensize(width=width)
-    def width(self, width=None):
-        return self.tu.width(width=width)
-
-    def setheading(self, angle): 
-        return self.tu.setheading(angle)   
-    def seth(self, angle): 
-        return self.setheading(angle)   
-        
-        # screen functions
-        
-    
-    def update(self):
-        self.mw.update()
-
-    # screen functions
-    def screensize(self, canvwidth=None, canvheight=None, bg=None):
-        return self.screen.screensize(canvwidth=None,
-                                       canvheight=None, bg=None)
-    '''    
         
 if __name__ == "__main__":
     import wx_square_loop_colors

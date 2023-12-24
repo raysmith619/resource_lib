@@ -819,30 +819,6 @@ class AdwFrontEnd:
             self.show_cell(ixy=ixy)
 
 
-    def set_visible_cell_OLD(self, cell, val=True):
-        """ Set cells visible/invisible
-        Useful to give sighted a vision
-        :cell: figure cell
-        :val: set visible Default: True
-        """
-        canvas = self.canvas
-        for item_id in cell.canv_items:
-            if val:
-                canvas.itemconfigure(item_id, state='normal')
-            else:
-                if self._show_marked:
-                    if cell.mtype !=cell.MARK_UNMARKED:
-                        canvas.itemconfigure(item_id, state='normal')
-                    else:
-                        canvas.itemconfigure(item_id, state='hidden')
-                else:
-                    canvas.itemconfigure(item_id, state='hidden')
-        '''
-        if not val:
-            if cell.mtype != cell.MARK_UNMARKED:
-                self.show_cell((cell.ix,cell.iy))   # force view
-        '''
-
     def set_visible_cell(self, cell, val=True):
         """ Set cells visible/invisible
         Useful to give sighted a vision
@@ -858,19 +834,6 @@ class AdwFrontEnd:
         if ixy in cells:
             cell = cells[ixy]
             self.display_cell(cell)
-
-    def show_cell_OLD(self, ixy=None):
-        cells = self.get_cells()
-        if ixy in cells:
-            cell = cells[ixy]
-            self.set_visible_cell(cell, self.is_visible())
-            canvas = self.canvas
-            for item_id in cell.canv_items:
-                item_type = canvas.type(item_id)
-                if item_type == "rectangle":
-                    canvas.itemconfigure(item_id, fill='dark gray')
-                else:
-                    canvas.itemconfigure(item_id, fill='')
 
 
     def key_help(self):

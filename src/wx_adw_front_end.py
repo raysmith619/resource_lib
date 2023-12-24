@@ -155,6 +155,15 @@ class AdwFrontEnd:
             self.adw.move_to_ixy(self.adw.grid_width/2, self.adw.grid_height//2)
         self.do_key_str(key_str)
 
+    def do_complete(self, menu_str=None, key_str=None):
+        """ Complete menu process
+        """
+        self.motion_level = 0   # Track possible recursive calls
+        self.do_menu_str(menu_str)
+        if key_str:
+            self.adw.move_to_ixy(self.adw.grid_width/2, self.adw.grid_height//2)
+        self.do_key_str(key_str)
+
     def move_to_ixy(self, ix=None, iy=None):
         """ Move to grid (cell) ix,iy
         :ix: ix index default: current ix
@@ -171,7 +180,6 @@ class AdwFrontEnd:
     def wait_on_output(self):
         """ Wait till queued output speech/tones completed
         """
-        return      # TFD
         while True:
             if self.adw.speaker_control.is_busy():
                 self.update()

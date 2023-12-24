@@ -9,17 +9,20 @@ turtle commands create Turtle output plus approximate braille
 output
 Adjusted tu use CanvasGrid with canvas scanning
 """
+import turtle as tur
 from turtle import *
 
 from select_trace import SlTrace
 SlTrace.clearFlags()
 import wx_braille_display
 
-
-bd = wx_braille_display.BrailleDisplay(win_width=None,
+_ = tur.Screen()    # Setup screen
+bd = wx_braille_display.BrailleDisplay(tur=tur,
+                    win_width=None,
                     win_height=None,
                     grid_width=32,
                     grid_height=25)
+
 
 
 """
@@ -62,6 +65,9 @@ def y_max():
 
     
 if __name__ == '__main__':
+    import wx
+    app = wx.App()
+    
     from wx_turtle_braille_link import *
     #from turtle_braille import *    # Get graphics stuff
     #tum.points_window = True

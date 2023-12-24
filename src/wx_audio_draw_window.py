@@ -114,6 +114,7 @@ class AudioDrawWindow(wx.Frame):
         self.app = app
         super().__init__(None, title=title,
                          size=wx.Size(win_width, win_height))
+        self.cells = {}         # Dictionary of cells by (ix,iy)
         if title is None:
             title = "AudioDrawWindow"
         self.title = title
@@ -156,7 +157,6 @@ class AudioDrawWindow(wx.Frame):
         self.speak_text(title)
 
         self.escape_pressed = False # True -> interrupt/flush
-        self.cells = {}         # Dictionary of cells by (ix,iy)
         self.set_cell_lims()
         self.do_talking = True      # Enable talking
         self.logging_speech = True  # Output speech to log/screen
@@ -193,6 +193,7 @@ class AudioDrawWindow(wx.Frame):
         self.shift_to_edge = shift_to_edge
         self.set_look_dist(look_dist)
         #self.pos_check()            # Startup possition check loop
+        self.fte.do_complete(menu_str=menu_str, key_str=key_str)
         self.update()     # Make visible
 
 
@@ -763,7 +764,7 @@ class AudioDrawWindow(wx.Frame):
                                                 fill=color)
                 cell.canv_items.append(canv_item)
                 SlTrace.lg(f"canv_pan.create_oval({x0},{y0},{x1},{y1}, fill={color})", "aud_create")
-            self.update()    # So we can see it now 
+            #self.update()    # So we can see it now 
             return
             
         dots = cell.dots
@@ -797,7 +798,7 @@ class AudioDrawWindow(wx.Frame):
                                             fill=color)
             cell.canv_items.append(canv_item) 
             SlTrace.lg(f"canv_pan.create_oval({x0},{y0},{x1},{y1}, fill={color})", "aud_create")
-        self.update()
+        self.update(x1=cx1,y1=cy1,x2=cx2,y2=cy2)
         pass
                 
     def get_cell_center_win(self, ix, iy):
@@ -1111,7 +1112,7 @@ class AudioDrawWindow(wx.Frame):
             del self.cells[cell_ixy]
         self.cells[cell_ixy] = bc
         if show:
-            self.update()
+            self.display_cell(bc)
         return bc
             
     def complete_cell(self, cell, color=None):
@@ -1128,10 +1129,11 @@ class AudioDrawWindow(wx.Frame):
         self.cells[cell] = bc
         return bc
 
-    def update(self):
+    def update(self, x1=None, y1=None, x2=None, y2=None):
         """ Update display
+            If x1,...y2 are present - limit update to rectangle
         """
-        self.Refresh()
+        self.canv_pan.update(x1=x1, y1=y1, x2=x2, y2=y2)
 
     def MainLoop(self):
         self.app.MainLoop()

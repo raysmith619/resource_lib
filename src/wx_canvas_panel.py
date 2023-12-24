@@ -316,8 +316,8 @@ class CanvasPanel(wx.Panel):
             SlTrace.lg(f"Frame size: {self.frame.GetSize()}", "paint")
             pass
 
-        dc.DrawRectangle(self.prev_pos, self.prev_size) # clear previous rectangle
-        dc.DrawRectangle(self.cur_pos, self.cur_size)   # clear new rectangle
+        ###dc.DrawRectangle(self.prev_pos, self.prev_size) # clear previous rectangle
+        ###dc.DrawRectangle(self.cur_pos, self.cur_size)   # clear new rectangle
         self.draw_items()
 
         self.prev_pos = self.cur_pos
@@ -465,8 +465,15 @@ class CanvasPanel(wx.Panel):
         self.mouse_b1_motion_proc = proc
     
 
-
-
+    def update(self, x1=None, y1=None, x2=None, y2=None):
+        """ Update display
+            If x1,...y2 are present - limit update to rectangle
+        """
+        if x1 is not None or x2 is not None:
+            self.grid_panel.RefreshRect(rect=wx.Rect(wx.Point(x1,y1), wx.Point(x2,y2)))
+        else:
+            self.grid_panel.Refresh()
+        self.Update()
     """
     ----------------------- Keyboard Control --------------------
     """

@@ -122,6 +122,7 @@ class AdwScanner:
             self.space_pitch = SineWaveBeep.color2pitch("SCAN_SPACE")
             self.scan_loop_checking = None      # set if after alive
         self.scan_coverage = scan_coverage
+        self.set_scanning()
 
     def set_cell_time(self, time):
         """ Set cell tone duration hoped
@@ -835,7 +836,7 @@ class AdwScanner:
     def get_cells(self):
         """ Get cell dictionary (by (ix,iy)
         """
-        return self.adw.cells
+        return self.adw.get_cells()
 
     def get_speaker_control(self):
         """ Get speech control

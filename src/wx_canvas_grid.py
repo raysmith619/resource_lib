@@ -13,7 +13,6 @@ The hope is to provide a magnified rendition of a selectable section of a given 
 Provide list of canvas items overlapping a region (display cell rectangle).
 
 """
-import tkinter as tk
 import wx
 import sys
 import os
@@ -24,7 +23,7 @@ from braille_error import BrailleError
 from braille_cell import BrailleCell
 from magnify_info import MagnifySelect, MagnifyInfo, MagnifyDisplayRegion
 from wx_audio_draw_window import AudioDrawWindow
-from speaker_control import SpeakerControlLocal
+from wx_speaker_control import SpeakerControlLocal
 
 """
 We now think explicit .base.fn_name is better
@@ -655,7 +654,9 @@ class CanvasGrid:
 if __name__ == "__main__":
     import sys
     import time
-
+    import tkinter as tk
+    import wx
+    app = wx.App()
     
     def test1():
         
