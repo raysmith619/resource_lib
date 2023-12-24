@@ -11,6 +11,7 @@ Supports writing out braille stream
 Uses CanvasGrid for canvas scanning
 """
 import os
+import sys
 import re
 import datetime
 
