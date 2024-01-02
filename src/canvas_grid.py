@@ -655,7 +655,8 @@ if __name__ == "__main__":
             time.sleep(2)
             cvg.erase_grid_paint()
             time.sleep(1)
-
+        root.mainloop()
+        
     def test2():
         root = tk.Tk()
         cvg = CanvasGrid(root, height=450, width=450)

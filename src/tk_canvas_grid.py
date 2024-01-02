@@ -1,29 +1,18 @@
-#wx_canvas_grid.py  24Oct2023  crs, from canvas_grid.py
+#tk_canvas_grid.py  29Dec2023   crs  Pull from canvas_grid.py 
 #                   14Feb2023  crs  Author
 """
-Basis for nestable grid layout displayed using wxPython
-The base graphic is a populated tkinter Canvas Widget
-The plan, which emanates from my TurtleBraille system to aid the viewing,
-by the blind of simple turtle graphics.  Our target is a system by which
-one is able to segment a canvas based graphic, as a coarse picture (e.g. 40 by 25)
-and then easily select a rectangular subsection and then create a similar coarse
-picture (e.g. 40 by 25) of that subsection.
-The hope is to provide a magnified rendition of a selectable section of a given canvas.
-
-Provide list of canvas items overlapping a region (display cell rectangle).
+Basis for nestable grid layout within the standard tkinter Canvas Widget.
+Facilitate creating coarse picture from tkinter Canvas contents
 
 """
-import wx
+import tkinter as tk
 import sys
 import os
 import copy
 
 from select_trace import SlTrace
 from braille_error import BrailleError
-from braille_cell import BrailleCell
 from magnify_info import MagnifySelect, MagnifyInfo, MagnifyDisplayRegion
-from wx_audio_draw_window import AudioDrawWindow
-from wx_speaker_control import SpeakerControlLocal
 
 """
 We now think explicit .base.fn_name is better
@@ -31,23 +20,16 @@ for indirect call of tk.Canvas calls:
     find_overlapping, gettags, itemconfigure, type
 """
 
-class CanvasGrid(Canvas):
+class TkCanvasGrid(tk.Canvas):
         
-    def __init__(self,
-                 base=None, title="Base Grid",
-                 app=None, pgmExit=None, speaker_control=None,
+    def __init__(self, master, base=None,
                  g_xmin=None, g_xmax=None, g_ymin=None, g_ymax=None,
                  g_nrows=25, g_ncols=40,
                  **kwargs):
         """ Set up canvas object with grid
-        :app: wx application default: generate
         :base: tk.Canvas, if present, from which we get
                 canvas item contents
-                default: self
-        :title: window title
-        :pgmExit: program main exit if one default: use local (...os._exit)
-        :speaker_control: (SpeakerControlLocal) local access to speech facility
-                        REQUIRED
+                default: create tk.Canvas(master)
         :g_xmin: Grid minimum canvas coordinate value default: left edge
         :g_xmax: Grid maximum canvas coordinate value default: right edge
         :g_ymin: Grid minimum canvas coordinate value default: top edge
@@ -55,38 +37,38 @@ class CanvasGrid(Canvas):
         :g_nrows: Number of rows default: 25
         :g_ncols: Number of columns default: 40
         """
-        if app is None:
-            app = wx.App()
-        self.app = app
+        have_base = True    # True iff we have a base
+        if base is None:
+            have_base = False
+            super().__init__(master=master, **kwargs)
+            self.pack(expand=True, fill=tk.BOTH)
+            self.master.update()
+            base = self
+        else:
+            super().__init__(master=master, **kwargs)
         self.base = base
-        self.title = title
-        if speaker_control is None:
-            SlTrace.lg("Creating local SpeakerControl copy")
-            speaker_control = SpeakerControlLocal()   # local access to speech engine
-        self.pgmExit = pgmExit
-        self.speaker_control = speaker_control
         self.item_samples = {}      # For incremental presentation  via show_item
-        self.audio_wins = []        # window list for access
         self.n_cells_created = 0    # Number of cells in recent window
-
         if g_xmin is None:
             g_xmin = 0
         self.g_xmin = g_xmin
         if g_xmax is None:
-            g_xmax = g_xmin + self.base.winfo_width()
+            g_xmax = g_xmin + self.winfo_width()
         self.g_xmax = g_xmax
         self.g_width = g_xmax-g_xmin
         if g_ymin is None:
             g_ymin = 0
         self.g_ymin = g_ymin
         if g_ymax is None:
-            g_ymax = g_ymin + self.base.winfo_height()
+            g_ymax = g_ymin + self.winfo_height()
         self.g_ymax = g_ymax
         self.g_height = abs(g_ymax-g_ymin) # No questions
         self.g_nrows = g_nrows
         self.g_ncols = g_ncols
         self.grid_tag = None        # Most recent grid paint tag
         self.set_grid_lims()
+        if have_base:
+            self.master.withdraw()
         
     def get_grid_lims(self, xmin=None, xmax=None, ymin=None, ymax=None,
                       ncols=None, nrows=None):
@@ -142,78 +124,6 @@ class CanvasGrid(Canvas):
              cell(i,j): grid_xs[i], grid_xs[i+1], grid_ys[j], grid_ys[j+1]
         """
         self.grid_xs, self.grid_ys = self.get_grid_lims()
-
-    def create_audio_window(self, title=None,
-                 xmin=None, xmax=None, ymin=None, ymax=None,
-                 nrows=None, ncols=None, mag_info=None, pgmExit=None,
-                 require_cells=False,
-                 silent=False):
-        """ Create AudioDrawWindow to navigate canvas from the section
-        :title: optinal title
-                region (xmin,ymin, xmax,ymax) with nrows, ncols
-        :speaker_control: (SpeakerControlLocal) local access to centralized speech facility
-        :xmin,xmax,ymin,ymax,: see get_grid_lims()
-                        default: CanvasGrid instance values
-        :nrows,ncols: grid size for scanning
-                default: if mag_info present: mag_info.mag_nrows, .mag_ncols
-        :mag_info: magnification info (MagnifyInfo)
-                    default: None
-        :pgm_exit: function to call upon exit request
-        :require_cells: Require at least some display cells to 
-                    create window
-                    default: False - allow empty picture
-        :silent: quiet mode default: False
-        :returns: AudioDrawWindow instance or None if no cells
-                Stores number of cells found in self.n_cells_created
-        """
-        if title is None:
-            title = self.title
-        self.title = title
-        if pgmExit is None:
-            pgmExit = self.exit 
-
-        if mag_info is None:
-            mag_info = self.create_magnify_info(x_min=xmin, y_min=ymin,
-                                          x_max=xmax, y_max=ymax,
-                                          ncols=ncols, nrows=nrows)
-            
-        if nrows is None:
-            nrows = mag_info.mag_nrows
-        if ncols is None:
-            ncols = mag_info.mag_ncols    
-        ixy_items = self.get_canvas_items(xmin=xmin, xmax=xmax,
-                                          ymin=ymin,ymax=ymax,
-                                          ncols=ncols,nrows=nrows)
-        # For debugging / analysis
-        xs,ys = self.get_grid_lims(xmin=xmin, xmax=xmax, ymin=ymin,ymax=ymax,
-                                   ncols=ncols,nrows=nrows)
-        braille_cells = []
-        for ixy_item in ixy_items:
-            (ix,iy), ids = ixy_item
-            if SlTrace.trace("win_items"):
-                SlTrace.lg(f"create_audio_window:{ix},{iy}: ids:{ids}")
-                for canvas_id in ids:
-                    self.show_canvas_item(canvas_id)
-            color = self.item_to_color(item_ids=ids)
-            if color is not None:
-                bcell = BrailleCell(ix=ix, iy=iy, color=color)
-                braille_cells.append(bcell)
-        self.n_cells_created = len(braille_cells)
-        if self.n_cells_created == 0:
-            if require_cells:
-                return None
-                
-        adw = AudioDrawWindow(app=self.app,
-                              title=title,
-                              speaker_control=self.speaker_control,
-                              iy0_is_top=True, mag_info=mag_info,
-                              pgmExit=pgmExit,
-                              x_min=self.g_xmin, y_min=self.g_ymin,
-                              silent=silent)
-        adw.draw_cells(cells=braille_cells)
-        adw.key_goto()      # Might as well go to figure
-        self.audio_wins.append(adw)     # Store list for access
-        return adw
 
     def item_to_color(self, item_ids):
         """ Get color string given item id
@@ -650,18 +560,118 @@ class CanvasGrid(Canvas):
         SlTrace.lg("CanvasGrid.exit")
         SlTrace.onexit()    # Force logging quit
         os._exit(0)
+
+    def get_display_cells(self,
+                 xmin=None, xmax=None, ymin=None, ymax=None,
+                 nrows=None, ncols=None):
+        """ Get cells to display, possibly in another process
+        :xmin,xmax,ymin,ymax,: see get_grid_lims()
+                        default: CanvasGrid instance values
+        :nrows,ncols: grid size for scanning
+                default: self.nrows, self.ncols
+        :returns: list of tuples: (ix,iy,color_str)
+        """
+        if nrows is None:
+            nrows = self.nrows
+        if ncols is None:
+            ncols = self.nrows    
+        ixy_items = self.get_canvas_items(xmin=xmin, xmax=xmax,
+                                          ymin=ymin,ymax=ymax,
+                                          ncols=ncols,nrows=nrows)
+        # For debugging / analysis
+        xs,ys = self.get_grid_lims(xmin=xmin, xmax=xmax, ymin=ymin,ymax=ymax,
+                                   ncols=ncols,nrows=nrows)
+        braille_cells = []
+        for ixy_item in ixy_items:
+            (ix,iy), ids = ixy_item
+            if SlTrace.trace("win_items"):
+                SlTrace.lg(f"create_audio_window:{ix},{iy}: ids:{ids}")
+                for canvas_id in ids:
+                    self.show_canvas_item(canvas_id)
+            color = self.item_to_color(item_ids=ids)
+            if color is not None:
+                cell = (ix, iy, color)
+                braille_cells.append(cell)
+        return braille_cells
+
+    def create_audio_window(self, title=None,
+                 xmin=None, xmax=None, ymin=None, ymax=None,
+                 nrows=None, ncols=None, mag_info=None, pgmExit=None,
+                 require_cells=False,
+                 silent=False):
+        """ Create AudioDrawWindow to navigate canvas from the section
+        :title: optinal title
+                region (xmin,ymin, xmax,ymax) with nrows, ncols
+        :speaker_control: (SpeakerControlLocal) local access to centralized speech facility
+        :xmin,xmax,ymin,ymax,: see get_grid_lims()
+                        default: CanvasGrid instance values
+        :nrows,ncols: grid size for scanning
+                default: if mag_info present: mag_info.mag_nrows, .mag_ncols
+        :mag_info: magnification info (MagnifyInfo)
+                    default: None
+        :pgm_exit: function to call upon exit request
+        :require_cells: Require at least some display cells to 
+                    create window
+                    default: False - allow empty picture
+        :silent: quiet mode default: False
+        :returns: AudioDrawWindow instance or None if no cells
+                Stores number of cells found in self.n_cells_created
+        """
+        from audio_draw_window import AudioDrawWindow
+        from braille_cell import BrailleCell
+                
+        if pgmExit is None:
+            pgmExit = self.exit 
+
+        if mag_info is None:
+            mag_info = self.create_magnify_info(x_min=xmin, y_min=ymin,
+                                          x_max=xmax, y_max=ymax,
+                                          ncols=ncols, nrows=nrows)
+            
+        if nrows is None:
+            nrows = mag_info.mag_nrows
+        if ncols is None:
+            ncols = mag_info.mag_ncols    
+        ixy_items = self.get_canvas_items(xmin=xmin, xmax=xmax,
+                                          ymin=ymin,ymax=ymax,
+                                          ncols=ncols,nrows=nrows)
+        # For debugging / analysis
+        xs,ys = self.get_grid_lims(xmin=xmin, xmax=xmax, ymin=ymin,ymax=ymax,
+                                   ncols=ncols,nrows=nrows)
+        braille_cells = []
+        for ixy_item in ixy_items:
+            (ix,iy), ids = ixy_item
+            if SlTrace.trace("win_items"):
+                SlTrace.lg(f"create_audio_window:{ix},{iy}: ids:{ids}")
+                for canvas_id in ids:
+                    self.show_canvas_item(canvas_id)
+            color = self.item_to_color(item_ids=ids)
+            if color is not None:
+                bcell = BrailleCell(ix=ix, iy=iy, color=color)
+                braille_cells.append(bcell)
+        self.n_cells_created = len(braille_cells)
+        if self.n_cells_created == 0:
+            if require_cells:
+                return None
+        
+        adw = AudioDrawWindow(title=title, speaker_control=None,
+                              iy0_is_top=True, mag_info=mag_info, pgmExit=None,
+                              x_min=self.g_xmin, y_min=self.g_ymin,
+                              silent=silent)
+        adw.draw_cells(cells=braille_cells)
+        adw.key_goto()      # Might as well go to figure
+        return adw
+
         
 if __name__ == "__main__":
     import sys
     import time
-    import tkinter as tk
-    import wx
-    app = wx.App()
+
     
     def test1():
         
         root = tk.Tk()
-        cvg = CanvasGrid(base=root, height=800, width=800)
+        cvg = TkCanvasGrid(root, height=800, width=800)
         for _ in range(2):
             cvg.paint_grid()
             time.sleep(2)
@@ -670,7 +680,7 @@ if __name__ == "__main__":
 
     def test2():
         root = tk.Tk()
-        cvg = CanvasGrid(root, height=450, width=450)
+        cvg = TkCanvasGrid(root, height=450, width=450)
         cvg.create_line(0,0,200,300, width=10, fill="blue", tags="blue_tag")
         cvg.create_line(200,300,400,400, width=10, fill="green", tags=["green1","green2"])
         cvg.create_rectangle(200,200,300,300, fill="red")
@@ -698,7 +708,7 @@ if __name__ == "__main__":
         """
         SlTrace.lg("Start test3")
         root = tk.Tk()
-        cvg = CanvasGrid(root, height=450, width=450)
+        cvg = TkCanvasGrid(root, height=450, width=450)
         cvg.create_line(0,0,200,300, width=10, fill="blue", tags="blue_tag")
         cvg.create_line(200,300,400,400, width=10, fill="green", tags=["green1","green2"])
         cvg.create_rectangle(200,200,300,300, fill="red")
@@ -713,7 +723,7 @@ if __name__ == "__main__":
         """
         SlTrace.lg("Start test4")
         root = tk.Tk()
-        cvg = CanvasGrid(root, height=450, width=450)
+        cvg = TkCanvasGrid(root, height=450, width=450)
         cvg.create_line(0,0,200,300, width=10, fill="blue", tags="blue_tag")
         cvg.create_line(200,300,400,400, width=10, fill="green", tags=["green1","green2"])
         cvg.create_rectangle(200,200,300,300, fill="red")
@@ -744,7 +754,7 @@ if __name__ == "__main__":
         """
         SlTrace.lg("Start test4a")
         root = tk.Tk()
-        cvg = CanvasGrid(root, height=450, width=450)
+        cvg = TkCanvasGrid(root, height=450, width=450)
         cvg.create_line(0,0,200,300, width=10, fill="blue", tags="blue_tag")
         cvg.create_line(200,300,400,400, width=10, fill="green", tags=["green1","green2"])
         cvg.create_rectangle(200,200,300,300, fill="red")
@@ -763,7 +773,7 @@ if __name__ == "__main__":
         root = tk.Tk()
         height = 800
         width = height
-        cvg = CanvasGrid(root, height=800, width=800)
+        cvg = TkCanvasGrid(root, height=800, width=800)
         cvg.create_line(0,0,200,300, width=10, fill="blue", tags="blue_tag")
         cvg.create_line(200,300,400,400, width=10, fill="green", tags=["green1","green2"])
         cvg.create_rectangle(200,200,300,300, fill="red")
@@ -789,7 +799,7 @@ if __name__ == "__main__":
         SlTrace.lg("Tk Canvas create")
         
         mw = tk.Tk()
-        cvg = CanvasGrid(mw, base=cv, height=450, width=450)
+        cvg = TkCanvasGrid(mw, base=cv, height=450, width=450)
         
         SlTrace.lg("Create a AudioDrawWindow")
         adw1 = cvg.create_audio_window(title="test5 from tk.canvas scanning")
@@ -815,11 +825,14 @@ if __name__ == "__main__":
                                        xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax)
         SlTrace.lg("After create_audio_window() 2")
         root.mainloop()
-        
-    test1()
-    #test2()
-    #test3()
-    #test5()
+    
+    test = 5    
+    if test == 1: test1()
+    if test == 2: test2()
+    if test == 3: test3()
+    if test == "4a": test4a()
+    if test == "4b": test4b()
+    if test == 5: test5()
     SlTrace.lg("End of Test")
     sys.exit()
         

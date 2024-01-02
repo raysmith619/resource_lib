@@ -21,7 +21,7 @@ from braille_cell import BrailleCell
 from magnify_info import MagnifyInfo, MagnifyDisplayRegion
 from wx_adw_front_end import AdwFrontEnd
 from wx_adw_menus import AdwMenus
-from wx_canvas_panel import CanvasPanel
+from wx_canvas_panel import CanvasPanel, wx_Point
 
 class AudioDrawWindow(wx.Frame):
     def __init__(self,
@@ -726,25 +726,26 @@ class AudioDrawWindow(wx.Frame):
         :show_points: show points instead of braille
                 default: False --> show braille dots
         """
-        self.erase_cell(cell)
-        if not cell.is_visible():
-            return              # Nothing to show
-        
         ix = cell.ix
-        iy = cell.iy
-        
+        iy = cell.iy    
         cx1,cy1,cx2,cy2 = self.get_win_ullr_at_ixy_canvas((ix,iy))
         SlTrace.lg(f"{ix},{iy}: {cell} :{cx1},{cy1}, {cx2},{cy2} ", "display_cell")
+        self.partial_update_start(
+            wx.Rect(wx_Point(cx1,cy1),wx_Point(cx2,cy2)))
+        self.erase_cell(cell)
+        if not cell.is_visible():
+            self.partial_update_complete()
+            return              # Nothing to show
+        
         if cell.mtype==BrailleCell.MARK_UNMARKED:
-            canv_item = self.canv_pan.create_rectangle(cx1,cy1,cx2,cy2,
+            canv_id = self.canv_pan.create_rectangle(cx1,cy1,cx2,cy2,
                                     fill="#d3d3d3",
                                     outline="dark gray")
         else:
-            canv_item = self.canv_pan.create_rectangle(cx1,cy1,cx2,cy2,
+            canv_id = self.canv_pan.create_rectangle(cx1,cy1,cx2,cy2,
                                     fill="#b0b0b0",
                                     outline="dark gray")
-        cell.canv_items.append(canv_item)
-        self.update()
+        cell.canv_items.append(canv_id)
         color = self.color_str(cell._color)
         if len(color) < 1 or color[0] not in BrailleCell.color_for_character:
             color = "black"
@@ -760,9 +761,9 @@ class AudioDrawWindow(wx.Frame):
                 y0 = dy+dot_size 
                 x1 = dx+dot_radius 
                 y1 = dy
-                canv_item = self.canv_pan.create_oval(x0,y0,x1,y1,
+                canv_id = self.canv_pan.create_oval(x0,y0,x1,y1,
                                                 fill=color)
-                cell.canv_items.append(canv_item)
+                cell.canv_items.append(canv_id)
                 SlTrace.lg(f"canv_pan.create_oval({x0},{y0},{x1},{y1}, fill={color})", "aud_create")
             #self.update()    # So we can see it now 
             return
@@ -794,12 +795,36 @@ class AudioDrawWindow(wx.Frame):
             y0 = dy+dot_size 
             x1 = dx+dot_radius 
             y1 = dy
-            canv_item = self.canv_pan.create_oval(x0,y0,x1,y1,
+            canv_id = self.canv_pan.create_oval(x0,y0,x1,y1,
                                             fill=color)
-            cell.canv_items.append(canv_item) 
+            cell.canv_items.append(canv_id) 
             SlTrace.lg(f"canv_pan.create_oval({x0},{y0},{x1},{y1}, fill={color})", "aud_create")
-        self.update(x1=cx1,y1=cy1,x2=cx2,y2=cy2)
-        pass
+        self.partial_update_complete()
+
+
+    def partial_update_add(self, item):
+        """ Add item to partial update
+        :item: item to add
+        """
+        self.canv_pan.partial_update_add(item=item)
+        
+    def partial_update_complete(self):
+        """ Complete partial_update
+        """
+        self.canv_pan.partial_update_complete()
+            
+    def partial_update_is_in(self):
+        """ Check if in partial update
+        """
+        return self.canv_pan.partial_update_is_in()
+    
+    def partial_update_start(self, rect=None):
+        """ Setup a partial window update
+        :rect: rectangle if present
+        """
+        self.canv_pan.partial_update_start(rect=rect)
+        
+
                 
     def get_cell_center_win(self, ix, iy):
         """ Get cell's window rectangle x, y  upper left, x,  y lower right

@@ -11,7 +11,7 @@ def wx_Point(x, y):
     """ Force int args
     :x: x value
     :y: y value
-    :returns: wx.Point
+    :returns: wx_Point
     """
     return wx.Point(int(x), int(y))
    
