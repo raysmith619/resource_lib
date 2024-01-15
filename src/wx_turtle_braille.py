@@ -5,25 +5,16 @@
 """
 # Using tk.Canvas scanning
 Turtle augmented with braille graphics output
-turtle commands create Turtle output plus approximate braille
-output
-Adjusted tu use CanvasGrid with canvas scanning
+__main__ : main process: tkinter display support via done()
+
+else: multiprocessing process:
+    Create baille output 
+    Create/control wxPython display AudioDrawWindow
+    
 """
-import turtle as tur
 from turtle import *
-
-from select_trace import SlTrace
-SlTrace.clearFlags()
-import wx_braille_display
-
-_ = tur.Screen()    # Setup screen
-bd = wx_braille_display.BrailleDisplay(tur=tur,
-                    win_width=None,
-                    win_height=None,
-                    grid_width=32,
-                    grid_height=25)
-
-
+from wx_to_tk import WxToTk
+wx_to_tk = WxToTk()
 
 """
 External functions 
@@ -32,11 +23,13 @@ Some day may model after turtle's _make_global_funcs
 
 
 def mainloop():
-    bd.mainloop()
+    wx_to_tk.startup()
+    wx_to_tk.done()     
 
 def done():
-    bd.done()
-    
+    mainloop()
+
+'''    
 ### special functions
 def set_blank(blank_char):
     """ Set blank replacement
@@ -60,10 +53,10 @@ def y_min():
 
 def y_max():
     return bd.y_max
+'''
 
 
-
-    
+'''    
 if __name__ == '__main__':
     import wx
     app = wx.App()
@@ -90,4 +83,4 @@ if __name__ == '__main__':
     forward(200)
     penup()
     done()    
-            
+'''            

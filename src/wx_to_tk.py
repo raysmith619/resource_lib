@@ -5,37 +5,46 @@ wxPython AudioDisplayWindow(s)
 """
 import time
 import multiprocessing as mp
-
-class WxToTk:
-    def __init__(self, base_obj):
-        """ Setup communication between base process and
-        new process.
-        base_obj.new_proc is the callable target in the new process
-            wxCommand requests from wx process to tk display
-            wxCommandResp responses to wx command requests
-            :base_obj: base process obj
-        """
-        qlen = 4
-        self.base_obj = base_obj
-        self.proc = mp.Process(target=self.base_obj.new_proc)
-        self.cmd_queue = mp.Queue(qlen)      # Commands from new process
-        self.cmd_resp_queue = mp.Queue(qlen)
-        self.proc.start()
-
+import turtle as tur
+from select_trace import SlTrace
 
 if __name__ == "__main__":
-    import time
+    mp.freeze_support()
 
-    class BaseObj:
-        def new_proc():
-            while True:
-                print("Hi from new_proc")
-                time.sleep(.5)
+class WxToTk:
+    def __init__(self, qlen=4):
+        """ Setup communication between base process and
+        new process.
+        """
+        self.qlen = qlen
+        self.started = False
     
-    base_obj = BaseObj()
-    print("Starting WxTk")        
-    nP = WxToTk(base_obj=base_obj)
-    time.sleep(5)
-    while True:
-        print("Hi from base process")
-        time.sleep(.3)
+    def startup(self):
+        self.proc = mp.Process(target=self.wx_proc)
+        self.cmd_queue = mp.Queue(self.qlen)      # Commands from new process
+        self.cmd_resp_queue = mp.Queue(self.qlen)
+        if not self.started:
+            self.proc.start()
+
+    def wx_proc(self):
+        import wx
+        if self.started:
+            return
+        self.started = True
+        self.app = wx.App()
+        from wx_braille_display import BrailleDisplay
+        bd = BrailleDisplay(wx_to_tk=self)
+        bd.display()
+        self.app.MainLoop()
+        
+    def done(self):
+        tur.done()
+
+if __name__ == "__main__":
+    SlTrace.lg(f"Starting up {__name__}")
+    import time
+    wxtk = WxToTk()
+    tur.forward(100)
+    wxtk.startup()
+    wxtk.done()
+ 

@@ -16,9 +16,6 @@ import re
 import wx
 import time
 import datetime
-import multiprocessing as mp
-import threading as th
-import tkinter as tk            # Best approach
 
 from select_trace import SlTrace
 from wx_speaker_control import SpeakerControlLocal
@@ -27,23 +24,6 @@ from tk_canvas_grid import TkCanvasGrid
 from magnify_info import MagnifyInfo
 from wx_audio_draw_window import AudioDrawWindow
 from braille_error import BrailleError
-
-class WxCommand:
-    """ Command from wx display to tk window process
-    """
-    GET_DISPLAY_CELLS =  1
-    
-    def __init__(self, cmd, **kwargs):
-        self.cmd = cmd
-        for kwarg in kwargs:
-            self[kwarg] = kwargs[kwarg]
-
-class WxCommandResp(WxCommand):
-    """ Command from wx display to tk window process
-    """
-    def __init__(self, cmd, **kwargs):
-        self.cmd = cmd
-        super().__init__(**kwargs)
         
 class BrailleDisplay:
     """ Create and display graphics using Braille
@@ -51,7 +31,7 @@ class BrailleDisplay:
     
 
     def __init__(self, title="Braille Display",
-                 tur=None,       # Link to turtle instance
+                 wx_to_tk=None,
                  win_width=800, win_height=800,
                  grid_width=40, grid_height=25,
                  use_full_cells= True,
@@ -71,8 +51,7 @@ class BrailleDisplay:
                  ):
         """ Setup display
         :title: display screen title
-        :tur: turtle instance
-            default: create one
+        :wx_to_tk: link between tk and wx displays
         :win_width: display window width in pixels
             default: 800
         :win_height: display window height in pixels
@@ -118,6 +97,7 @@ class BrailleDisplay:
         :silent: starting val default: False
         """
         self.display_depth = 0
+        self.wx_to_tk = wx_to_tk
         if title is None:
             title = "Braille Display"
         self.title = title
@@ -143,9 +123,6 @@ class BrailleDisplay:
         self._braille_window = braille_window
         self._braille_print = braille_print
         self._print_cells = print_cells
-        self.tur = tur
-        self.tu_screen = tur.Screen()
-        self.tu_canvas = self.tu_screen.getcanvas()
         self.blank_char = blank_char
         shift_to_edge = False               # TFD
         self.shift_to_edge = shift_to_edge
@@ -286,109 +263,6 @@ class BrailleDisplay:
         SlTrace.lg("BrailleDisplay.exit")
         SlTrace.onexit()    # Force logging quit
         os._exit(rc)
-        
-    def do_displays(self):
-        """ See to it that both turtle/tkinter and wxPython
-        displays are running
-            Start wx_display process
-            Setup to execute requests for canvas info
-            keep tkinter display active
-        """
-        self.wx_setup()
-        tk.after(100)
-        ###self.wx_cmd_checking()  # continues
-        tk.mainloop()
-            
-
-    def wx_cmd_proc(self, wx_cmd):
-        """ Process request cmd
-        :wx_cmd: command such as canvas contents        
-        """
-        if wx_cmd.cmd == WxCommand.GET_DISPLAY_CELLS:
-            display_cells = self.get_display_cells(**wx_cmd.kwargs)
-            wx_cmd_resp = WxCommandResp(cmd=wx_cmd.cmd,
-                                        display_cells=display_cells)
-            self.wx_cmd_resp_queue.put(wx_cmd_resp)
-        else:
-            raise BrailleError(f"Unrecognized WxCommand {wx_cmd.cmd}")
-            
-    def wx_cmd_checking(self):
-        """
-        Check for and respond to any requests
-        Recall after a bit
-        """
-        while self.cmd_queue.qsize() > 0:
-            wx_cmd = self.cmd_queue.get()
-            self.wx_cmd_proc(wx_cmd)        
-        tk.after(10, self.wx_cmd_checking)
-        
-    def wx_setup(self):
-        """ Setup procesing process
-        """
-        qlen = 4
-        self.wx_proc = mp.Process(target=self.wx_proc_proc)
-        #self.wx_cmd_queue = mp.Queue(qlen)      # Commands from wx display to tk
-        #self.wx_cmd_resp_queue = mp.Queue(qlen)
-        self.wx_proc.start()
-        SlTrace.lg("After wx_proc.start()")
-        time.sleep(2)
-
-    def wx_proc_proc(self):
-        """ Do wxPython display processing (in separate process)
-        This becomes the "ruling" process.  Currently there is no
-        need to loop, awaiting input from the turtle/tkinter process.
-                1. displaying AudioDisplayWindow(s)
-                2. requesting turtle window contents
-                as appropriate
-                3.Exiting program, closing all windows
-                when requested.    
-        """
-        app = wx.App()
-        #self.display()
-        app.MainLoop()
-
-    ############################# wx access to tk window ###################
-    def tk_get_display_cells(self, **kwargs):
-        """ Get braille cells
-        :**kwargs: xmin, ymin, xmax,  ypax, ncols, nrows
-        :returns: 
-        """
-        wx_cmd = WxCommand(WxCommand.GET_DISPLAY_CELLS,
-                           **kwargs)
-        wx_resp = self.send_wx_cmd(wx_cmd)
-        return wx_resp.display_cells
-        
-    def send_wx_cmd(self, wx_cmd, wait=True):
-        """ Send cmd 
-        :wx_cmd: WxCommand  to send
-        :wait: True - wait for and return response
-        :returns: WxCommandResp return
-        """
-        self.wx_cmd_queue.put(wx_cmd)
-        if wait:
-            wx_cmd_resp = self.wx_cmd_resp_queue.get()
-            return wx_cmd_resp
-        
-        return
-        
-    
-    """ Turtle "Shaddow" Functions
-    """
-    def mainloop(self):
-        self.do_displays()
-                
-    def done(self):
-        self.mainloop()
-
-    # Special functions
-    def set_blank(self, blank_char):
-        """ Set blank replacement
-        :blank_char: blank replacement char
-        :returns: previous blank char
-        """
-        ret = self.blank_char
-        self.blank_char = blank_char
-        return ret
 
         
         
