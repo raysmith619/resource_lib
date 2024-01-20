@@ -53,21 +53,21 @@ class TkCanvasGrid(tk.Canvas):
             g_xmin = 0
         self.g_xmin = g_xmin
         if g_xmax is None:
-            g_xmax = g_xmin + self.winfo_width()
+            g_xmax = g_xmin + base.winfo_width()
         self.g_xmax = g_xmax
         self.g_width = g_xmax-g_xmin
         if g_ymin is None:
             g_ymin = 0
         self.g_ymin = g_ymin
         if g_ymax is None:
-            g_ymax = g_ymin + self.winfo_height()
+            g_ymax = g_ymin + base.winfo_height()
         self.g_ymax = g_ymax
         self.g_height = abs(g_ymax-g_ymin) # No questions
         self.g_nrows = g_nrows
         self.g_ncols = g_ncols
         self.grid_tag = None        # Most recent grid paint tag
         self.set_grid_lims()
-        if have_base:
+        if not have_base:
             self.master.withdraw()
         
     def get_grid_lims(self, xmin=None, xmax=None, ymin=None, ymax=None,
@@ -568,13 +568,13 @@ class TkCanvasGrid(tk.Canvas):
         :xmin,xmax,ymin,ymax,: see get_grid_lims()
                         default: CanvasGrid instance values
         :nrows,ncols: grid size for scanning
-                default: self.nrows, self.ncols
+                default: self.g_nrows, self.g_ncols
         :returns: list of tuples: (ix,iy,color_str)
         """
         if nrows is None:
-            nrows = self.nrows
+            nrows = self.g_nrows
         if ncols is None:
-            ncols = self.nrows    
+            ncols = self.g_nrows    
         ixy_items = self.get_canvas_items(xmin=xmin, xmax=xmax,
                                           ymin=ymin,ymax=ymax,
                                           ncols=ncols,nrows=nrows)

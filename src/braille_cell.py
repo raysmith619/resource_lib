@@ -182,3 +182,15 @@ class BrailleCell:
         """
         return self._visible
     
+    def set_ix(self, ix):
+        """Set/modify ix index
+        :ix: x index 
+        """
+        self.ix = ix
+    
+    def set_iy(self, iy):
+        """Set/modify iy index
+        :iy: y index 
+        """
+        self.iy = iy
+        

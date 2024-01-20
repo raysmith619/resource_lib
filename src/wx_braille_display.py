@@ -24,6 +24,7 @@ from tk_canvas_grid import TkCanvasGrid
 from magnify_info import MagnifyInfo
 from wx_audio_draw_window import AudioDrawWindow
 from braille_error import BrailleError
+from wx_braille_cell_list import BrailleCellList
         
 class BrailleDisplay:
     """ Create and display graphics using Braille
@@ -31,7 +32,7 @@ class BrailleDisplay:
     
 
     def __init__(self, title="Braille Display",
-                 wx_to_tk=None,
+                 display_list=None,
                  win_width=800, win_height=800,
                  grid_width=40, grid_height=25,
                  use_full_cells= True,
@@ -51,7 +52,8 @@ class BrailleDisplay:
                  ):
         """ Setup display
         :title: display screen title
-        :wx_to_tk: link between tk and wx displays
+        :display_list: list of (ix,iy,color) to display
+            default: none
         :win_width: display window width in pixels
             default: 800
         :win_height: display window height in pixels
@@ -97,7 +99,7 @@ class BrailleDisplay:
         :silent: starting val default: False
         """
         self.display_depth = 0
-        self.wx_to_tk = wx_to_tk
+        self.display_list = display_list
         if title is None:
             title = "Braille Display"
         self.title = title
@@ -136,14 +138,18 @@ class BrailleDisplay:
         """
         return BrailleCell.color_str(color)
 
-    def display(self, braille_window=True, braille_print=True,
-               braille_title=None,
-               print_cells=False, title=None,
-               points_window=False,
-               tk_items=False,
-               canvas_items=False,
-               silent=False):
+    def display(self,
+                display_list=None,
+                braille_window=True, braille_print=True,
+                braille_title=None,
+                print_cells=False, title=None,
+                points_window=False,
+                tk_items=False,
+                canvas_items=False,
+                silent=False):
         """ display grid
+        :display_list: list of (ix,iy,color) cells to display
+                default: self.display_list else none
         :braille_window: True - make window display of braille
                         default:True
         :braille_print: True - print braille
@@ -168,19 +174,23 @@ class BrailleDisplay:
         if self.display_depth > 1:
             self.display_depth -= 1
             return
-        
-        pgm_file = sys.modules['__main__'].__file__
-        file_base_name = os.path.basename(pgm_file)
-        current_time = str(datetime.datetime.now())
-        mt = re.match(r'(.*):\d+\.\d+$', current_time)
-        if mt is not None:
-            current_time = mt.group(1)  # Ignore seconds
-        username = os.getlogin()
-        self.braille_title = f"File: {file_base_name}"
-        self.braille_title += f"  Date: {current_time}"
-        if username is not None and username != "":
-            self.braille_title += f"  User: {username}"
-        SlTrace.lg(f"braille_title: {self.braille_title}")
+        if display_list is None:
+            display_list = self.display_list
+        self.display_list = display_list
+        self.braille_title = braille_title
+        if hasattr(sys.modules, '__main__'):        
+            pgm_file = sys.modules['__main__'].__file__
+            file_base_name = os.path.basename(pgm_file)
+            current_time = str(datetime.datetime.now())
+            mt = re.match(r'(.*):\d+\.\d+$', current_time)
+            if mt is not None:
+                current_time = mt.group(1)  # Ignore seconds
+            username = os.getlogin()
+            self.braille_title = f"File: {file_base_name}"
+            self.braille_title += f"  Date: {current_time}"
+            if username is not None and username != "":
+                self.braille_title += f"  User: {username}"
+            SlTrace.lg(f"braille_title: {self.braille_title}")
         if self.braille_title is not None:
             title = self.braille_title
         if title is None:
@@ -189,36 +199,28 @@ class BrailleDisplay:
         if tib is not None and tib.endswith("-"):
             tib += " Braille Window"
 
-        """ Create CanvasGrid from turtle screen canvas
-        """
-        ###wxport### geometry = f"{self.win_width}x{self.win_width}"
-        ###wxport### mw.geometry(geometry)
         self.speaker_control = SpeakerControlLocal()   # local access to speech engine
-        adw = AudioDrawWindow(app=self.app,
-                              title=title,
-                              speaker_control=self.speaker_control,
-                              iy0_is_top=True,
-                              pgmExit=self.exit,
-                              x_min=self.xmin, y_min=self.ymin,
-                              x_max=self.xmax, y_max=self.ymax,
-                              silent=silent)
-        display_list = self.tk_get_display_cells(
-                            x_min=self.xmin, y_min=self.ymin,
-                            x_max=self.xmax, y_max=self.ymax,
-                            ncols=self.grd_width,
-                            nrows=self.grid_height)
-        display_cells = {}
-        for dc in display_list :
-            ix,iy,color = dc
-            dcell = BrailleCell(ix=ix, iy=iy,
-                                color=color)
-            display_cells[(ix,iy)] = dcell
-        adw.draw_cells(cells=display_cells)
-        adw.key_goto()      # Might as well go to figure
-        
-        self.aud_win = self.canvas_grid.create_audio_window(title=tib,
-                                                            silent=silent)
-        self.aud_win.find_edges()
+        self.adw = AudioDrawWindow(app=self.app,
+                            title=title,
+                            speaker_control=self.speaker_control,
+                            iy0_is_top=True,
+                            pgmExit=self.exit,
+                            ###x_min=self.x_min, y_min=self.y_min,
+                            ###x_max=self.x_max, y_max=self.y_max,
+                            silent=silent)
+        if self.display_list is not None:
+            display_list = self.display_list
+            if type(display_list) == str:
+                display_list = BrailleCellList().get_from_string(display_list)
+            display_cells = {}
+            for dc in display_list :
+                ix,iy,color = dc.ix,dc.iy,dc._color
+                dcell = BrailleCell(ix=ix, iy=iy,
+                                    color=color)
+                display_cells[(ix,iy)] = dcell
+            self.adw.draw_cells(cells=display_cells)
+            self.adw.key_goto()      # Might as well go to figure
+            self.adw.find_edges()
 
         
         if braille_print:
@@ -228,14 +230,14 @@ class BrailleDisplay:
                 tib = title
             if tib is not None and tib.endswith("-"):
                 tib += " Braille Print Output"
-            self.aud_win.print_braille(title=tib)
+            self.adw.print_braille(title=tib)
         if print_cells:
             tib = title
             if tib is None:
                 tib = "Print Cells"
             if tib is not None and tib.endswith("-"):
                 tib += " Braille Cells"
-            self.aud_win.print_cells(title=tib)
+            self.adw.print_cells(title=tib)
         if tk_items:
             tib = "tk_items - " + title
             if tib is not None and tib.endswith("-"):
@@ -267,6 +269,12 @@ class BrailleDisplay:
         
         
 if __name__ == "__main__":
-    import wx_square_loop_colors
-    #import braille_display_test2
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    args = parser.parse_args()             # or die "Illegal options"
+    SlTrace.lg(f"args: {args}\n")
+
+    bd = BrailleDisplay()
+    
 

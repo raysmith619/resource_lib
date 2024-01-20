@@ -8,14 +8,17 @@ Turtle augmented with braille graphics output
 __main__ : main process: tkinter display support via done()
 
 else: multiprocessing process:
-    Create baille output 
+    Create braille output 
     Create/control wxPython display AudioDrawWindow
     
 """
+import subprocess
+import turtle as tur
 from turtle import *
-from wx_to_tk import WxToTk
-wx_to_tk = WxToTk()
+import tkinter as tk
 
+from tk_canvas_grid import TkCanvasGrid
+from wx_braille_cell_list import BrailleCellList
 """
 External functions 
 Some day may model after turtle's _make_global_funcs
@@ -23,64 +26,30 @@ Some day may model after turtle's _make_global_funcs
 
 
 def mainloop():
-    wx_to_tk.startup()
-    wx_to_tk.done()     
-
+    root = tk.Tk()
+    
+    canvas = getcanvas()
+    cg = TkCanvasGrid(None,base=canvas)
+    cells = cg.get_display_cells()  # gets (ix,iy,color)*
+    cell_list = BrailleCellList(cells)  # converts either to BrailleCell
+    bdlist = cell_list.to_string()
+    import os
+    src_dir = os.path.dirname(__file__)
+    os.chdir(src_dir)
+    subprocess.Popen(f"python wx_display_main.py --bdlist {bdlist}", shell=True)     
+    #tur.done()
+    root.mainloop()
+    
 def done():
     mainloop()
 
-'''    
-### special functions
-def set_blank(blank_char):
-    """ Set blank replacement
-    :blank_char: blank replacement char
-    :returns: previous blank char
-    """
-    ret = bd.set_blank(blank_char)
-    return ret
+if __name__ ==  '__main__':
+    colors = ["red","orange","yellow","green"]
 
-"""
-Screen size function to facilitate general
-possitioning
-"""
-def x_min():
-    return bd.x_min
-
-def x_max():
-    return bd.x_max
-def y_min():
-    return bd.y_min
-
-def y_max():
-    return bd.y_max
-'''
-
-
-'''    
-if __name__ == '__main__':
-    import wx
-    app = wx.App()
+    for colr in colors:
+        width(40)
+        color(colr)
+        forward(200)
+        right(90)
+    done()		    # Complete drawings
     
-    from wx_turtle_braille_link import *
-    #from turtle_braille import *    # Get graphics stuff
-    #tum.points_window = True
-    #tum.print_cells = True
-    w,h = screensize()
-    print(f"w:{w}, h:{h}")
-    set_blank(" ")
-    penup()
-    goto(-w/2+50,h/2-100)
-    pendown()
-    width(40)
-    color("green")
-    pendown()
-    forward(200)
-    right(90)
-    forward(200)
-    right(90)
-    forward(200)
-    right(90)
-    forward(200)
-    penup()
-    done()    
-'''            

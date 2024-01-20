@@ -117,6 +117,7 @@ if not src1_in_path or not src2_in_path:
         print(f"Adding import path: {dir2_check}")
         sys.path.append(dir2_check)    
 
+from select_trace import SlTrace
 from wx_turtle_braille import *   
 #SlTrace.lg("turtle braille support")
-#SlTrace.clearFlags()
+SlTrace.clearFlags()
