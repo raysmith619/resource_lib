@@ -30,6 +30,7 @@ class TkCanvasGrid(tk.Canvas):
         :base: tk.Canvas, if present, from which we get
                 canvas item contents
                 default: create tk.Canvas(master)
+        :g_xmin,g_max: if None g_xmin = -width/2, g_x_max = +width/2
         :g_xmin: Grid minimum canvas coordinate value default: left edge
         :g_xmax: Grid maximum canvas coordinate value default: right edge
         :g_ymin: Grid minimum canvas coordinate value default: top edge
@@ -49,6 +50,9 @@ class TkCanvasGrid(tk.Canvas):
         self.base = base
         self.item_samples = {}      # For incremental presentation  via show_item
         self.n_cells_created = 0    # Number of cells in recent window
+        if g_xmin is None and g_xmax is None:
+            g_xmin = -base.winfo_width()/2
+            g_xmax = -g_xmin 
         if g_xmin is None:
             g_xmin = 0
         self.g_xmin = g_xmin
@@ -56,6 +60,10 @@ class TkCanvasGrid(tk.Canvas):
             g_xmax = g_xmin + base.winfo_width()
         self.g_xmax = g_xmax
         self.g_width = g_xmax-g_xmin
+        
+        if g_ymin is None and g_ymax is None:
+            g_ymin = -base.winfo_height()/2
+            g_ymax = -g_ymin 
         if g_ymin is None:
             g_ymin = 0
         self.g_ymin = g_ymin
@@ -67,8 +75,6 @@ class TkCanvasGrid(tk.Canvas):
         self.g_ncols = g_ncols
         self.grid_tag = None        # Most recent grid paint tag
         self.set_grid_lims()
-        if not have_base:
-            self.master.withdraw()
         
     def get_grid_lims(self, xmin=None, xmax=None, ymin=None, ymax=None,
                       ncols=None, nrows=None):
