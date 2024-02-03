@@ -141,7 +141,7 @@ class CanvasPanel(wx.Panel):
         scale_1to1 = True
         if scale_1to1:
             sfx = sfy = 1.0
-            SlTrace.lg(f"Force sfx:{sfx} sfy:{sfy}")
+            SlTrace.lg(f"Force sfx:{sfx} sfy:{sfy}", "force_scale")
         x0,y0 = pts[0]
         for i in range(len(pts)):
             x,y = pts[i]
@@ -549,13 +549,27 @@ class CanvasPanel(wx.Panel):
         :proc: mouse processing function type proc(x,y)
         """
         self.mouse_b1_motion_proc = proc
+
+    def redraw(self):
+        """ Redraw screen
+        """
+        self.Refresh()
+        self.Update()
+        self.Show()
     
 
-    def update(self, x1=None, y1=None, x2=None, y2=None):
+    def update(self, x1=None, y1=None, x2=None, y2=None,
+               full=False):
         """ Update display
             If x1,...y2 are present - limit update to rectangle
             If x1 is a wx.Rect use Rect
+            :full: force full update
         """
+        if full:
+            self.grid_panel.Refresh()
+            self.grid_panel.Update()
+            return
+            
         if x1 is not None or x2 is not None:
             if isinstance(x1, wx.Rect):
                 self.grid_panel.RefreshRect(x1)

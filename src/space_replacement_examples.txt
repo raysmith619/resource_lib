@@ -1,0 +1,34 @@
+space_replacement_examples.txt
+Figure from wx_audio_draw_window.py output
+
+AudioDrawWindow Self-Test
+,,,,,,o
+,,,,,ovr
+,,,,o,v,r
+,,,o,,r,,r
+,,b,,,r,,,r
+,,,b,,o,,g
+,,,,b,o,g
+,,,,,bog
+,,,,,,ggiiivvv
+
+AudioDrawWindow Self-Test
+------o
+-----ovr
+----o-v-r
+---o--r--r
+--b---r---r
+---b--o--g
+----b-o-g
+-----bog
+------ggiiivvv
+
+______o
+_____ovr
+____o_v_r
+___o__r__r
+__b___r___r
+___b__o__g
+____b_o_g
+_____bog
+______ggiiivvv

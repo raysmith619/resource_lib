@@ -15,6 +15,12 @@
             ],
             "jinja": true,
             "justMyCode": true
+        },
+        {
+            "name": "MySubProcess",
+            "type": "python",
+            "request": "attach",
+            "processId": "${command:pickProcess}"
         }
     ]
 }

@@ -6,6 +6,8 @@ import wx
 
 from select_trace import SlTrace
 from wx_braille_display import BrailleDisplay
+from wx_tk_rem_access import TkRemUser
+
 if __name__ == '__main__':      # Required because we use multiprocessing
                                 # in some modules e.g. pyttsx_proc.py
                                 #                      
@@ -18,8 +20,9 @@ if __name__ == '__main__':      # Required because we use multiprocessing
     #parser.add_argument('--ncol=', type=int, dest='ncol', default=ncol)
     args = parser.parse_args()             # or die "Illegal options"
     SlTrace.lg(f"args: {args}\n")
+    tkr = TkRemUser()
     app = wx.App()
-    bd = BrailleDisplay(display_list=args.bdlist)
+    bd = BrailleDisplay(tkr,display_list=args.bdlist)
     bd.display()
     app.MainLoop()
 

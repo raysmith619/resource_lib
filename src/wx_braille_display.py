@@ -24,14 +24,15 @@ from tk_canvas_grid import TkCanvasGrid
 from magnify_info import MagnifyInfo
 from wx_audio_draw_window import AudioDrawWindow
 from braille_error import BrailleError
-from wx_braille_cell_list import BrailleCellList
+from wx_tk_rem_access import TkRemUser
         
 class BrailleDisplay:
     """ Create and display graphics using Braille
     """
     
 
-    def __init__(self, title="Braille Display",
+    def __init__(self, tkr=None,
+                 title="Braille Display",
                  display_list=None,
                  win_width=800, win_height=800,
                  grid_width=40, grid_height=25,
@@ -51,6 +52,7 @@ class BrailleDisplay:
                  silent=False,
                  ):
         """ Setup display
+        :tkr: Access to tkinter from remote user
         :title: display screen title
         :display_list: list of (ix,iy,color) to display
             default: none
@@ -99,6 +101,10 @@ class BrailleDisplay:
         :silent: starting val default: False
         """
         self.display_depth = 0
+        if tkr is None:
+            SlTrace.lg("No link to remote")
+            tkr =  TkRemUser(remote=False)
+        self.tkr = tkr
         self.display_list = display_list
         if title is None:
             title = "Braille Display"
@@ -131,7 +137,13 @@ class BrailleDisplay:
         self.tk_items = tk_items
         self.canvas_items = canvas_items
         self.app = wx.App()
-        
+    
+    
+    def MainLoop(self):
+        """ Just an inclosed access to wx loop
+        """
+        self.app.MainLoop()
+     
     def color_str(self, color):
         """ convert turtle colors arg(s) to color string
         :color: turtle color arg
@@ -200,7 +212,10 @@ class BrailleDisplay:
             tib += " Braille Window"
 
         self.speaker_control = SpeakerControlLocal()   # local access to speech engine
-        self.adw = AudioDrawWindow(app=self.app,
+        self.adw = AudioDrawWindow(
+                            self.tkr,
+                            display_list=self.display_list,
+                            app=self.app,
                             title=title,
                             speaker_control=self.speaker_control,
                             iy0_is_top=True,
@@ -208,19 +223,6 @@ class BrailleDisplay:
                             ###x_min=self.x_min, y_min=self.y_min,
                             ###x_max=self.x_max, y_max=self.y_max,
                             silent=silent)
-        if self.display_list is not None:
-            display_list = self.display_list
-            if type(display_list) == str:
-                display_list = BrailleCellList().get_from_string(display_list)
-            display_cells = {}
-            for dc in display_list :
-                ix,iy,color = dc.ix,dc.iy,dc._color
-                dcell = BrailleCell(ix=ix, iy=iy,
-                                    color=color)
-                display_cells[(ix,iy)] = dcell
-            self.adw.draw_cells(cells=display_cells)
-            self.adw.key_goto()      # Might as well go to figure
-            self.adw.find_edges()
 
         
         if braille_print:
@@ -270,11 +272,44 @@ class BrailleDisplay:
         
 if __name__ == "__main__":
     import argparse
-
+    from braille_cell_text import BrailleCellText
+    from wx_braille_cell_list import BrailleCellList
+    
+    spokes_picture="""
+    ,,,,,,,,,,,iii
+    ,,,,,,,,,,iiiii
+    ,,,,,,,,,,iiiii,,,,,,vvv
+    ,,,,,,,,,,iiiii,,,,,vvvvv
+    ,,,,,,,,,,,,ii,,,,,,vvvvv
+    ,,,bb,,,,,,,,i,,,,,,vvvvv
+    ,,bbbbb,,,,,,i,,,,,vv
+    ,,bbbbb,,,,,,i,,,,vv
+    ,,bbbbbbb,,,,ii,,vv
+    ,,,,,,,,bbbb,,i,vv,,,,,,,,rr
+    ,,,,,,,,,,bbbbivv,,,,,,,,rrrr
+    ,,,,,,,,,,,,,bvvrrrrrrrrrrrrr
+    ,,,,,,,,,,ggggyoo,,,,,,,,rrrr
+    ,,,,,,,,gggg,,y,oo,,,,,,,,rr
+    ,,ggggggg,,,,yy,,oo
+    ,,ggggg,,,,,,y,,,,oo
+    ,,ggggg,,,,,,y,,,,,oo
+    ,,,gg,,,,,,,,y,,,,,,ooooo
+    ,,,,,,,,,,,,yy,,,,,,ooooo
+    ,,,,,,,,,,yyyyy,,,,,ooooo
+    ,,,,,,,,,,yyyyy,,,,,,ooo
+    ,,,,,,,,,,yyyyy
+    ,,,,,,,,,,,yyy
+    """
+    spokes_bct = BrailleCellText(text=spokes_picture)
+    spokes_cells = spokes_bct.get_cells()
+    spokes_bcs = BrailleCellList(spokes_cells).to_string()
+    
     parser = argparse.ArgumentParser()
     args = parser.parse_args()             # or die "Illegal options"
     SlTrace.lg(f"args: {args}\n")
 
-    bd = BrailleDisplay()
-    
+
+    bd = BrailleDisplay(display_list=spokes_bcs)
+    bd.display(title="Selftest")
+    bd.MainLoop()
 

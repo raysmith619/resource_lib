@@ -19,6 +19,7 @@ from grid_fill_gobble import GridFillGobble
 from magnify_info import MagnifySelect
 from wx_adw_menus import AdwMenus
 from wx_adw_scanner import AdwScanner
+from wx_key_cmd_proc import KeyCmdProc
 
 class AdwFrontEnd:
 
@@ -65,6 +66,7 @@ class AdwFrontEnd:
         :menu_str: initial menu command string default: none
         """
         self.adw = adw
+        self.key_cmd_proc = KeyCmdProc(adw, key_press=self.key_press)
         canv_pan = self.canv_pan = adw.canv_pan   # set fte link
         canv_pan.set_mouse_left_down_proc(self.on_button_1)
         canv_pan.set_mouse_motion_proc(self.motion)
@@ -110,7 +112,6 @@ class AdwFrontEnd:
         self._cursor_item = None    # position cursor tag
         self.set_color(color)
         self.setup_beep()
-
         # direction for digit pad
         y_up = -1
         y_down = 1
@@ -253,7 +254,7 @@ class AdwFrontEnd:
         """ View selected region, creating a new AudioDrawWindow
         """
         mag_info = self.get_mag_info()
-        if mag_info is None or mag_info.base_canvas is None:
+        if mag_info is None is None:
             SlTrace.lg("Magnification is not enabled")
             return
 
@@ -269,9 +270,9 @@ class AdwFrontEnd:
             display_region.nrows = self.adw.grid_height
 
         SlTrace.lg(f"view select: {mag_info}")
-        adw = mag_info.base_canvas.create_magnification_window(
+        adw = self.create_magnification_window(
             self.adw.mag_info)
-        n_cells_created = self.adw.mag_info.base_canvas.n_cells_created
+        n_cells_created = self.n_cells_created
         if adw is None:
             self.speak_text("No magnification created because"
                             f" it would containe {n_cells_created} cell"
@@ -461,10 +462,7 @@ class AdwFrontEnd:
         for sym in syms:
             SlTrace.lg(f"press: {sym}")
             self.wait_on_output()
-            self.key_press(sym)
-            if slow_key_str:
-                time.sleep(.5)
-                self.speak_text_stop()
+            self.key_cmd_proc.put_key_cmd(sym)
 
 
 
@@ -1584,10 +1582,10 @@ class AdwFrontEnd:
 
 
 
-    def update(self):
+    def update(self, full=False):
         """ Update display
         """
-        self.adw.update()
+        self.adw.update(full=full)
 
     def update_idle(self):
         """ Update pending
@@ -1786,6 +1784,18 @@ class AdwFrontEnd:
                        Links to adw
     ############################################################
     """
+
+    def redraw(self):
+        """ Redraw screen
+        """
+        self.adw.redraw()
+                   
+    def create_magnification_window(self, mag_info):
+        """ Create magnification
+        :mag_info: MagnificationInfo containing info
+        :returns: instance of AudioDrawWinfow or None if none was created
+        """
+        return self.adw.create_magnification_window(mag_info)
 
     def clear_cells(self):
         self.adw.clear_cells()

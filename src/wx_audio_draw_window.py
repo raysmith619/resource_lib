@@ -22,9 +22,13 @@ from magnify_info import MagnifyInfo, MagnifyDisplayRegion
 from wx_adw_front_end import AdwFrontEnd
 from wx_adw_menus import AdwMenus
 from wx_canvas_panel import CanvasPanel, wx_Point
+from wx_braille_cell_list import BrailleCellList
+from wx_tk_rem_access import TkRemUser
 
 class AudioDrawWindow(wx.Frame):
     def __init__(self,
+        tkr=None,
+        display_list=None,
         app=None,
         title=None, speaker_control=None,
         win_width=800, win_height=800,
@@ -51,6 +55,7 @@ class AudioDrawWindow(wx.Frame):
                  ):
         #frame = CanvasFrame(title=mytitle, size=wx.Size(width,height))
         """ Setup audio window
+        :tkr: Access to remote tk information default: simulated access
         :app: wx application object
             default: create object
         :speaker_control: (SpeakerControlLocal) local access to centralized speech making
@@ -115,6 +120,10 @@ class AudioDrawWindow(wx.Frame):
         super().__init__(None, title=title,
                          size=wx.Size(win_width, win_height))
         self.cells = {}         # Dictionary of cells by (ix,iy)
+        if tkr is None:
+            tkr = TkRemUser(simulated=True)
+        self.tkr = tkr
+        self.display_list = display_list
         if title is None:
             title = "AudioDrawWindow"
         self.title = title
@@ -194,8 +203,26 @@ class AudioDrawWindow(wx.Frame):
         self.set_look_dist(look_dist)
         #self.pos_check()            # Startup possition check loop
         self.fte.do_complete(menu_str=menu_str, key_str=key_str)
-        self.update()     # Make visible
+        self.setup_cells()
+        self.update(full=True)     # Make visible
 
+    def setup_cells(self):
+        """ Setup/display cells if any
+        """
+        if self.display_list is not None:
+            display_list = self.display_list
+            if type(display_list) == str:
+                display_list = BrailleCellList().get_from_string(display_list)
+            display_cells = {}
+            for dc in display_list :
+                ix,iy,color = dc.ix,dc.iy,dc._color
+                dcell = BrailleCell(ix=ix, iy=iy,
+                                    color=color)
+                display_cells[(ix,iy)] = dcell
+            self.draw_cells(cells=display_cells)
+            self.key_goto()      # Might as well go to figure
+            self.find_edges()
+        
 
     def exit(self, rc=None):
         """ Main exit if creating magnifications
@@ -1154,11 +1181,11 @@ class AudioDrawWindow(wx.Frame):
         self.cells[cell] = bc
         return bc
 
-    def update(self, x1=None, y1=None, x2=None, y2=None):
+    def update(self, x1=None, y1=None, x2=None, y2=None, full=False):
         """ Update display
             If x1,...y2 are present - limit update to rectangle
         """
-        self.canv_pan.update(x1=x1, y1=y1, x2=x2, y2=y2)
+        self.canv_pan.update(x1=x1, y1=y1, x2=x2, y2=y2, full=full)
 
     def MainLoop(self):
         self.app.MainLoop()
@@ -1167,6 +1194,152 @@ class AudioDrawWindow(wx.Frame):
         """ Update pending
         """
         self.Refresh()
+
+    """ Creation/Modification Code
+    """
+
+    def create_audio_window(self, title=None,
+                 xmin=None, xmax=None, ymin=None, ymax=None,
+                 nrows=None, ncols=None, mag_info=None, pgmExit=None,
+                 require_cells=False,
+                 silent=False):
+        """ Create new AudioDrawWindow to navigate canvas from the section
+        :title: optinal title
+                region (xmin,ymin, xmax,ymax) with nrows, ncols
+        :speaker_control: (SpeakerControlLocal) local access to centralized speech facility
+        :xmin,xmax,ymin,ymax,: see get_grid_lims()
+                        default: CanvasGrid instance values
+        :nrows,ncols: grid size for scanning
+                default: if mag_info present: mag_info.mag_nrows, .mag_ncols
+        :mag_info: magnification info (MagnifyInfo)
+                    default: None
+        :pgm_exit: function to call upon exit request
+        :require_cells: Require at least some display cells to 
+                    create window
+                    default: False - allow empty picture
+        :silent: quiet mode default: False
+        :returns: AudioDrawWindow instance or None if no cells
+                Stores number of cells found in self.n_cells_created
+        """
+        if title is None:
+            title = self.title
+        self.title = title
+        if pgmExit is None:
+            pgmExit = self.exit 
+
+        if mag_info is None:
+            mag_info = self.create_magnify_info(x_min=xmin, y_min=ymin,
+                                          x_max=xmax, y_max=ymax,
+                                          ncols=ncols, nrows=nrows)
+            
+        if nrows is None:
+            nrows = mag_info.mag_nrows
+        if ncols is None:
+            ncols = mag_info.mag_ncols
+        braille_cells = self.get_braille_cells(x_min=xmin, y_min=ymin,
+                                          x_max=xmax, y_max=ymax,
+                                          ncols=ncols, nrows=nrows)    
+        self.n_cells_created = len(braille_cells)
+        if self.n_cells_created == 0:
+            if require_cells:
+                return None
+                
+        adw = AudioDrawWindow(tkr=self.tkr,
+                              app=self.app,
+                              title=title,
+                              speaker_control=self.speaker_control,
+                              iy0_is_top=True, mag_info=mag_info,
+                              pgmExit=pgmExit,
+                              x_min=self.get_x_min(),
+                              y_min=self.get_y_min(),
+                              silent=silent)
+        adw.draw_cells(cells=braille_cells)
+        adw.key_goto()      # Might as well go to figure
+        self.adw.audio_wins.append(adw)     # Store list for access
+        return adw
+
+
+    def create_magnify_info(self, x_min=None,y_min=None,
+                    x_max=None,y_max=None,
+                    ncols=None, nrows=None):
+        """ Create a MagnifyInfo, using our values as defaults
+        :x_min: minimum x value - left side 
+        :y_min: minimum y value - top side
+        :x_max: maximum x value - right side
+        :y_max: maximum  y value - bottom side
+        :ncols: number of grid columns
+        :nrows: number of grid rows
+        """
+        if x_min is None:
+            x_min = self.g_xmin
+        if y_min is None:
+            y_min = self.g_ymin
+        if x_max is None:
+            x_max = self.g_xmax
+        if y_max is None:
+            y_max = self.g_ymax
+        if ncols is None:
+            ncols = self.g_ncols
+        if nrows is None:
+            nrows = self.g_nrows
+        
+        top_region = MagnifyDisplayRegion(x_min=x_min, y_min=y_min,
+                                          x_max=x_max, y_max=y_max,
+                                          ncols=ncols, nrows=nrows)
+        mag_info = MagnifyInfo(top_region=top_region,
+                               base_canvas=self)
+        return mag_info
+                   
+    def create_magnification_window(self, mag_info):
+        """ Create magnification
+        :mag_info: MagnificationInfo containing info
+        :returns: instance of AudioDrawWinfow or None if none was created
+        """
+        select = mag_info.select
+        disp_region = mag_info.display_region
+        disp_x_cell = (disp_region.x_max-disp_region.x_min)/disp_region.ncols
+        disp_y_cell = (disp_region.y_max-disp_region.y_min)/disp_region.nrows
+        xmin = select.ix_min*disp_x_cell + disp_region.x_min
+        ymin = select.iy_min*disp_y_cell + disp_region.y_min
+        xmax = (select.ix_max+1)*disp_x_cell + disp_region.x_min
+        ymax = (select.iy_max+1)*disp_y_cell + disp_region.y_min
+        SlTrace.lg(f"create_magnification_window:"
+                   f" xmin:{xmin} ymin:{ymin} xmax:{xmax} ymax:{ymax}"
+                   f" nrows:{disp_region.nrows} ncols:{disp_region.ncols}")
+        child_info = mag_info.make_child()
+        child_info.display_region = MagnifyDisplayRegion(x_min=xmin, x_max=xmax,
+                                        y_min=ymin, y_max=ymax)
+        child_info.description = (f"region minimum x: {xmin:.0f}, minimum y: {ymin:.0f},"
+                                  + f" maximum x: {xmax:.0f}, maximum y: {ymax:.0f}")
+        adw = self.create_audio_window(xmin=xmin, xmax=xmax,
+                                       ymin=ymin, ymax=ymax,
+                                       nrows=disp_region.nrows,
+                                       ncols=disp_region.ncols,
+                                       mag_info=child_info,
+                                       require_cells=True)            
+        return adw 
+
+    def get_braille_cells(self, 
+                        x_min=None, y_min=None,
+                        x_max=None, y_max=None,
+                        ncols=None, nrows=None):
+        """ Get braille cells from tk canvas
+        """
+        braille_cells = self.tkr.get_braille_cells(
+                        x_min=x_min, y_min=y_min,
+                        x_max=x_max, y_max=y_max,
+                        ncols=ncols, nrows=nrows)
+        return braille_cells
+
+
+
+    """
+    Links to canvas panel - most are direct
+    """
+    def redraw(self):
+        """ Redraw screen
+        """
+        self.canv_pan.redraw()
 
     """
          Links to front end functions
@@ -1347,14 +1520,17 @@ if __name__ == "__main__":
                 ";c;g;6;6;c;i;6;6;6;c;v;6;6;6"
                 ";w"
             )
-    aw = AudioDrawWindow(title="AudioDrawWindow Self-Test",
+    tkr = TkRemUser(simulated=True)
+    aw = AudioDrawWindow(tkr=tkr,
+                         title="AudioDrawWindow Self-Test",
                          app=app,
                          menu_str=menu_str,
-                         key_str=key_str)
-
+                         key_str=key_str,
+                         silent=False)
+    '''
     aw.fte.do_menu_str("n:nu;d:s")
     aw.fte.do_key_str("u")
+    '''
     
     aw.MainLoop()
-    
     

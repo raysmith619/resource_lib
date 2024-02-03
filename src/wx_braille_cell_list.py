@@ -33,7 +33,7 @@ class BrailleCellList:
             elif isinstance(cells_or_string, dict):
                 for ixy in cells_or_string:
                     tp = cells_or_string[ixy]
-                    self.cells[ixy] = self.tuple_to_braille_cell(tp)
+                    self.cells.append(self.tuple_to_braille_cell(tp))
             else:
                 raise BrailleError("Unsupported BrailleCellList init"
                                 f" type:{type(cells_or_string)})")

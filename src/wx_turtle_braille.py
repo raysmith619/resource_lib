@@ -23,6 +23,7 @@ from turtle import *
 import tkinter as tk
 
 from pipe_to_queue import PipeToQueue
+from wx_tk_rem_access import TkRemHost
 from select_trace import SlTrace
 from tk_canvas_grid import TkCanvasGrid
 from wx_braille_cell_list import BrailleCellList
@@ -49,8 +50,7 @@ def mainloop():
                     stdout=subprocess.PIPE,
                     cwd=src_dir,
                     shell=True)
-
-    sto = PipeToQueue(pdisplay.stdout)
+    tkrh =TkRemHost(canvas=cg, stdin=pdisplay.stdin, stdout=pdisplay.stdout)
              
     def check_display():
         """ Check if display process exited
@@ -59,14 +59,10 @@ def mainloop():
         rc = pdisplay.poll()
         if rc != None:
             SlTrace.lg(f"Subprocess exited with rc:{rc}")
-            sto.stop()      # stop reading stdout pipe
             SlTrace.onexit()    # Close log
             os._exit(0)     # Stop all processes
             return
-        
-        output = sto.get()
-        if output != "":
-            SlTrace.lg(output)
+        tkrh.cmd_proc()
         root.after(10, check_display)
         
     check_display()
