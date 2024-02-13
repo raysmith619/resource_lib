@@ -23,7 +23,7 @@ from wx_adw_front_end import AdwFrontEnd
 from wx_adw_menus import AdwMenus
 from wx_canvas_panel import CanvasPanel, wx_Point
 from wx_braille_cell_list import BrailleCellList
-from wx_tk_rem_host import TkRemUser
+from wx_tk_rem_user import TkRemUser
 
 class AudioDrawWindow(wx.Frame):
     def __init__(self,
@@ -987,9 +987,6 @@ class AudioDrawWindow(wx.Frame):
         """ Get cell specs from remote tk canvas
         :returns: list of cell specs (ix,iy,color)
         """        
-        if self.simulated:
-            return self.simulated_get()
-        
         return self.tkr.get_cell_specs(
                         x_min=x_min, y_min=y_min,
                         x_max=x_max, y_max=y_max,

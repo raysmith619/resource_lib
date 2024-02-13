@@ -21,13 +21,13 @@ class TkRemHost:
     
     def __init__(self, canvas_grid, host='', port=50007,
                  cmd_time_ms= 500,
-                 max_recv=8192):
+                 max_recv=2**16):
         """ Setup cmd interface
         :canvas_grid: tkinter CanvasGrid
         :host: name/id default: '' this machine
         :port: port number default: 50007
         :max_recv: maximum data received length in bytes
-                    default: 8192
+                    default: 2**16
         :cmd_time_ms: maximum between cmd check in seconds
                     default: .5 sec
         """
@@ -66,7 +66,7 @@ class TkRemHost:
                                 'get_cell_specs'
                     
         """
-        SlTrace.lg(f"data_proc: {data} queue.empty: {self.cmd_queue.empty()}")
+        SlTrace.lg(f"data_proc: {data} queue.empty: {self.cmd_queue.empty()}", "data_proc")
         if data is None:
             if not self.cmd_queue.empty():
                 data = self.cmd_queue.get()
@@ -89,6 +89,7 @@ class TkRemHost:
                 raise NameError(f"Unrecognized cmd: {cmd_name} in {cmd_dt}")
         
             ret_dt['ret_val'] = ret
+            SlTrace.lg(f"ret_dt:{ret_dt}")
             ret_data = pickle.dumps(ret_dt)
             self.connection.send(ret_data)
         if not self.cmd_queue.empty():
@@ -105,7 +106,7 @@ class TkRemHost:
                     else None
         """
         ret = None      # returned if attr_name not present
-        if hasattr(cmd_dt, attr_name):
+        if attr_name in cmd_dt:
             ret = cmd_dt[attr_name]
         return ret
 

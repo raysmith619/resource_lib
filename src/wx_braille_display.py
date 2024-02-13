@@ -24,7 +24,7 @@ from tk_canvas_grid import TkCanvasGrid
 from magnify_info import MagnifyInfo
 from wx_audio_draw_window import AudioDrawWindow
 from braille_error import BrailleError
-from wx_tk_rem_host import TkRemUser
+from wx_tk_rem_user import TkRemUser
         
 class BrailleDisplay:
     """ Create and display graphics using Braille

@@ -6,7 +6,7 @@ import wx
 
 from select_trace import SlTrace
 from wx_braille_display import BrailleDisplay
-from wx_tk_rem_host import TkRemUser
+from wx_tk_rem_user import TkRemUser
 
 if __name__ == '__main__':      # Required because we use multiprocessing
                                 # in some modules e.g. pyttsx_proc.py

@@ -1,4 +1,4 @@
-#wx_turtlel_braille.py       02Nov2023  crs from turtle_braille.property
+#wx_turtle_braille.py       02Nov2023  crs from turtle_braille.property
 #                           27Feb2023  crs from turtle_braille.py
 #                           21Feb2023  crs  From turtle_braille.py
 #                           16Apr2022  crs  Author
@@ -25,7 +25,7 @@ import tkinter as tk
 from pipe_to_queue import PipeToQueue
 from wx_tk_rem_host import TkRemHost
 from select_trace import SlTrace
-from tk_canvas_grid import TkCanvasGrid
+from wx_canvas_grid import CanvasGrid
 from wx_braille_cell_list import BrailleCellList
 """
 External functions 
@@ -37,20 +37,17 @@ def mainloop():
     root = tk.Tk()
     
     canvas = getcanvas()
-    cg = TkCanvasGrid(root,base=canvas)
+    cg = CanvasGrid(root,base=canvas)
     root.withdraw()
-    cells = cg.get_display_cells()  # gets (ix,iy,color)*
+    cells = cg.get_cell_specs()  # gets (ix,iy,color)*
     cell_list = BrailleCellList(cells)  # converts either to BrailleCell
     bdlist = cell_list.to_string()
-    import os
+    tkh = TkRemHost(canvas_grid=cg)
     src_dir = os.path.dirname(__file__)
     pdisplay = subprocess.Popen(f"python wx_display_main.py --bdlist {bdlist}"
                                  " --subprocess",
-                    #stdin=subprocess.PIPE,
-                    stdout=subprocess.PIPE,
                     cwd=src_dir,
                     shell=True)
-    tkrh =TkRemHost(canvas_grid=cg)
              
     def check_display():
         """ Check if display process exited

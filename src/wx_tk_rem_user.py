@@ -14,12 +14,12 @@ class TkRemUser:
     Using socket client
     """
     def __init__(self, host='localhost', port=50007,
-                 max_recv=8192, simulated=False):
+                 max_recv=2**16, simulated=False):
         """ Handle user (wxPython) side of communications
         :host: host address default: localhost - same machine
         :port: port number default: 50007
         :max_recv: maximum data recieved length in bytes
-                    default: 8192
+                    default: 2**16
         :simulated: True: simulate tk input default: False
         """
         SlTrace.lg("TkRemUser() __init__() BEGIN")
@@ -45,7 +45,7 @@ class TkRemUser:
         totalsent = 0
         while totalsent < len(data):
             sent = self.sockobj.send(data)
-            SlTrace.lg(f"sent:{sent} data:{data}")
+            SlTrace.lg(f"sent:{sent} data:{data}", "data")
             if sent == 0:
                 raise RuntimeError("socket connection broken")
             totalsent += sent
@@ -76,6 +76,7 @@ class TkRemUser:
         cmd_data = pickle.dumps(args)
         self.send_cmd_data(cmd_data)
         cmd_resp_data = self.get_resp_data()
+        SlTrace.lg(f"cmd_resp_data: {cmd_resp_data}", "data")
         ret_dt = pickle.loads(cmd_resp_data)
         return ret_dt['ret_val']
     
