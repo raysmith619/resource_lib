@@ -23,11 +23,12 @@ from wx_adw_front_end import AdwFrontEnd
 from wx_adw_menus import AdwMenus
 from wx_canvas_panel import CanvasPanel, wx_Point
 from wx_braille_cell_list import BrailleCellList
-from wx_tk_rem_access import TkRemUser
+from wx_tk_rem_host import TkRemUser
 
 class AudioDrawWindow(wx.Frame):
     def __init__(self,
         tkr=None,
+        canvas_grid=None,
         display_list=None,
         app=None,
         title=None, speaker_control=None,
@@ -58,6 +59,8 @@ class AudioDrawWindow(wx.Frame):
         :tkr: Access to remote tk information default: simulated access
         :app: wx application object
             default: create object
+        :canvas_grid: optional CanvasGrid object to provide initializtion
+                default: None
         :speaker_control: (SpeakerControlLocal) local access to centralized speech making
         :win_width: display window width in pixels
             default: 800
@@ -130,9 +133,6 @@ class AudioDrawWindow(wx.Frame):
         control_prefix = "AudioDraw"
         self.win_width = win_width
         self.win_height = win_height
-        self.grid_width = grid_width
-        self.grid_height = grid_height
-        self.cell_height = win_height/self.grid_height
         self.pgmExit = pgmExit
         if x_min is None:
             x_min = 0
@@ -154,14 +154,30 @@ class AudioDrawWindow(wx.Frame):
 
 
         self._visible = visible
+        if canvas_grid is not None:
+            x_min = canvas_grid.g_xmin
+            y_min = canvas_grid.g_ymin
+            x_max = canvas_grid.g_xmax
+            y_max = canvas_grid.g_ymax
+            ncols = grid_width = canvas_grid.g_ncols
+            nrows = grid_height = canvas_grid.g_nrows
+        else:
+            x_max = x_min + win_width    
+            y_max = y_min + win_height
+            nrows=grid_height
+            ncols=grid_width
+        self.grid_width = grid_width
+        self.grid_height = grid_height
         self.canv_pan = CanvasPanel(self)
         self.fte = AdwFrontEnd(self, title=title, silent=silent, color=color)
         self.canv_pan.set_key_press_proc(self.fte.key_press)
         self.menus = AdwMenus(self.fte, frame=self)
+            
+        self.cell_height = win_height/self.grid_height
         self.set_x_min(x_min)
         self.set_y_min(y_min)
-        self.set_x_max(x_min + win_width)
-        self.set_y_max(y_min + win_height)
+        self.set_x_max(x_max)
+        self.set_y_max(y_max)
         self.set_drawing(drawing)
         self.speak_text(title)
 
@@ -174,8 +190,8 @@ class AudioDrawWindow(wx.Frame):
                 x_min=self.get_x_min(), y_min=self.get_y_min(),
                 x_max=self.get_x_max(),
                 y_max=self.get_y_max(),
-                nrows=self.grid_height,
-                ncols=self.grid_width,
+                nrows=nrows,
+                ncols=ncols,
                 
                 )
             mag_info = MagnifyInfo(top_region=top_region)
@@ -325,7 +341,7 @@ class AudioDrawWindow(wx.Frame):
              
     def draw_cells(self, cells=None, show_points=False):
         """ Display braille cells on canvas
-        :cells: list or dictionary cells to draw
+        :cells: list or dictionary if BrailleCell cells to draw
         :show_points: instead of braille, show sample points
         """
         SlTrace.lg("draw_cells")
@@ -564,7 +580,7 @@ class AudioDrawWindow(wx.Frame):
 
     def get_ix_max(self):
         """ get maximum ix on grid
-        :returns: min ix
+        :returns: max ix
         """
         return self.grid_width-1
 
@@ -943,6 +959,42 @@ class AudioDrawWindow(wx.Frame):
             return self.cells[cell_ixy]
         
         return None
+    
+    def get_braille_cells(self, 
+                        x_min=None, y_min=None,
+                        x_max=None, y_max=None,
+                        ncols=None, nrows=None):
+        """ Get braille cells from remote tk canvas
+        :returns: list of BrailleCell
+        """        
+        
+        specs = self.get_cell_specs(
+                        x_min=x_min, y_min=y_min,
+                        x_max=x_max, y_max=y_max,
+                        ncols=ncols, nrows=ncols)
+
+        braille_cells = []
+        for spec in specs:
+            ix,iy,color = spec
+            bcell = BrailleCell(ix=ix, iy=iy, color=color)
+            braille_cells.append(bcell)
+        return braille_cells
+    
+    def get_cell_specs(self, 
+                        x_min=None, y_min=None,
+                        x_max=None, y_max=None,
+                        ncols=None, nrows=None):
+        """ Get cell specs from remote tk canvas
+        :returns: list of cell specs (ix,iy,color)
+        """        
+        if self.simulated:
+            return self.simulated_get()
+        
+        return self.tkr.get_cell_specs(
+                        x_min=x_min, y_min=y_min,
+                        x_max=x_max, y_max=y_max,
+                        ncols=ncols, nrows=ncols)
+
 
     def set_grid_path(self):
         self.grid_path = GridPath(self)
@@ -1319,17 +1371,6 @@ class AudioDrawWindow(wx.Frame):
                                        require_cells=True)            
         return adw 
 
-    def get_braille_cells(self, 
-                        x_min=None, y_min=None,
-                        x_max=None, y_max=None,
-                        ncols=None, nrows=None):
-        """ Get braille cells from tk canvas
-        """
-        braille_cells = self.tkr.get_braille_cells(
-                        x_min=x_min, y_min=y_min,
-                        x_max=x_max, y_max=y_max,
-                        ncols=ncols, nrows=nrows)
-        return braille_cells
 
 
 

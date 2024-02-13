@@ -13,16 +13,15 @@ The hope is to provide a magnified rendition of a selectable section of a given 
 Provide list of canvas items overlapping a region (display cell rectangle).
 
 """
-import wx
 import sys
 import os
 import copy
+import tkinter as tk
 
 from select_trace import SlTrace
 from braille_error import BrailleError
 from braille_cell import BrailleCell
 from magnify_info import MagnifySelect, MagnifyInfo, MagnifyDisplayRegion
-from wx_audio_draw_window import AudioDrawWindow
 from wx_speaker_control import SpeakerControlLocal
 
 """
@@ -31,16 +30,16 @@ for indirect call of tk.Canvas calls:
     find_overlapping, gettags, itemconfigure, type
 """
 
-class CanvasGrid(Canvas):
+class CanvasGrid(tk.Canvas):
         
     def __init__(self,
+                 master,
                  base=None, title="Base Grid",
-                 app=None, pgmExit=None, speaker_control=None,
+                 pgmExit=None, speaker_control=None,
                  g_xmin=None, g_xmax=None, g_ymin=None, g_ymax=None,
                  g_nrows=25, g_ncols=40,
                  **kwargs):
         """ Set up canvas object with grid
-        :app: wx application default: generate
         :base: tk.Canvas, if present, from which we get
                 canvas item contents
                 default: self
@@ -55,9 +54,8 @@ class CanvasGrid(Canvas):
         :g_nrows: Number of rows default: 25
         :g_ncols: Number of columns default: 40
         """
-        if app is None:
-            app = wx.App()
-        self.app = app
+        if base is None:
+            base = self 
         self.base = base
         self.title = title
         if speaker_control is None:
@@ -68,6 +66,9 @@ class CanvasGrid(Canvas):
         self.item_samples = {}      # For incremental presentation  via show_item
         self.audio_wins = []        # window list for access
         self.n_cells_created = 0    # Number of cells in recent window
+        super(CanvasGrid,self).__init__(master=master, **kwargs)
+        self.pack(expand=True, fill=tk.BOTH)
+        self.master.update()
 
         if g_xmin is None:
             g_xmin = 0
@@ -180,7 +181,9 @@ class CanvasGrid(Canvas):
         if nrows is None:
             nrows = mag_info.mag_nrows
         if ncols is None:
-            ncols = mag_info.mag_ncols    
+            ncols = mag_info.mag_ncols
+        # Could replace most of the following
+        # with self.get_cell_specs(...)    
         ixy_items = self.get_canvas_items(xmin=xmin, xmax=xmax,
                                           ymin=ymin,ymax=ymax,
                                           ncols=ncols,nrows=nrows)
@@ -203,7 +206,7 @@ class CanvasGrid(Canvas):
             if require_cells:
                 return None
                 
-        adw = AudioDrawWindow(app=self.app,
+        adw = AudioDrawWindow(
                               title=title,
                               speaker_control=self.speaker_control,
                               iy0_is_top=True, mag_info=mag_info,
@@ -434,6 +437,27 @@ class CanvasGrid(Canvas):
                     ixy_ids_list.append(((ix,iy), item_infos_over))
         return ixy_ids_list
 
+
+    def get_cell_specs(self,
+                        x_min=None, x_max=None,
+                        y_min=None, y_max=None,
+                        n_cols=None, n_rows=None):
+        """ Get cell specifications (ix,iy,color) from grid
+        :xmin,xmax,ymin,ymax, ncols, nrows: see get_grid_lims()
+                        default: CanvasGrid instance values
+        """
+        ixy_items = self.get_canvas_items(xmin=x_min, xmax=x_max,
+                                          ymin=y_min,ymax=y_max,
+                                          ncols=n_cols,nrows=n_rows)
+        cell_specs = []
+        for ixy_item in ixy_items:
+            (ix,iy), ids = ixy_item
+            color = self.item_to_color(item_ids=ids)
+            if color is not None:
+                cell_spec = (ix, iy, color)
+                cell_specs.append(cell_spec)
+        return cell_specs
+
     def show_canvas(self, title=None, types=None, ex_types=None,
                   tags=None, ex_tags=None, get_color=False,
                   always_list=None,
@@ -656,12 +680,13 @@ if __name__ == "__main__":
     import time
     import tkinter as tk
     import wx
+    from wx_audio_draw_window import AudioDrawWindow
     app = wx.App()
     
     def test1():
         
         root = tk.Tk()
-        cvg = CanvasGrid(base=root, height=800, width=800)
+        cvg = CanvasGrid(root, height=800, width=800)
         for _ in range(2):
             cvg.paint_grid()
             time.sleep(2)
@@ -719,7 +744,7 @@ if __name__ == "__main__":
         cvg.create_rectangle(200,200,300,300, fill="red")
         cvg.create_oval(150,250,350,350, fill="orange", tags="orange_tag")
         SlTrace.lg("Create a AudioDrawWindow")
-        adw1 = cvg.create_audio_window()
+        adw1 = AudioDrawWindow(canvas_grid=cvg)
         SlTrace.lg("After create_audio_window()")
         
         SlTrace.lg("Create a AudioDrawWindow 2")
@@ -727,7 +752,7 @@ if __name__ == "__main__":
         xmax = cvg.g_xmax - cvg.g_width//4
         ymin = cvg.g_ymin + cvg.g_height//4
         ymax = cvg.g_ymax - cvg.g_height//4
-        adw2 = cvg.create_audio_window(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax)
+        adw2 = AudioDrawWindow(canvas_grid=cvg,xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax)
         SlTrace.lg("After create_audio_window() 2")
         
         SlTrace.lg("Create a AudioDrawWindow 2")
@@ -735,7 +760,7 @@ if __name__ == "__main__":
         xmax = xmin+(xmax-xmin)*.7
         ymin = ymin+(ymax-ymin)*.3
         ymax = ymin+(ymax-ymin)*.7
-        adw2 = cvg.create_audio_window(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax)
+        adw2 = AudioDrawWindow(canvas_grid=cvg,xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax)
         SlTrace.lg("After create_audio_window() 2")
         root.mainloop()
             
@@ -751,7 +776,7 @@ if __name__ == "__main__":
         cvg.create_oval(150,250,350,350, fill="orange", tags="orange_tag")
         mag_info = MagnifyInfo(base_canvas=cvg)
         SlTrace.lg("Create a AudioDrawWindow")
-        adw1 = cvg.create_audio_window()
+        adw1 = AudioDrawWindow(canvas_grid=cvg,)
         SlTrace.lg("After create_audio_window()")
 
         root.mainloop()
@@ -770,7 +795,7 @@ if __name__ == "__main__":
         cvg.create_oval(150,250,350,350, fill="orange", tags="orange_tag")
         #mag_info = MagnifyInfo(base_canvas=cvg)
         SlTrace.lg("Create a AudioDrawWindow")
-        cvg.create_audio_window(xmin=0,ymin=0, xmax=width, ymax=height)
+        AudioDrawWindow(canvas_grid=cvg,xmin=0,ymin=0, xmax=width, ymax=height)
         SlTrace.lg("After create_audio_window()")
 
         root.mainloop()
@@ -792,7 +817,7 @@ if __name__ == "__main__":
         cvg = CanvasGrid(mw, base=cv, height=450, width=450)
         
         SlTrace.lg("Create a AudioDrawWindow")
-        adw1 = cvg.create_audio_window(title="test5 from tk.canvas scanning")
+        adw1 = AudioDrawWindow(canvas_grid=cvg, title="test5 from tk.canvas scanning")
         SlTrace.lg("After create_audio_window()")
         
         time.sleep(2)
@@ -801,25 +826,31 @@ if __name__ == "__main__":
         xmax = cvg.g_xmax - cvg.g_width//4
         ymin = cvg.g_ymin + cvg.g_height//4
         ymax = cvg.g_ymax - cvg.g_height//4
-        adw2 = cvg.create_audio_window(title="test5 Magnified window",
-                                       xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax)
+        
+        adw2 = AudioDrawWindow(title="test5 Magnified window",
+                                    x_min=xmin, y_min=ymin,
+                                    grid_width=cvg.g_width//4,
+                                    grid_height=cvg.g_height//4)
         SlTrace.lg("After create_audio_window() 2")
         
         time.sleep(1)
         SlTrace.lg("Create a AudioDrawWindow 3")
         xmin = xmin+(xmax-xmin)*.3
         xmax = xmin+(xmax-xmin)*.7
+        grid_width = xmax-xmin
         ymin = ymin+(ymax-ymin)*.3
         ymax = ymin+(ymax-ymin)*.7
-        adw2 = cvg.create_audio_window(title="test5 Magnified more window",
-                                       xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax)
+        grid_height = abs(ymax-ymin)
+        adw2 = AudioDrawWindow(title="test5 Magnified more window",
+                                       x_min=xmin, grid_width=grid_width,
+                                       y_min=ymin, grid_height=grid_height)
         SlTrace.lg("After create_audio_window() 2")
         root.mainloop()
         
-    test1()
+    #test1()
     #test2()
-    #test3()
-    #test5()
+    test3()
+    test5()
     SlTrace.lg("End of Test")
     sys.exit()
         

@@ -15,6 +15,7 @@ else: multiprocessing process:
 
 import os
 import select
+import multiprocessing as mp
 import sys
 from threading import Thread
 import subprocess
@@ -31,47 +32,41 @@ from wx_braille_cell_list import BrailleCellList
 External functions 
 Some day may model after turtle's _make_global_funcs
 """
-
-
+wx_proc_fun_p = None
 def mainloop():
-    root = tk.Tk()
+    from wx_braille_display import BrailleDisplay
     
+    root = tk.Tk()
     canvas = getcanvas()
     cg = TkCanvasGrid(root,base=canvas)
     root.withdraw()
     cells = cg.get_display_cells()  # gets (ix,iy,color)*
     cell_list = BrailleCellList(cells)  # converts either to BrailleCell
     bdlist = cell_list.to_string()
-    import os
-    src_dir = os.path.dirname(__file__)
-    pdisplay = subprocess.Popen(f"python wx_display_main.py --bdlist {bdlist}"
-                                 " --subprocess",
-                    #stdin=subprocess.PIPE,
-                    stdout=subprocess.PIPE,
-                    cwd=src_dir,
-                    shell=True)
-    tkrh =TkRemHost(canvas_grid=cg)
-             
-    def check_display():
-        """ Check if display process exited
-        Recheck after delay
-        """
-        rc = pdisplay.poll()
-        if rc != None:
-            SlTrace.lg(f"Subprocess exited with rc:{rc}")
-            SlTrace.onexit()    # Close log
-            os._exit(0)     # Stop all processes
-            return
-        root.after(10, check_display)
-        
-    check_display()
-    root.mainloop()
-    sys.exit(0)
+    global bd
+    bd = BrailleDisplay(display_list=bdlist)
+    
+    #
+    # wxPython process's function
+    #
+    global wx_proc_fun_p
+    def wx_proc_fun():
+        import wx
+        app = wx.App()
+        bd.display()
+        app.MainLoop()
+
+    if __name__ ==  '__main__':
+        wx_proc_fun_p  = wx_proc_fun    
+        wx_process = mp.Process(target=wx_proc_fun_p)
+        wx_process.start()
+        root.mainloop()
     
 def done():
     mainloop()
 
 if __name__ ==  '__main__':
+    mp.freeze_support()
     colors = ["red","orange","yellow","green"]
 
     for colr in colors:

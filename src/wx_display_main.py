@@ -6,7 +6,7 @@ import wx
 
 from select_trace import SlTrace
 from wx_braille_display import BrailleDisplay
-from wx_tk_rem_access import TkRemUser
+from wx_tk_rem_host import TkRemUser
 
 if __name__ == '__main__':      # Required because we use multiprocessing
                                 # in some modules e.g. pyttsx_proc.py
@@ -24,5 +24,6 @@ if __name__ == '__main__':      # Required because we use multiprocessing
     app = wx.App()
     bd = BrailleDisplay(tkr,display_list=args.bdlist)
     bd.display()
+    SlTrace.lg("wx_display_main.py after bd.display")
     app.MainLoop()
 
