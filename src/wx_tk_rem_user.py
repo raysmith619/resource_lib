@@ -28,6 +28,8 @@ class TkRemUser:
         self.max_recv = max_recv
         self.simulated = simulated
         SlTrace.lg("TkRemUser() __init__()")
+        if simulated:
+            self.make_simulated()
     
     def send_cmd_data(self, data):
         """ Send command(request) to host
@@ -67,18 +69,65 @@ class TkRemUser:
         :returns: list of cell specs (ix,iy,color)
         """        
         if self.simulated:
-            return self.simulated_get()
+            return self.get_cell_specs_simulated(
+                        x_min=x_min, y_min=y_min,
+                        x_max=x_max, y_max=y_max,
+                        ncols=ncols, nrows=nrows)
         
         args = locals()
-        args['self'] = None
+        del(args['self'])
         args['cmd_name'] = 'get_cell_specs'
-        SlTrace.lg(f"args:{args}")
+        SlTrace.lg(f"USER: args:{args}")
         cmd_data = pickle.dumps(args)
         self.send_cmd_data(cmd_data)
         cmd_resp_data = self.get_resp_data()
-        SlTrace.lg(f"cmd_resp_data: {cmd_resp_data}", "data")
+        SlTrace.lg(f"USER: cmd_resp_data: {cmd_resp_data}", "data")
         ret_dt = pickle.loads(cmd_resp_data)
+        SlTrace.lg(f"USER: ret_dt: {ret_dt}")
         return ret_dt['ret_val']
+    
+    def get_cell_specs_simulated(self, 
+                        x_min=None, y_min=None,
+                        x_max=None, y_max=None,
+                        ncols=None, nrows=None):
+        """ Get cell specs from remote tk canvas
+        :returns: list of cell specs (ix,iy,color)
+        """        
+        return self.sim_cg.get_cell_specs(
+                    x_min=x_min, y_min=y_min,
+                    x_max=x_max, y_max=y_max,
+                    n_cols=ncols, n_rows=nrows)
+    
+    def get_canvas_lims(self):
+        """ Get canvas limits
+        :returns: internal (xmin, xmax, ymin, ymax)
+        """
+        if self.simulated:
+            return self.get_canvas_lims_simulated()
+                        
+        args = locals()
+        del(args['self'])
+        args['cmd_name'] = 'get_canvas_lims'
+        SlTrace.lg(f"USER: args:{args}")
+        cmd_data = pickle.dumps(args)
+        self.send_cmd_data(cmd_data)
+        cmd_resp_data = self.get_resp_data()
+        SlTrace.lg(f"USER: cmd_resp_data: {cmd_resp_data}", "data")
+        ret_dt = pickle.loads(cmd_resp_data)
+        SlTrace.lg(f"USER: ret_dt: {ret_dt}")
+        return ret_dt['ret_val']
+    
+    def get_canvas_lims_simulated(self):
+        """ Simulate access to canvas info
+        :returns: internal (xmin, xmax, ymin, ymax)
+        """
+        winfo_width = 1280
+        winfo_height = 1000
+        xmax = winfo_width/2
+        xmin = -xmax
+        ymax = winfo_height/2
+        ymin = -ymax
+        return (xmin,xmax,ymin,ymax)
     
     def test_command(self, 
                         message="Test message"):
@@ -95,6 +144,26 @@ class TkRemUser:
         ret_dt = pickle.loads(cmd_resp_data)
         return ret_dt['ret_val']
 
+    def make_simulated(self):
+        """ Setup local tkinter canvas + canvas_grid
+        to provide direct access for local calls
+            get_canvas_specs
+            get_canvas_lims
+        """
+        import turtle as tur
+        from wx_canvas_grid import CanvasGrid
+        colors = ["red","orange","yellow","green"]
+
+        for colr in colors:
+            tur.width(40)
+            tur.color(colr)
+            tur.forward(200)
+            tur.right(90)
+        canvas = tur.getcanvas()
+        self.sim_cg = CanvasGrid(base=canvas)
+    
+        
+        
     def simulated_get(self):
         """ Simulated get cells
         """

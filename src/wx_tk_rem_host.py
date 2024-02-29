@@ -43,18 +43,19 @@ class TkRemHost:
         SlTrace.lg("TkRemHost __init__()")            
         data_th = th.Thread(target=self.serv_th_proc)
         data_th.start()
-        self.canvas_grid.after(0, self.data_proc)
+        canvas_grid.base.after(0, self.data_proc)
         
     def serv_th_proc(self):
         while True:
-            SlTrace.lg(f"serv_th_proc")
+            SlTrace.lg(f"HOST: serv_th_proc")
             self.connection, self.address = self.sockobj.accept()
-            SlTrace.lg(f"Got connection: address:{self.address}")
+            SlTrace.lg(f"HOST:Got connection: address:{self.address}")
             data = self.connection.recv(self.max_recv)
             if len(data) > 0:
-                SlTrace.lg(f"data: {data}", "data")
+                SlTrace.lg(f"HOST: data: {data}", "data")
                 self.cmd_queue.put(data)
             else:
+                SlTrace.lg("HOST: No data length == 0")
                 break
 
     def data_proc(self, data=None):
@@ -66,13 +67,14 @@ class TkRemHost:
                                 'get_cell_specs'
                     
         """
-        SlTrace.lg(f"data_proc: {data} queue.empty: {self.cmd_queue.empty()}", "data_proc")
+        SlTrace.lg(f"HOST: data_proc: {data} queue.empty: {self.cmd_queue.empty()}", "data_proc")
         if data is None:
             if not self.cmd_queue.empty():
                 data = self.cmd_queue.get()
         if data is not None:
             cmd_dt = pickle.loads(data)
-            SlTrace.lg(f"cmd_dt: {cmd_dt}", "cmds")
+            SlTrace.lg(f"HOST: cmd_dt: {cmd_dt}", "cmds")
+            SlTrace.lg(f"HOST: cmd_dt: {cmd_dt}")
             cmd_name = cmd_dt['cmd_name']
             ret_dt = cmd_dt     # return an augmented dictionary
             if cmd_name == 'get_cell_specs':
@@ -83,19 +85,21 @@ class TkRemHost:
                     y_max = self.if_attr(cmd_dt, 'y_max'),
                     n_cols = self.if_attr(cmd_dt, 'n_cols'),
                     n_rows = self.if_attr(cmd_dt, 'n_rows'))
+            elif cmd_name == 'get_canvas_lims':
+                ret = self.get_canvas_lims()
             elif cmd_name == 'test_command':
                 ret = self.test_command(message=cmd_dt['message'])
             else:
-                raise NameError(f"Unrecognized cmd: {cmd_name} in {cmd_dt}")
+                raise NameError(f"HOST: Unrecognized cmd: {cmd_name} in {cmd_dt}")
         
             ret_dt['ret_val'] = ret
-            SlTrace.lg(f"ret_dt:{ret_dt}")
+            SlTrace.lg(f"HOST: ret_dt:{ret_dt}")
             ret_data = pickle.dumps(ret_dt)
             self.connection.send(ret_data)
         if not self.cmd_queue.empty():
-            self.canvas_grid.after(0, self.data_proc)
+            self.canvas_grid.base.after(0, self.data_proc)
         else:
-            self.canvas_grid.after(self.cmd_time_ms, self.data_proc)
+            self.canvas_grid.base.after(self.cmd_time_ms, self.data_proc)
 
         
     def if_attr(self, cmd_dt, attr_name):
@@ -119,6 +123,16 @@ class TkRemHost:
                         x_max=x_max, y_max=y_max,
                         n_cols=n_cols, n_rows=n_rows)
             
+
+    def get_canvas_lims(self):
+        """ Get canvas limits - internal values, to which
+        self.base.find_overlapping(cx1,cy1,cx2,cy2) obeys.
+        NOTE: These values, despite some vague documentation, may be negative
+              to adhere to turtle coordinate settings.
+        
+        :returns: internal (xmin, xmax, ymin, ymax)
+        """
+        return self.canvas_grid.get_canvas_lims()
         
     def test_command(self, message="No Message Sent"):
         """ Do server test command
@@ -138,5 +152,7 @@ if __name__ == '__main__':
     cvg.create_rectangle(200,200,300,300, fill="red")
     cvg.create_oval(100,200,250,300, fill="orange", tags="orange_tag")
     tkh = TkRemHost(cvg)
+    cell_specs = tkh.get_cell_specs()
+    SlTrace.lg(f"cell_specs: {cell_specs}")
     root.mainloop()
     

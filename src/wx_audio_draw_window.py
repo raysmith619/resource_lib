@@ -185,16 +185,25 @@ class AudioDrawWindow(wx.Frame):
         self.set_cell_lims()
         self.do_talking = True      # Enable talking
         self.logging_speech = True  # Output speech to log/screen
+        self.from_initial_canvas = False    # True iff from initial drawing
         if mag_info is None:
+            self.from_initial_canvas = True     # Setup from original canvas
             top_region = MagnifyDisplayRegion(
                 x_min=self.get_x_min(), y_min=self.get_y_min(),
                 x_max=self.get_x_max(),
                 y_max=self.get_y_max(),
                 nrows=nrows,
-                ncols=ncols,
-                
-                )
-            mag_info = MagnifyInfo(top_region=top_region)
+                ncols=ncols)
+            x_min, x_max, y_min, y_max = tkr.get_canvas_lims()
+            display_region = MagnifyDisplayRegion(
+                x_min=x_min, y_min=y_min,
+                x_max=x_max,
+                y_max=y_max,
+                nrows=nrows,
+                ncols=ncols)
+            mag_info = MagnifyInfo(top_region=top_region, display_region=display_region)
+            self.cell_specs = self.get_cell_specs(x_min=x_min, x_max=x_max,
+                                             y_min=y_min,y_max=y_max)
         else:
             if mag_info.description:
                 title = mag_info.description
@@ -202,6 +211,8 @@ class AudioDrawWindow(wx.Frame):
                 self.title = title
                 self.speak_text(f"Magnification of {title}")
         mag_info.display_window = self    # Magnification setup
+        if mag_info.parent_info is not None:
+            mag_info.parent_info.child_infos.append(mag_info)
         self.mag_info = mag_info
         SlTrace.lg(f"\nAudioDrawWindow() mag_info:\n{mag_info}\n")
         self.mag_selection_tag = None       # mag selection canvas tag, if one
@@ -221,6 +232,7 @@ class AudioDrawWindow(wx.Frame):
         self.fte.do_complete(menu_str=menu_str, key_str=key_str)
         self.setup_cells()
         self.update(full=True)     # Make visible
+        self.Raise()                # put on top
 
     def setup_cells(self):
         """ Setup/display cells if any
@@ -236,8 +248,10 @@ class AudioDrawWindow(wx.Frame):
                                     color=color)
                 display_cells[(ix,iy)] = dcell
             self.draw_cells(cells=display_cells)
-            self.key_goto()      # Might as well go to figure
-            self.find_edges()
+        if self.from_initial_canvas:
+            self.draw_cells(self.cell_specs)
+        self.key_goto()      # Might as well go to figure
+        self.find_edges()
         
 
     def exit(self, rc=None):
@@ -341,7 +355,9 @@ class AudioDrawWindow(wx.Frame):
              
     def draw_cells(self, cells=None, show_points=False):
         """ Display braille cells on canvas
-        :cells: list or dictionary if BrailleCell cells to draw
+        :cells: list of BrailleCell or (ix,iy,color)tuple
+                or dictionary of BrailleCell  cells
+                to draw
         :show_points: instead of braille, show sample points
         """
         SlTrace.lg("draw_cells")
@@ -352,7 +368,8 @@ class AudioDrawWindow(wx.Frame):
             if not isinstance(cells, dict):
                 cs = {}
                 for cell in cells:
-                    cs[(cell.ix,cell.iy)] = cell
+                    bcell = BrailleCell.tuple_to_braille_cell(cell)
+                    cs[(bcell.ix,bcell.iy)] = bcell
                 cells = cs
             self.cells = cells      # Copy
         min_x, max_y, max_x,min_y = self.bounding_box()
@@ -363,7 +380,6 @@ class AudioDrawWindow(wx.Frame):
         for cell in cells.values():
             self.display_cell(cell)
             cell.mtype = cell.MARK_UNMARKED
-        self.update()
         if min_x is not None:
             self.set_xy((min_x,min_y))
             x,y = self.get_xy()
@@ -371,7 +387,6 @@ class AudioDrawWindow(wx.Frame):
         self.set_grid_path()
         self.pos_history = []       # Clear history
         self.set_scanning()         # Setup positioning info
-        self.update()
                     
     def print_braille(self, title=None, shift_to_edge=None):
         """ Output braille display
@@ -495,7 +510,7 @@ class AudioDrawWindow(wx.Frame):
         ###wxport###if not self.mw.winfo_exists():
         ###wxport###    return 
         
-        self.update()
+        #self.update()
         if not quiet:
             self.pos_check(force_output=True)
 
@@ -695,8 +710,8 @@ class AudioDrawWindow(wx.Frame):
         if cell.canv_items:
             for item_id in cell.canv_items:
                 self.canv_pan.delete(item_id)
-            self.update()       # Make change visible
         cell.canv_items = []
+        self.refresh_cell(cell)      # Mark as dirty
 
     def erase_pos_history(self):
         """ Remove history, undo history marking
@@ -708,7 +723,7 @@ class AudioDrawWindow(wx.Frame):
                 self.display_cell(cell)
         self.pos_history = []
         self.remove_mag_selection()    
-        self.update()
+        ###self.update()
                 
     def display_reposition_hack(self, cx1,cx2,cy1,cy2, force=False):
         """ ###TFD HACK to reposition cell dispaly
@@ -763,6 +778,16 @@ class AudioDrawWindow(wx.Frame):
             
         return      # Just ignore if missing
 
+    def update_cell(self, cell, **kwargs):
+        """ Update cell, with "inplace" attribute changes 
+        :**kwargs: attributes to be changed
+        """
+        items = self.get_cell_items(cell)   # Get rectangle item(s)
+        if len(items) > 0:
+            self.canv_pan.update_item(items[0], **kwargs)
+            self.canv_pan.refresh_item(items[0])
+        
+        
     def display_cell(self, cell, show_points=False):
         """ Display cell
         :cell: BrailleCell
@@ -773,11 +798,8 @@ class AudioDrawWindow(wx.Frame):
         iy = cell.iy    
         cx1,cy1,cx2,cy2 = self.get_win_ullr_at_ixy_canvas((ix,iy))
         SlTrace.lg(f"{ix},{iy}: {cell} :{cx1},{cy1}, {cx2},{cy2} ", "display_cell")
-        self.partial_update_start(
-            wx.Rect(wx_Point(cx1,cy1),wx_Point(cx2,cy2)))
         self.erase_cell(cell)
         if not cell.is_visible():
-            self.partial_update_complete()
             return              # Nothing to show
         
         if cell.mtype==BrailleCell.MARK_UNMARKED:
@@ -808,7 +830,7 @@ class AudioDrawWindow(wx.Frame):
                                                 fill=color)
                 cell.canv_items.append(canv_id)
                 SlTrace.lg(f"canv_pan.create_oval({x0},{y0},{x1},{y1}, fill={color})", "aud_create")
-            #self.update()    # So we can see it now 
+            self.refresh_cell(cell) 
             return
             
         dots = cell.dots
@@ -842,7 +864,8 @@ class AudioDrawWindow(wx.Frame):
                                             fill=color)
             cell.canv_items.append(canv_id) 
             SlTrace.lg(f"canv_pan.create_oval({x0},{y0},{x1},{y1}, fill={color})", "aud_create")
-        self.partial_update_complete()
+        self.refresh_cell(cell) 
+
 
 
     def partial_update_add(self, item):
@@ -944,7 +967,20 @@ class AudioDrawWindow(wx.Frame):
         """ Get cell dictionary (by (ix,iy)
         """
         return self.cells
-    
+
+    def get_cell_items(self, cell, canv_type="create_rectangle"):
+        """ Get cell's item (rectangle)
+        :cell: BrailleCell
+        :returns: item (in canvas_panel), None if no item
+        """
+        ix = cell.ix
+        iy = cell.iy    
+        cx1,cy1,cx2,cy2 = self.get_win_ullr_at_ixy_canvas((ix,iy))
+        loc = wx.Point(int((cx1+cx2)/2),
+                       int((cy1+cy2)/2))
+        items = self.canv_pan.get_panel_items(loc, canv_type=canv_type)
+        return items
+            
     def get_cell_at(self, pt=None):
         """ Get cell at location, if one
         :pt: x,y pair location in turtle coordinates
@@ -991,6 +1027,18 @@ class AudioDrawWindow(wx.Frame):
                         x_min=x_min, y_min=y_min,
                         x_max=x_max, y_max=y_max,
                         ncols=ncols, nrows=ncols)
+
+
+    def get_canvas_lims(self):
+        """ Get canvas limits - internal values, to which
+        self.base.find_overlapping(cx1,cy1,cx2,cy2) obeys.
+        NOTE: These values, despite some vague documentation, may be negative
+              to adhere to turtle coordinate settings.
+        
+        :returns: internal (xmin, xmax, ymin, ymax)
+        """
+        return self.tkr.get_canvas_lims()
+
 
 
     def set_grid_path(self):
@@ -1069,7 +1117,17 @@ class AudioDrawWindow(wx.Frame):
             cells = self.get_cells()
         cell = self.get_cell_at_ixy(cell_ixy=ixy, cells=cells)
         return True if cell is None else False
-        
+
+    def refresh_cell(self, cell):
+        """ Mark cell dirty, in need of repainting
+        :cell: BrailleCell
+        """
+        ix = cell.ix
+        iy = cell.iy    
+        cx1,cy1,cx2,cy2 = self.get_win_ullr_at_ixy_canvas((ix,iy))
+        SlTrace.lg(f"refresh_cell:{(ix,iy)}", "refresh")
+        self.canv_pan.refresh_rectangle(cx1,cy1,cx2,cy2)
+                
     def set_cell(self, pt=None, color=None):
         """ Set cell at pt, else current cell
         If no cell at current location create cell
@@ -1095,7 +1153,6 @@ class AudioDrawWindow(wx.Frame):
         if cell is not None:
             cell.color_cell(color=color)
             self.display_cell(cell)
-        self.update()
         return cell
                 
     def color_str(self, color=None):
@@ -1276,7 +1333,9 @@ class AudioDrawWindow(wx.Frame):
         if pgmExit is None:
             pgmExit = self.exit 
 
-        if mag_info is None:
+        if mag_info is not None:
+            title = f"Magnification {mag_info.description}"
+        else:
             mag_info = self.create_magnify_info(x_min=xmin, y_min=ymin,
                                           x_max=xmax, y_max=ymax,
                                           ncols=ncols, nrows=nrows)
@@ -1285,10 +1344,10 @@ class AudioDrawWindow(wx.Frame):
             nrows = mag_info.mag_nrows
         if ncols is None:
             ncols = mag_info.mag_ncols
-        braille_cells = self.get_braille_cells(x_min=xmin, y_min=ymin,
+        cell_specs = self.get_cell_specs(x_min=xmin, y_min=ymin,
                                           x_max=xmax, y_max=ymax,
                                           ncols=ncols, nrows=nrows)    
-        self.n_cells_created = len(braille_cells)
+        self.n_cells_created = len(cell_specs)
         if self.n_cells_created == 0:
             if require_cells:
                 return None
@@ -1302,9 +1361,8 @@ class AudioDrawWindow(wx.Frame):
                               x_min=self.get_x_min(),
                               y_min=self.get_y_min(),
                               silent=silent)
-        adw.draw_cells(cells=braille_cells)
+        adw.draw_cells(cells=cell_specs)
         adw.key_goto()      # Might as well go to figure
-        self.adw.audio_wins.append(adw)     # Store list for access
         return adw
 
 
@@ -1358,8 +1416,9 @@ class AudioDrawWindow(wx.Frame):
         child_info = mag_info.make_child()
         child_info.display_region = MagnifyDisplayRegion(x_min=xmin, x_max=xmax,
                                         y_min=ymin, y_max=ymax)
-        child_info.description = (f"region minimum x: {xmin:.0f}, minimum y: {ymin:.0f},"
-                                  + f" maximum x: {xmax:.0f}, maximum y: {ymax:.0f}")
+        child_info.description = (f"{child_info.info_number}"
+                                  + f" region min x: {xmin:.0f}, min y: {ymin:.0f},"
+                                  + f" max x: {xmax:.0f}, max y: {ymax:.0f}")
         adw = self.create_audio_window(xmin=xmin, xmax=xmax,
                                        ymin=ymin, ymax=ymax,
                                        nrows=disp_region.nrows,
@@ -1542,33 +1601,57 @@ class AudioDrawWindow(wx.Frame):
 
 
 if __name__ == "__main__":
-    SlTrace.clearFlags()
-    app = wx.App()
+    def test_window_ops():
+        SlTrace.clearFlags()
+        app = wx.App()
+        
+        
+        menu_str = "n:sh;d:d"
+        key_str = (
+                    "d"
+                    ";c;g;9;9;9;9"
+                    ";c;r;7;7;7;7"
+                    ";c;v;2;2;2;c;r;2;2;c;o;2;2;2"
+                    ";u;8;8;8;8;8;8;8;8;d"
+                    ";c;o;1;1;1;1"
+                    ";c;b;3;3;3;3"
+                    ";c;g;6;6;c;i;6;6;6;c;v;6;6;6"
+                    ";w"
+                )
+
+        key_str = (
+                    "d"
+                    ";c;g;9;9;9;9"
+                    ";c;r;7;7;7;7"
     
+                    ";w"
+                )
+        
+        tkr = TkRemUser(simulated=True)
+        aw = AudioDrawWindow(tkr=tkr,
+                            title="AudioDrawWindow Self-Test",
+                            app=app,
+                            menu_str=menu_str,
+                            key_str=key_str,
+                            silent=False)
+        '''
+        aw.fte.do_menu_str("n:nu;d:s")
+        aw.fte.do_key_str("u")
+        '''
+        
+        aw.MainLoop()
+
+    def test_tk_track():
+        SlTrace.clearFlags()
+        SlTrace.setFlags("refresh")
+        app = wx.App()
+        
+        tkr = TkRemUser(simulated=True)
+        aw = AudioDrawWindow(tkr=tkr,
+                            title="AudioDrawWindow Self-Test",
+                            app=app,
+                            silent=False)
+        
+        aw.MainLoop()
     
-    menu_str = "n:sh;d:d"
-    key_str = (
-                "d"
-                ";c;g;9;9;9;9"
-                ";c;r;7;7;7;7"
-                ";c;v;2;2;2;c;r;2;2;c;o;2;2;2"
-                  ";u;8;8;8;8;8;8;8;8;d"
-                ";c;o;1;1;1;1"
-                ";c;b;3;3;3;3"
-                ";c;g;6;6;c;i;6;6;6;c;v;6;6;6"
-                ";w"
-            )
-    tkr = TkRemUser(simulated=True)
-    aw = AudioDrawWindow(tkr=tkr,
-                         title="AudioDrawWindow Self-Test",
-                         app=app,
-                         menu_str=menu_str,
-                         key_str=key_str,
-                         silent=False)
-    '''
-    aw.fte.do_menu_str("n:nu;d:s")
-    aw.fte.do_key_str("u")
-    '''
-    
-    aw.MainLoop()
-    
+    test_tk_track()

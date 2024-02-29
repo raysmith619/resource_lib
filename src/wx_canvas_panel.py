@@ -5,40 +5,11 @@ Support for very limited list of tkinter Canvas type actions
 on wxPython Panel  Our attempt here was to ease a port
 from tkinter Canvas use to wxPython.
 """
+import time
 import wx
 from select_trace import SlTrace, SelectError 
 from wx_canvas_panel_item import CanvasPanelItem, wx_Point            
 
-class PartialUpdateList:
-    """ Enables updating partial window
-    """
-    def __init__(self, canv_panel, rect=None):
-        """ Initialize partial update
-        :rect: window update rectangle
-        """
-        self.canv_panel = canv_panel
-        self.rect = rect
-        self.is_complete = False
-        self.items = []
-        
-    def add(self, item):
-        self.items.append(item)
-        
-    def complete(self):
-        """ complete list, set for update at next opportunity
-        """
-        self.is_complete = True
-        self.canv_panel.update(self.rect)
-        
-    def draw(self):
-        """ Draw partial update list
-        dismiss list
-        Executed from within OnPaint context
-        """
-        self.canv_panel.draw_items(self.items)
-        self.canv_panel.partial_update_list = None # Clear partial update
-        
-        
         
 class CanvasPanel(wx.Panel):
     
@@ -57,10 +28,14 @@ class CanvasPanel(wx.Panel):
         """
         self.frame = frame
         self.partial_update_list = None # Set to partial update, if one
+        self.sfx =  1       # default scaling
+        self.sfy = 1
         if app is None:
             app = wx.App()
         self.app = app
         super().__init__(frame, *args, **kw)
+        self.time_of_update = time.time()
+        self.min_time_update = .01      # min time between updates (seconds)
         self.mouse_left_down_proc = self.mouse_left_down_def
         self.mouse_motion_proc = self.mouse_motion_def
         self.mouse_b1_motion_proc = self.mouse_b1_motion_def
@@ -84,9 +59,12 @@ class CanvasPanel(wx.Panel):
         self.grid_panel_offset = 0 # menu + text TBD
         self.Show()
         self.can_id = 0
-        self.items_by_id = {}   # Item's index in items[]
+        self.items_by_id = {}   # Items stored by item.canv_id
+                                # Augmented by CanvasPanelItem.__init__()
         self.items = []         # Items in order drawn
         self.prev_reg = None    # Previously displayed
+
+        #self.Bind(wx.EVT_PAINT, self.OnPaint)
         self.grid_panel.Bind(wx.EVT_PAINT, self.OnPaint)
         self.grid_panel.Bind(wx.EVT_SIZE, self.OnSize)
         self.grid_panel.Bind(wx.EVT_KEY_DOWN, self.on_key_down)
@@ -184,10 +162,8 @@ class CanvasPanel(wx.Panel):
         item = CanvasPanelItem(self, "create_rectangle",
                                args=[cx1,cy1,cx2,cy2],
                                kwargs=kwargs)
-        self.items_by_id[item.canv_id] = len(self.items)    # next index
         self.items.append(item)
-        if self.partial_update_list is not None:
-           self.partial_update_list.add(item) 
+        self.items_by_id[item.canv_id] = item    # store by id
         return item.canv_id
     
     def create_oval(self, x0,y0,x1,y1,
@@ -198,7 +174,7 @@ class CanvasPanel(wx.Panel):
         item = CanvasPanelItem(self, "create_oval",
                                args=[x0,y0,x1,y1],
                                kwargs=kwargs)
-        self.items_by_id[item.canv_id] = len(self.items)    # next index
+        self.items_by_id[item.canv_id] = item
         self.items.append(item)
         if self.partial_update_list is not None:
            self.partial_update_list.add(item) 
@@ -276,9 +252,11 @@ class CanvasPanel(wx.Panel):
         SlTrace.lg(f"panel size: {size}", "paint")
         e.Skip()
 
-    def draw_items(self, items=None):
+    def draw_items(self, items=None, rect=None):
         """ Draw scalled items
         :items: items to draw default: self.items
+        :rect: Draw only items in this rectangle
+                default: draw all items
         """
         if items is None:
             items = self.items
@@ -300,7 +278,7 @@ class CanvasPanel(wx.Panel):
             npts = len(item.points)
             points = items_points_scaled[ipo:ipo+npts]
             SlTrace.lg(f"item: {item}", "item")
-            item.draw(points=points)
+            item.draw(points=points, rect=rect)
             ipo += npts # move to next item
 
     def get_items_points(self, items=None):
@@ -346,12 +324,7 @@ class CanvasPanel(wx.Panel):
 
             SlTrace.lg(f"First Paint size: {self.orig_size}")
             SlTrace.lg(f"Frame size: {self.frame.GetSize()}")
-            self.Refresh()  # Force second repaint
-            self.Update()
-            SlTrace.lg(f"Refresh Paint panel size: {self.GetSize()}", "paint")
             SlTrace.lg(f"Frame size: {self.frame.GetSize()}", "paint")
-            self.Show()
-            self.Hide()
             self.Show()
             SlTrace.lg(f"First Paint size: {self.GetSize()}", "paint")
             SlTrace.lg(f"Frame size: {self.frame.GetSize()}", "paint")
@@ -366,48 +339,23 @@ class CanvasPanel(wx.Panel):
             SlTrace.lg(f"Further Paint size: {self.GetSize()}", "paint")
             SlTrace.lg(f"Frame size: {self.frame.GetSize()}", "paint")
             pass
+        upd = wx.RegionIterator(self.grid_panel.GetUpdateRegion())
 
-        if self.partial_update_is_in():
-            self.partial_update_draw()
-            return
-        
-        ###dc.DrawRectangle(self.prev_pos, self.prev_size) # clear previous rectangle
-        ###dc.DrawRectangle(self.cur_pos, self.cur_size)   # clear new rectangle
-        self.draw_items()
+        if not upd.HaveRects():
+            self.draw_items()
+            
+        while upd.HaveRects():
+            rect = upd.GetRect()
+            SlTrace.lg(f"Got Rect:{rect}")
+            # Repaint this rectangle
+            self.draw_items(rect=rect)
+            upd.Next()
+
 
         self.prev_pos = self.cur_pos
         self.prev_size = self.cur_size
 
 
-    def partial_update_add(self, item):
-        """ Add item to partial update
-        :item: item to add
-        """
-        self.partial_update_list.add(item=item)
-
-
-    def partial_update_complete(self):
-        """ Complete partial_update
-        """
-        if self.partial_update_is_in():
-            self.partial_update_list.complete()
-
-    def partial_update_draw(self):
-        """ Complete partial_update
-        """
-        if self.partial_update_is_in():
-            self.partial_update_list.draw()
-            
-    def partial_update_is_in(self):
-        """ Check if in partial update
-        """
-        return self.partial_update_list is not None
-    
-    def partial_update_start(self, rect=None):
-        """ Setup a partial window update
-        :rect: rectangle if present
-        """
-        self.partial_update_list = PartialUpdateList(self, rect=rect)
         
     def itemconfig(self, tags, **kwargs):
         """ Adjust items with tags with kwargs
@@ -427,6 +375,21 @@ class CanvasPanel(wx.Panel):
                         item.kwargs[kw] = val
                     else:
                         raise SelectError(f"itemconfig doesn't support {kw} (val:{val})")    
+
+    
+    def update_item(self, item, **kwargs):
+        """ Update cell, with "inplace" attribute changes
+            refreshes item's region 
+        :item: item / id
+        :**kwargs: attributes to be changed
+        """
+        if type(item) != CanvasPanelItem:
+            item = self.items_by_id[item]
+        item.update(**kwargs)
+        bdrect = item.bounding_rect()
+        self.grid_panel.RefreshRect(rect=bdrect)
+
+
     """
     ----------------------- Mouse Control --------------------
     """
@@ -438,7 +401,20 @@ class CanvasPanel(wx.Panel):
                             screen_loc.y-
                             self.grid_panel_offset)
         return panel_loc
-    
+
+    def get_panel_items(self, loc, canv_type="create_rectangle"):
+        """ Get item/items at this location
+        :loc: wx.Point location at this point
+        :canv_type: canvas type e.g., create_rectangle
+                default: create_rectangle
+        """
+        items = []
+        for item in self.items:
+            if item.bounding_rect().Contains(loc):
+                if item.canv_type == canv_type:
+                    items.append(item)
+        return items
+        
     def get_screen_loc(self, panel_loc):
         """ Convert panel location to screen location
         :panel_loc: wx_Point of location
@@ -556,7 +532,23 @@ class CanvasPanel(wx.Panel):
         self.Refresh()
         self.Update()
         self.Show()
-    
+
+    def refresh_item(self, item):        
+        """ mark item's region to be displayed
+        :item: CanvasPanelItem/id
+        """
+        if type(item) != CanvasPanelItem:
+            item = self.items            
+    def refresh_rectangle(self, cx1,cy1,cx2,cy2,
+                                **kwargs):
+        """ Mark rectangle in need of repainting
+        :cx1: rectangle canvas coordinates
+        :cy1:
+        :cx2:
+        :cy2:
+        """
+        SlTrace.lg(f"RefreshRect({wx.Point(cx1,cy1),wx.Point(cx2,cy2)})", "refresh")
+        self.RefreshRect(wx.Rect(wx.Point(cx1,cy1),wx.Point(cx2,cy2)))
 
     def update(self, x1=None, y1=None, x2=None, y2=None,
                full=False):
@@ -565,11 +557,21 @@ class CanvasPanel(wx.Panel):
             If x1 is a wx.Rect use Rect
             :full: force full update
         """
+        now = time.time()
+        '''
+        since_last = now - self.time_of_update
+        if since_last < self.min_time_update:
+            delay_ms = int((self.time_of_update + self.min_time_update-now)*1000)
+            wx.CallLater(delay_ms, self.update, x1=x1, y1=y1, x2=x2, y2=y2)
+            return          # Too soon for update
+        '''
+        self.time_of_update = time.time()
         if full:
             self.grid_panel.Refresh()
             self.grid_panel.Update()
             return
-            
+    
+        SlTrace.lg(f"update: refresh({x1,y1, x2,y2})", "refresh")
         if x1 is not None or x2 is not None:
             if isinstance(x1, wx.Rect):
                 self.grid_panel.RefreshRect(x1)
@@ -579,7 +581,7 @@ class CanvasPanel(wx.Panel):
         else:
             self.grid_panel.Refresh()
         self.grid_panel.Update()
-    
+        
     """
     ----------------------- Keyboard Control --------------------
     """
@@ -804,10 +806,14 @@ if __name__ == "__main__":
         ci += 1
         color = colors[ci%len(colors)]
         screen_pt = canv_pan.get_screen_loc(wx_Point(x,y))
+        pt_radius = 4
         canv_pan.create_point(screen_pt.x,screen_pt.y,
-                              radius=4, fill=color)
+                              radius=pt_radius, fill=color)
         canv_pan.create_text(screen_pt.x+1,screen_pt.y+2, text=f"{x},{y}")
-        canv_pan.Refresh()
+        pt_size = pt_radius*2 + 5
+        x1,y1 = screen_pt.x,screen_pt.y
+        x2,y2 = int(screen_pt.x+pt_size/2),int(screen_pt.y+pt_size/2)
+        canv_pan.refresh_rectangle(x1,y1,x2,y2)
         SlTrace.lg(f" mouse:{x},{y} create_point({screen_pt.x},{screen_pt.y})")
         SlTrace.lg(f"panel.sfx,sfy: {canv_pan.sfx},{canv_pan.sfy})")
     canv_pan.set_mouse_left_down_proc(mouse_left_down_proc)

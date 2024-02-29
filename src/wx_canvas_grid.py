@@ -33,62 +33,76 @@ for indirect call of tk.Canvas calls:
 class CanvasGrid(tk.Canvas):
         
     def __init__(self,
-                 master,
+                 master=None,
                  base=None, title="Base Grid",
-                 pgmExit=None, speaker_control=None,
+                 pgmExit=None,
                  g_xmin=None, g_xmax=None, g_ymin=None, g_ymax=None,
                  g_nrows=25, g_ncols=40,
+                 x_offset=None, y_offset=None,
                  **kwargs):
         """ Set up canvas object with grid
+        :master: widget master
+                default: no canvas setup, just use base for data
         :base: tk.Canvas, if present, from which we get
                 canvas item contents
                 default: self
         :title: window title
         :pgmExit: program main exit if one default: use local (...os._exit)
-        :speaker_control: (SpeakerControlLocal) local access to speech facility
-                        REQUIRED
         :g_xmin: Grid minimum canvas coordinate value default: left edge
         :g_xmax: Grid maximum canvas coordinate value default: right edge
         :g_ymin: Grid minimum canvas coordinate value default: top edge
         :g_ymax: Grid maximum canvas coordinate value default: bottom edge
         :g_nrows: Number of rows default: 25
         :g_ncols: Number of columns default: 40
+        :x_offset: offset external to internal
+                default: 1/2 (x_max-x_min)        
+        :y_offset: offset external to internal
+                default: 1/2 (y_max-y_min)
         """
+        self.ncall_get_cell_specs = 0       # Facilitate tracking          
+        self.master = master
         if base is None:
             base = self 
         self.base = base
         self.title = title
-        if speaker_control is None:
-            SlTrace.lg("Creating local SpeakerControl copy")
-            speaker_control = SpeakerControlLocal()   # local access to speech engine
         self.pgmExit = pgmExit
-        self.speaker_control = speaker_control
         self.item_samples = {}      # For incremental presentation  via show_item
         self.audio_wins = []        # window list for access
         self.n_cells_created = 0    # Number of cells in recent window
-        super(CanvasGrid,self).__init__(master=master, **kwargs)
-        self.pack(expand=True, fill=tk.BOTH)
-        self.master.update()
+        if master is not None:
+            super(CanvasGrid,self).__init__(master=master, **kwargs)
+            #self.pack(expand=True, fill=tk.BOTH)
+            self.master.update()
 
         if g_xmin is None:
-            g_xmin = 0
+            g_xmin = -self.base.winfo_width()/2
         self.g_xmin = g_xmin
         if g_xmax is None:
-            g_xmax = g_xmin + self.base.winfo_width()
+            g_xmax = self.base.winfo_width()/2 
         self.g_xmax = g_xmax
-        self.g_width = g_xmax-g_xmin
+        g_width = g_xmax-g_xmin
         if g_ymin is None:
-            g_ymin = 0
+            g_ymin = -self.base.winfo_height()/2
         self.g_ymin = g_ymin
         if g_ymax is None:
-            g_ymax = g_ymin + self.base.winfo_height()
+            g_ymax = self.base.winfo_height()/2
         self.g_ymax = g_ymax
-        self.g_height = abs(g_ymax-g_ymin) # No questions
+        self.g_height = g_ymax-g_ymin
         self.g_nrows = g_nrows
         self.g_ncols = g_ncols
         self.grid_tag = None        # Most recent grid paint tag
         self.set_grid_lims()
+
+    def get_canvas_lims(self):
+        """ Get canvas limits - internal values, to which
+        self.base.find_overlapping(cx1,cy1,cx2,cy2) obeys.
+        NOTE: These values, despite some vague documentation, may be negative
+              to adhere to turtle coordinate settings.
         
+        :returns: internal (xmin, xmax, ymin, ymax)
+        """
+        return (self.g_xmin, self.g_xmax, self.g_ymin, self.g_ymax)
+            
     def get_grid_lims(self, xmin=None, xmax=None, ymin=None, ymax=None,
                       ncols=None, nrows=None):
         """ create grid boundary values bottom through top, given limits
@@ -120,7 +134,7 @@ class CanvasGrid(tk.Canvas):
         if nrows is None:
             nrows = self.g_nrows 
             
-        g_width = abs(xmax-xmin)
+        g_width = abs(xmax-xmin)    # Assumes equal shift of max and min
         g_height = abs(ymax-ymin) 
         grid_xs = []
         grid_ys = []
@@ -143,80 +157,6 @@ class CanvasGrid(tk.Canvas):
              cell(i,j): grid_xs[i], grid_xs[i+1], grid_ys[j], grid_ys[j+1]
         """
         self.grid_xs, self.grid_ys = self.get_grid_lims()
-
-    def create_audio_window(self, title=None,
-                 xmin=None, xmax=None, ymin=None, ymax=None,
-                 nrows=None, ncols=None, mag_info=None, pgmExit=None,
-                 require_cells=False,
-                 silent=False):
-        """ Create AudioDrawWindow to navigate canvas from the section
-        :title: optinal title
-                region (xmin,ymin, xmax,ymax) with nrows, ncols
-        :speaker_control: (SpeakerControlLocal) local access to centralized speech facility
-        :xmin,xmax,ymin,ymax,: see get_grid_lims()
-                        default: CanvasGrid instance values
-        :nrows,ncols: grid size for scanning
-                default: if mag_info present: mag_info.mag_nrows, .mag_ncols
-        :mag_info: magnification info (MagnifyInfo)
-                    default: None
-        :pgm_exit: function to call upon exit request
-        :require_cells: Require at least some display cells to 
-                    create window
-                    default: False - allow empty picture
-        :silent: quiet mode default: False
-        :returns: AudioDrawWindow instance or None if no cells
-                Stores number of cells found in self.n_cells_created
-        """
-        if title is None:
-            title = self.title
-        self.title = title
-        if pgmExit is None:
-            pgmExit = self.exit 
-
-        if mag_info is None:
-            mag_info = self.create_magnify_info(x_min=xmin, y_min=ymin,
-                                          x_max=xmax, y_max=ymax,
-                                          ncols=ncols, nrows=nrows)
-            
-        if nrows is None:
-            nrows = mag_info.mag_nrows
-        if ncols is None:
-            ncols = mag_info.mag_ncols
-        # Could replace most of the following
-        # with self.get_cell_specs(...)    
-        ixy_items = self.get_canvas_items(xmin=xmin, xmax=xmax,
-                                          ymin=ymin,ymax=ymax,
-                                          ncols=ncols,nrows=nrows)
-        # For debugging / analysis
-        xs,ys = self.get_grid_lims(xmin=xmin, xmax=xmax, ymin=ymin,ymax=ymax,
-                                   ncols=ncols,nrows=nrows)
-        braille_cells = []
-        for ixy_item in ixy_items:
-            (ix,iy), ids = ixy_item
-            if SlTrace.trace("win_items"):
-                SlTrace.lg(f"create_audio_window:{ix},{iy}: ids:{ids}")
-                for canvas_id in ids:
-                    self.show_canvas_item(canvas_id)
-            color = self.item_to_color(item_ids=ids)
-            if color is not None:
-                bcell = BrailleCell(ix=ix, iy=iy, color=color)
-                braille_cells.append(bcell)
-        self.n_cells_created = len(braille_cells)
-        if self.n_cells_created == 0:
-            if require_cells:
-                return None
-                
-        adw = AudioDrawWindow(
-                              title=title,
-                              speaker_control=self.speaker_control,
-                              iy0_is_top=True, mag_info=mag_info,
-                              pgmExit=pgmExit,
-                              x_min=self.g_xmin, y_min=self.g_ymin,
-                              silent=silent)
-        adw.draw_cells(cells=braille_cells)
-        adw.key_goto()      # Might as well go to figure
-        self.audio_wins.append(adw)     # Store list for access
-        return adw
 
     def item_to_color(self, item_ids):
         """ Get color string given item id
@@ -267,7 +207,6 @@ class CanvasGrid(tk.Canvas):
             y1,y2 = self.grid_ys[0],self.grid_ys[len(self.grid_ys)-1]
             width_now = width_edge if i == 0 or i == len(self.grid_xs)-1 else width
             self.create_line(x1,y1,x2,y2, fill=color, tag=grid_tag, width=width_now)
-            self.update()
             pass
         for i in range(len(self.grid_ys)):        # horizontal lines
             y1,y2 = self.grid_ys[i],self.grid_ys[i]
@@ -382,14 +321,13 @@ class CanvasGrid(tk.Canvas):
             for iy in range(len(ys)-1):
                 cx1,cy1,cx2,cy2 = self.get_grid_ullr(ix=ix, iy=iy, xs=xs, ys=ys)
                 item_ids_over_raw = self.base.find_overlapping(cx1,cy1,cx2,cy2)
-                if SlTrace.trace("get_items"):
+                if self.ncall_get_cell_specs > 0 or SlTrace.trace("get_items"):
                     if len(item_ids_over_raw) > 0:
                         color = self.item_to_color(item_ids=item_ids_over_raw)
                     else:
                         color = ""
                     SlTrace.lg(f"    {ix},{iy}: cx1,cy1,cx2,cy2 {cx1},{cy1},{cx2},{cy2}"
-                               f" item_ids: {item_ids_over_raw} {color}",
-                               "get_items")
+                               f" item_ids: {item_ids_over_raw} {color}", "canvas_items")
                 if len(item_ids_over_raw) == 0:
                     continue    # Skip if none to check
                 
@@ -446,6 +384,7 @@ class CanvasGrid(tk.Canvas):
         :xmin,xmax,ymin,ymax, ncols, nrows: see get_grid_lims()
                         default: CanvasGrid instance values
         """
+        self.ncall_get_cell_specs += 1
         ixy_items = self.get_canvas_items(xmin=x_min, xmax=x_max,
                                           ymin=y_min,ymax=y_max,
                                           ncols=n_cols,nrows=n_rows)
@@ -692,7 +631,9 @@ if __name__ == "__main__":
             time.sleep(2)
             cvg.erase_grid_paint()
             time.sleep(1)
-
+            cvg.paint_grid()
+            time.sleep(5)
+            
     def test2():
         root = tk.Tk()
         cvg = CanvasGrid(root, height=450, width=450)
@@ -847,10 +788,10 @@ if __name__ == "__main__":
         SlTrace.lg("After create_audio_window() 2")
         root.mainloop()
         
-    #test1()
+    test1()
     #test2()
-    test3()
-    test5()
+    #test3()
+    #test5()
     SlTrace.lg("End of Test")
     sys.exit()
         

@@ -254,7 +254,7 @@ class AdwFrontEnd:
         """ View selected region, creating a new AudioDrawWindow
         """
         mag_info = self.get_mag_info()
-        if mag_info is None is None:
+        if mag_info is None:
             SlTrace.lg("Magnification is not enabled")
             return
 
@@ -272,16 +272,15 @@ class AdwFrontEnd:
         SlTrace.lg(f"view select: {mag_info}")
         adw = self.create_magnification_window(
             self.adw.mag_info)
-        n_cells_created = self.n_cells_created
         if adw is None:
-            self.speak_text("No magnification created because"
-                            f" it would containe {n_cells_created} cell"
-                            "s" if n_cells_created != 1 else "")
+            self.speak_text("No magnification created")
 
         else:
+            n_cells_created = len(adw.get_cell_specs())
             self.stop_scanning()    # Stop old scanning - possible confusion
             self.speak_text(f"Magnification has {n_cells_created} cell"
                             "s" if n_cells_created != 1 else "")
+        adw.Raise() # Bring to top   
 
     def remove_mag_selection(self):
         """ Remove magnify selection and marker
@@ -315,6 +314,10 @@ class AdwFrontEnd:
                                                           ul_cx1,ul_cy1,
                                                           fill="#00008b",
                                                           width=4)
+        SlTrace.lg(f"Selected region\n"
+                   f"  ul_cx: {ul_cx1} ul_cy1: {ul_cy1}"
+                   f"  lr_cx2: {lr_cx2} lr_cy2: {lr_cy2}"
+                   )
         canv_pan.Refresh()
 
 
@@ -599,7 +602,7 @@ class AdwFrontEnd:
             ix,iy  = self.get_ixy_at()
             SlTrace.lg(f"x:{x},y:{y}"
                        f" ixy:{(ix,iy)}  cell: {cell}")
-            mag_info.base_canvas.show_mag_info_items(mag_info, ix=ix, iy=iy)
+            ###???mag_info.base_canvas.show_mag_info_items(mag_info, ix=ix, iy=iy)
 
         if self.is_drawing():
             if cell is None:
@@ -609,7 +612,7 @@ class AdwFrontEnd:
             if cell is not None:
                 self.set_visible_cell(cell)
             self.pos_check()
-        self.update()
+        ###self.update()
 
     def on_button_1_motion(self, x, y):
         """ Motion with button down is
@@ -786,6 +789,22 @@ class AdwFrontEnd:
         """
         self.clear_cells()
 
+    def cell_mtype_to_fill(self, mtype=BrailleCell.MARK_SELECTED):
+        """ Convert cell mtype to fill color
+        :mtype: cell mark type default: selected
+        :returns: fill string
+        """
+        MARK_UNSELECTED = 1
+        MARK_SELECTED = 2
+        MARK_TRAVERSED = 3
+
+        fill = "#b0b0b0"    # 
+        if mtype == BrailleCell.MARK_SELECTED:
+            fill = "#d3d3d3"
+        elif mtype == BrailleCell.BrailleCell.MARK_UNSELECTED:
+            fill = "#b0b0b0"
+        return fill
+
     def mark_cell(self, cell,
                   mtype=BrailleCell.MARK_SELECTED):
         """ Mark cell for viewing of history
@@ -800,7 +819,10 @@ class AdwFrontEnd:
         if ixy in cells:
             cell = cells[ixy]
             cell.mtype = mtype
-            self.show_cell(ixy=ixy)
+            fill = self.cell_mtype_to_fill(mtype)
+            self.update_cell(cell, fill=fill)
+            
+            
 
 
 
@@ -1562,7 +1584,6 @@ class AdwFrontEnd:
         y1 = pos_y+rd
         self._cursor_item = self.canv_pan.create_oval(x0,y0,x1,y1,
                                                     fill="red")
-        self.update()
 
     def is_using_audio_beep(self):
         return self._using_audio_beep
@@ -1784,6 +1805,12 @@ class AdwFrontEnd:
                        Links to adw
     ############################################################
     """
+
+    def update_cell(self, cell, **kwargs):
+        """ Update cell, with "inplace" attribute changes 
+        :**kwargs: attributes to be changed
+        """
+        self.adw.update_cell(cell, **kwargs)
 
     def redraw(self):
         """ Redraw screen

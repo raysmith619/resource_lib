@@ -89,6 +89,18 @@ class BrailleCell:
                 color_str = "pink"  # TBD - color tuple work
         return color_str
     
+    @classmethod
+    def tuple_to_braille_cell(cls, tp):
+        """ Create BrailleCell from (ix,iy,color)
+        if given BrailleCell return it unchanged
+        """
+        if isinstance(tp, BrailleCell):
+            return tp
+        
+        ix,iy,color = tp
+        bc = BrailleCell(ix=ix, iy=iy, color=color)
+        return bc
+    
     
     def __init__(self, dots=None,
                  color=None, color_bg=None,

@@ -20,9 +20,7 @@ from threading import Thread
 import subprocess
 import turtle as tur
 from turtle import *
-import tkinter as tk
 
-from pipe_to_queue import PipeToQueue
 from wx_tk_rem_host import TkRemHost
 from select_trace import SlTrace
 from wx_canvas_grid import CanvasGrid
@@ -32,13 +30,13 @@ External functions
 Some day may model after turtle's _make_global_funcs
 """
 
-
+canvas = None
 def mainloop():
-    root = tk.Tk()
+    global canvas
     
-    canvas = getcanvas()
-    cg = CanvasGrid(root,base=canvas)
-    root.withdraw()
+    canvas = tur.getcanvas()
+    cg = CanvasGrid(base=canvas)
+    #root.withdraw()
     cells = cg.get_cell_specs()  # gets (ix,iy,color)*
     cell_list = BrailleCellList(cells)  # converts either to BrailleCell
     bdlist = cell_list.to_string()
@@ -59,10 +57,10 @@ def mainloop():
             SlTrace.onexit()    # Close log
             os._exit(0)     # Stop all processes
             return
-        root.after(10, check_display)
+        tur.ontimer(check_display, 10)
         
     check_display()
-    root.mainloop()
+    tur.mainloop()
     sys.exit(0)
     
 def done():

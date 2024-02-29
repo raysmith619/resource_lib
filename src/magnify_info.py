@@ -1,7 +1,7 @@
 # magnify_info.py     18Feb2023   crs, Split from audio_draw_window.py
 
 """
-Information supporting the magnification of a secgment of CanvasGrid (canvas_grid.py)
+Information supporting the magnification of a segment of CanvasGrid (canvas_grid.py)
 Communication packet between CanvasGrid and AudioDrawWindow
 """
 import copy
@@ -71,6 +71,8 @@ class MagnifyInfo:
     """ Magnification info
         For sending info from and to original canvas
     """
+    info_number = 0         # Ascending unique number
+                            # Bumped by __init__, make_child
     def __init__(self, select=None,
                  top_region=None,
                  display_region=None,
@@ -94,6 +96,8 @@ class MagnifyInfo:
         :mag_ncols: magnified number of columns default: display_region.nrows 
         :base_canvas: canvas with base info/control
         """
+        MagnifyInfo.info_number += 1
+        self.info_number = MagnifyInfo.info_number
         if select is None:
             select = MagnifySelect()
         self.select = select
@@ -119,7 +123,7 @@ class MagnifyInfo:
         self.base_canvas = base_canvas
 
     def __str__(self):
-        ret = "MagI:"
+        ret = "MagI[{self.info_number}]:"
         if self.description:
             ret += f" self.description"
         if self.select is not None:
@@ -151,6 +155,8 @@ class MagnifyInfo:
         :returns: (MagnifyInfo) child
         """
         child = copy.copy(self)     # Don't expect changing except as below
+        MagnifyInfo.info_number += 1
+        child.info_number = MagnifyInfo.info_number
         child.description = ""
         child.select = MagnifySelect()  # Initialize as unselected
         child.display_window = None     # Set when used
