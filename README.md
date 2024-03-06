@@ -11,6 +11,7 @@ This "text picture" is also placed in the Window clipboard to aid in placing the
 ## Turtle Braille setup from GitHub
 * Create braille_xxxx e.g. on Desktop
 * copy raysmith619/resource_lib/src to braille_xxxx/resource_lib_proj
+* pip install wxpython for wxPython - better graphics feedback for the blind
 * pip install pysinewave for pitch utilities
 * pip install pyttsx3 for speech support
 * pip install sounddevice for tones
