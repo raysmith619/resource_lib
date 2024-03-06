@@ -25,6 +25,7 @@ class PyttsxProc:
         """ process speech commands
             process's processing procedure
         """    
+        SlTrace.clearFlags()    # Clear flags in separate process
         self.engine = pyttsxN.init()
 
         while True:
@@ -150,7 +151,7 @@ if __name__ == "__main__":
     import time
     
     SlTrace.clearFlags()
-    SlTrace.setFlags("talk_cmd")
+    #SlTrace.setFlags("talk_cmd")
     
     SlTrace.lg("\nTest Start")
     tt = PyttsxProc()

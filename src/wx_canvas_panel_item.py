@@ -57,9 +57,18 @@ class CanvasPanelItem:
             self.points = points
         elif self.canv_type == "create_text":
             self.points = [wx_Point(args[0],args[1])]
+        elif self.canv_type == "create_cursor":
+            self.points = [wx_Point(args[0],args[1]),
+                           wx_Point(args[2],args[3])]
         else:
             raise Exception(f"draw: unrecognized type: {self.canv_type}")
 
+    def refresh(self):
+        """ Set item to be redrawn
+        """
+        rect = self.bounding_rect()
+        self.canvas_panel.refresh_rectangle(rect)
+        
     def update(self, **kwargs):
         """ Change zero or more of items keyword values
         :**kwrgs: keyword  args to change
@@ -122,6 +131,8 @@ class CanvasPanelItem:
             ret = self.create_line_draw(points, rect=rect)
         elif self.canv_type == "create_text":
             ret = self.create_text_draw(points, rect=rect)
+        elif self.canv_type == "create_cursor":
+            ret = self.create_cursor_draw(points, rect=rect)
         else:
             raise Exception(f"draw: unrecognized type: {self.canv_type}")
         
@@ -143,6 +154,9 @@ class CanvasPanelItem:
                 brect = wx.Rect(self.points[0], self.points[1])
             elif len(self.points) == 1:
                 brect = wx.Rect(self.points[0], self.points[0])
+        elif self.canv_type == "create_cursor":
+            brect = wx.Rect(wx.Point(self.points[0].x,self.points[0].y),
+                            wx.Point(self.points[1].x, self.points[1].y))
         else:
             raise Exception(f"draw: unrecognized type: {self.canv_type}")
         return brect
@@ -168,9 +182,9 @@ class CanvasPanelItem:
         dc.SetPen(wx.Pen(self.outline, style=wx.SOLID))
         dc.SetBrush(wx.Brush(self.fill, wx.SOLID))
         dc.DrawRectangle(brect)
-        SlTrace.lg(f"DrawRect: {points[0]},"
+        SlTrace.lg(f"DrawRect: {self.fill} {points[0]},"
                    f"  {points[1]}", "draw_rect")
-
+        pass
     ###### create_oval
     def create_oval_draw(self, points=None, rect=None):
         """ Simulate tkinter canvas create_oval
@@ -190,9 +204,10 @@ class CanvasPanelItem:
         dc = wx.PaintDC(self.canvas_panel.grid_panel)
         dc.SetPen(wx.Pen(self.outline, style=wx.SOLID))
         dc.SetBrush(wx.Brush(self.fill, wx.SOLID))
-        dc.DrawEllipse(pt=points[0],
-                size=wx.Size(points[1].x-points[0].x,
-                            points[1].y-points[0].y))
+        size=wx.Size(points[1].x-points[0].x,
+                            points[1].y-points[0].y)
+        dc.DrawEllipse(pt=points[0], size=size)
+        SlTrace.lg(f"DrawElipse: {self.fill} {points[0]} {size}", "draw_oval")
         
     #### create_line
     def create_line_draw(self, points=None, rect=None):
@@ -238,6 +253,30 @@ class CanvasPanelItem:
         title_pt = points[0]
         dc.DrawText(text=text, pt=title_pt)
                 
+    ###### create_cursor
+    def create_cursor_draw(self, points=None, rect=None):
+        """ Create cursor - oval create_oval
+        :points: wx.Point(x0,y0), wx.Point(x1,y1)
+                default: self.points
+        :rect: rectangle if not overlapping don't draw
+                default: always draw
+        """
+        if points is None:
+            points = self.points
+        if len(points) < 2:
+            return
+        brect = wx.Rect(wx.Point(points[0].x,points[0].y), wx.Point(points[1].x,points[1].y))
+        if rect is not None and not brect.Intersects(rect):
+            return
+        
+        dc = wx.PaintDC(self.canvas_panel.grid_panel)
+        dc.SetPen(wx.Pen(self.outline, style=wx.SOLID))
+        dc.SetBrush(wx.Brush(self.fill, wx.SOLID))
+        size=wx.Size(points[1].x-points[0].x,
+                            points[1].y-points[0].y)
+        dc.DrawEllipse(pt=points[0], size=size)
+        SlTrace.lg(f"DrawCursor: {self.fill} {points[0]} {size}", "draw_cursor")
+        
         
     def delete(self):
         """ delete item

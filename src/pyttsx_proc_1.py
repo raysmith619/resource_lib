@@ -64,8 +64,8 @@ class PyttsxProc:
         :text: text to say
         """
         self.engine_runAndWait(text)
-        SlTrace.lg("after engine_runAndWait()")
-        SlTrace.lg(f"do_talk - queue size: {self.pyt_queue.qsize()}")
+        SlTrace.lg("after engine_runAndWait()", "talk_cmd")
+        SlTrace.lg(f"do_talk - queue size: {self.pyt_queue.qsize()}", "talk_cmd")
 
     def engine_runAndWait(self, text):
         """ run engine, wait till done
@@ -73,9 +73,9 @@ class PyttsxProc:
         """
         self.pyt_out_queue.put(True)
         self.engine.say(text)
-        SlTrace.lg(f"After eng.say({text})")
+        SlTrace.lg(f"After eng.say({text})", "talk_cmd")
         self.engine.runAndWait()
-        SlTrace.lg("after eng.runAndWait()")
+        SlTrace.lg("after eng.runAndWait()", "talk_cmd")
         self.pyt_out_queue.put(False)
         
     def wait_while_busy(self):

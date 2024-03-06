@@ -69,7 +69,7 @@ class PyttsxQueued:
         :text: text to say
         """
         self.engine_runAndWait(text)
-        SlTrace.lg("after engine_runAndWait()")
+        SlTrace.lg("after engine_runAndWait()", "talk_cmd")
 
     def engine_runAndWait(self, text):
         """ run engine, wait till done

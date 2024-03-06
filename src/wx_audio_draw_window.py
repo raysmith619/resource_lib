@@ -24,6 +24,7 @@ from wx_adw_menus import AdwMenus
 from wx_canvas_panel import CanvasPanel, wx_Point
 from wx_braille_cell_list import BrailleCellList
 from wx_tk_rem_user import TkRemUser
+from wx_canvas_panel_item import CanvasPanelItem
 
 class AudioDrawWindow(wx.Frame):
     def __init__(self,
@@ -505,6 +506,7 @@ class AudioDrawWindow(wx.Frame):
             self.cell_history.append(cell_ixiy)
             if not self.is_drawing():   # If we're not drawing
                 self.mark_cell(cell_ixiy)   # Mark cell if one
+        
         self.cursor_update()
 
         ###wxport###if not self.mw.winfo_exists():
@@ -699,7 +701,7 @@ class AudioDrawWindow(wx.Frame):
             
 
 
-    def erase_cell(self, cell):
+    def erase_cell(self, cell, force_refresh=False):
         """ Erase cell
         :cell: BrailleCell
         """
@@ -711,7 +713,8 @@ class AudioDrawWindow(wx.Frame):
             for item_id in cell.canv_items:
                 self.canv_pan.delete(item_id)
         cell.canv_items = []
-        self.refresh_cell(cell)      # Mark as dirty
+        if force_refresh:
+            self.refresh_cell(cell)      # Mark as dirty
 
     def erase_pos_history(self):
         """ Remove history, undo history marking
@@ -800,6 +803,7 @@ class AudioDrawWindow(wx.Frame):
         SlTrace.lg(f"{ix},{iy}: {cell} :{cx1},{cy1}, {cx2},{cy2} ", "display_cell")
         self.erase_cell(cell)
         if not cell.is_visible():
+            self.display_cell_end(cell)
             return              # Nothing to show
         
         if cell.mtype==BrailleCell.MARK_UNMARKED:
@@ -830,7 +834,7 @@ class AudioDrawWindow(wx.Frame):
                                                 fill=color)
                 cell.canv_items.append(canv_id)
                 SlTrace.lg(f"canv_pan.create_oval({x0},{y0},{x1},{y1}, fill={color})", "aud_create")
-            self.refresh_cell(cell) 
+            self.display_cell_end(cell)
             return
             
         dots = cell.dots
@@ -864,8 +868,48 @@ class AudioDrawWindow(wx.Frame):
                                             fill=color)
             cell.canv_items.append(canv_id) 
             SlTrace.lg(f"canv_pan.create_oval({x0},{y0},{x1},{y1}, fill={color})", "aud_create")
+        self.display_cell_end(cell)
+        
+    def display_cell_end(self, cell):
+        """ Complete cell display
+        :cell: BrailleCell to display
+        """
         self.refresh_cell(cell) 
 
+
+    def cell_mtype_to_fill(self, mtype=BrailleCell.MARK_SELECTED):
+        """ Convert cell mtype to fill color
+        :mtype: cell mark type default: selected
+        :returns: fill string
+        """
+        MARK_UNSELECTED = 1
+        MARK_SELECTED = 2
+        MARK_TRAVERSED = 3
+
+        fill = "#b0b0b0"    # 
+        if mtype == BrailleCell.MARK_SELECTED:
+            fill = "#d3d3d3"
+        elif mtype == BrailleCell.BrailleCell.MARK_UNSELECTED:
+            fill = "#b0b0b0"
+        return fill
+
+    def mark_cell(self, cell,
+                  mtype=BrailleCell.MARK_SELECTED):
+        """ Mark cell for viewing of history
+        :cell: Cell(BrailleCell) or (ix,iy) of cell
+        :mtype: Mark type default: MARK_SELECTED
+        """
+        if isinstance(cell, BrailleCell):
+            ixy = (cell.ix,cell.iy)
+        else:
+            ixy = cell
+        cells = self.get_cells()
+        if ixy in cells:
+            cell = cells[ixy]
+            cell.mtype = mtype
+            #fill = self.cell_mtype_to_fill(mtype)
+            #self.update_cell(cell, fill=fill)
+            self.display_cell(cell)
 
 
     def partial_update_add(self, item):
@@ -967,7 +1011,23 @@ class AudioDrawWindow(wx.Frame):
         """ Get cell dictionary (by (ix,iy)
         """
         return self.cells
+    
+    def iterate_cells(self):
+        """ Get an iteratable to traverse cells (BrailleCell)
+        :returns: iteratable through cells (BrailleCell)
+        """
+        return self.get_cells().values()
 
+    def get_cell_rect(self, cell):
+        """ Get cell's wx.Rect bounds
+        :returns: bounding rectangle wx:Rect
+        """
+        ix = cell.ix
+        iy = cell.iy    
+        cx1,cy1,cx2,cy2 = self.get_win_ullr_at_ixy_canvas((ix,iy))
+        rect = wx.Rect(wx.Point(cx1,cy1), wx.Point(cx2,cy2))
+        return rect
+        
     def get_cell_items(self, cell, canv_type="create_rectangle"):
         """ Get cell's item (rectangle)
         :cell: BrailleCell
@@ -980,7 +1040,23 @@ class AudioDrawWindow(wx.Frame):
                        int((cy1+cy2)/2))
         items = self.canv_pan.get_panel_items(loc, canv_type=canv_type)
         return items
+
+    def get_cells_over_item(self, item):
+        """ Get cells overlapping item
+        :item: item(CanvasPanelItem)/id
+        :returns: list of overlapping cells (BrailleCell)
+        """
+        item_cells = []
+        if not isinstance(item, CanvasPanelItem):
+            item = self.canv_pan.items_by_id[item]
+        item_rect = item.bounding_rect()
+        for cell in self.iterate_cells():
+            cell_rect = self.get_cell_rect(cell)
+            if cell_rect.Intersects(item_rect):
+                item_cells.append(cell)
+        return item_cells
             
+                   
     def get_cell_at(self, pt=None):
         """ Get cell at location, if one
         :pt: x,y pair location in turtle coordinates
@@ -1122,11 +1198,9 @@ class AudioDrawWindow(wx.Frame):
         """ Mark cell dirty, in need of repainting
         :cell: BrailleCell
         """
-        ix = cell.ix
-        iy = cell.iy    
-        cx1,cy1,cx2,cy2 = self.get_win_ullr_at_ixy_canvas((ix,iy))
-        SlTrace.lg(f"refresh_cell:{(ix,iy)}", "refresh")
-        self.canv_pan.refresh_rectangle(cx1,cy1,cx2,cy2)
+        brect = self.get_cell_rect(cell)
+        SlTrace.lg(f"refresh_cell:{(cell.ix,cell.iy)} {brect}", "refresh")
+        self.canv_pan.refresh_rectangle(brect)
                 
     def set_cell(self, pt=None, color=None):
         """ Set cell at pt, else current cell
@@ -1474,14 +1548,6 @@ class AudioDrawWindow(wx.Frame):
         """ Update cursor (current position) display
         """
         self.fte.cursor_update()
-        
-    def mark_cell(self, cell,
-                  mtype=BrailleCell.MARK_SELECTED):
-        """ Mark cell for viewing of history
-        :cell: Cell(BrailleCell) or (ix,iy) of cell
-        :mtype: Mark type default: MARK_SELECTED
-        """
-        self.fte.mark_cell(cell=cell, mtype=mtype)
 
     def set_color(self, color):
         """ Set current color
@@ -1643,15 +1709,16 @@ if __name__ == "__main__":
 
     def test_tk_track():
         SlTrace.clearFlags()
-        SlTrace.setFlags("refresh")
         app = wx.App()
-        
+        SlTrace.lg("After clearFlags")
+        SlTrace.lg("Checking talk_cmd", "talk_cmd")
         tkr = TkRemUser(simulated=True)
         aw = AudioDrawWindow(tkr=tkr,
                             title="AudioDrawWindow Self-Test",
                             app=app,
                             silent=False)
         
+        SlTrace.setFlags("refresh,draw_rect,draw_oval,mouse_cell")
         aw.MainLoop()
     
     test_tk_track()

@@ -42,7 +42,7 @@ class PyttsxQueued:
         :text: text to say
         """
         self.engine_runAndWait(text)
-        SlTrace.lg("after engine_runAndWait()")
+        SlTrace.lg("after engine_runAndWait()", "talk_cmd")
 
     def engine_runAndWait(self, text):
         """ run engine, wait till done
@@ -60,9 +60,9 @@ class PyttsxQueued:
         SlTrace.lg("starting run_and_wait_thread_proc")
         eng = pyttsx3.init()
         eng.say(text)
-        SlTrace.lg(f"After eng.say({text})")
+        SlTrace.lg(f"After eng.say({text})", "talk_cmd")
         eng.runAndWait()
-        SlTrace.lg("after eng.runAndWait()")
+        SlTrace.lg("after eng.runAndWait()", "talk_cmd")
 
     def quit(self, wait=True):
         """ Quit talking

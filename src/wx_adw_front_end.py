@@ -788,39 +788,6 @@ class AdwFrontEnd:
         """ Clear display figure
         """
         self.clear_cells()
-
-    def cell_mtype_to_fill(self, mtype=BrailleCell.MARK_SELECTED):
-        """ Convert cell mtype to fill color
-        :mtype: cell mark type default: selected
-        :returns: fill string
-        """
-        MARK_UNSELECTED = 1
-        MARK_SELECTED = 2
-        MARK_TRAVERSED = 3
-
-        fill = "#b0b0b0"    # 
-        if mtype == BrailleCell.MARK_SELECTED:
-            fill = "#d3d3d3"
-        elif mtype == BrailleCell.BrailleCell.MARK_UNSELECTED:
-            fill = "#b0b0b0"
-        return fill
-
-    def mark_cell(self, cell,
-                  mtype=BrailleCell.MARK_SELECTED):
-        """ Mark cell for viewing of history
-        :cell: Cell(BrailleCell) or (ix,iy) of cell
-        :mtype: Mark type default: MARK_SELECTED
-        """
-        if isinstance(cell, BrailleCell):
-            ixy = (cell.ix,cell.iy)
-        else:
-            ixy = cell
-        cells = self.get_cells()
-        if ixy in cells:
-            cell = cells[ixy]
-            cell.mtype = mtype
-            fill = self.cell_mtype_to_fill(mtype)
-            self.update_cell(cell, fill=fill)
             
             
 
@@ -1359,7 +1326,7 @@ class AdwFrontEnd:
                             force_output=force_output)  # check on distance to drawing
         self.check_if_drawing(x=x, y=y,
                               force_output=force_output)    # check if on drawing
-
+            
 
 
     def pos_report(self, *args, force_output=False, with_voice=False):
@@ -1430,11 +1397,11 @@ class AdwFrontEnd:
             if self.is_using_audio_beep() and not with_voice:
                 audio_beep = self.get_audio_beep()
                 audio_beep.announce_pcell((ix,iy), dly=0)
-                self.update()
+                ###self.update()
                 grid_path = self.get_grid_path()
                 if grid_path is not None:
                     pcells = grid_path.get_next_positions(max_len=self.get_look_dist())
-                    self.update()
+                    ###self.update()
                     audio_beep.announce_next_pcells(pc_ixys=pcells)
             else:
                 if self.rept_at_loc or with_voice:
@@ -1573,8 +1540,12 @@ class AdwFrontEnd:
         """ Update cursor (current position) display
         """
         if self._cursor_item is not None:
+            item_cells = self.get_cells_over_item(self._cursor_item)
             self.canv_pan.delete(self._cursor_item)
             self._cursor_item = None
+            for cell in item_cells:
+                self.refresh_cell(cell)
+                
         rd = 5
         pos_x,pos_y = self.get_xy_canvas()
 
@@ -1584,6 +1555,10 @@ class AdwFrontEnd:
         y1 = pos_y+rd
         self._cursor_item = self.canv_pan.create_oval(x0,y0,x1,y1,
                                                     fill="red")
+        item_cells = self.get_cells_over_item(self._cursor_item)
+        for cell in item_cells:
+            self.refresh_cell(cell)
+        
 
     def is_using_audio_beep(self):
         return self._using_audio_beep
@@ -1805,6 +1780,27 @@ class AdwFrontEnd:
                        Links to adw
     ############################################################
     """
+
+    def mark_cell(self, cell,
+                  mtype=BrailleCell.MARK_SELECTED):
+        """ Mark cell for viewing of history
+        :cell: Cell(BrailleCell) or (ix,iy) of cell
+        :mtype: Mark type default: MARK_SELECTED
+        """
+        self.adw.mark_cell(cell, mtype=mtype)
+
+    def refresh_cell(self, cell):
+        """ Mark cell dirty, in need of repainting
+        :cell: BrailleCell
+        """
+        return self.adw.refresh_cell(cell)
+
+    def get_cells_over_item(self, item):
+        """ Get cells overlapping item
+        :item: item(CanvasPanelItem)/id
+        :returns: list of overlapping cells (BrailleCell)
+        """
+        return self.adw.get_cells_over_item(item)
 
     def update_cell(self, cell, **kwargs):
         """ Update cell, with "inplace" attribute changes 
@@ -2144,7 +2140,7 @@ class AdwFrontEnd:
             self.set_cell()
         if SlTrace.trace("mouse_cell"):
             cell = self.get_cell_at()
-            SlTrace.lg(f"{self.win_x},{self.win_y} pos_xy:{self.pos_x}, {self.pos_y}"
+            SlTrace.lg(f"pos_xy:{self.pos_x}, {self.pos_y}"
                        f" canvas x,y:{self.get_xy_canvas()}"
                        f" cell: {cell}")
 

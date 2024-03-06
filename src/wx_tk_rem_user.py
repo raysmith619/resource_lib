@@ -152,6 +152,25 @@ class TkRemUser:
         """
         import turtle as tur
         from wx_canvas_grid import CanvasGrid
+        
+        colors = ["red","orange","yellow","green"]
+        tur.speed("fastest")
+        colors = ["red","orange","yellow","green",
+                  "blue","indigo","violet"]
+        
+        for colr in colors:
+            tur.color(colr)
+            tur.forward(300)
+            tur.dot(100)
+            tur.backward(300)
+            tur.right(360/len(colors))
+        canvas = tur.getcanvas()
+        self.sim_cg = CanvasGrid(base=canvas)
+        
+        '''
+        # short simulated
+        import turtle as tur
+        from wx_canvas_grid import CanvasGrid
         colors = ["red","orange","yellow","green"]
 
         for colr in colors:
@@ -161,7 +180,7 @@ class TkRemUser:
             tur.right(90)
         canvas = tur.getcanvas()
         self.sim_cg = CanvasGrid(base=canvas)
-    
+        '''
         
         
     def simulated_get(self):

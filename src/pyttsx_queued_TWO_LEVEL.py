@@ -75,9 +75,9 @@ class PyttsxQueued:
         SlTrace.lg("starting run_and_wait_thread_proc")
         eng = pyttsx3.init()
         eng.say(text)
-        SlTrace.lg(f"After eng.say({text})")
+        SlTrace.lg(f"After eng.say({text})", "talk_cmd")
         eng.runAndWait()
-        SlTrace.lg("after eng.runAndWait()")
+        SlTrace.lg("after eng.runAndWait()", "talk_cmd")
     
 if __name__ == "__main__":
     print("\nTest Start")

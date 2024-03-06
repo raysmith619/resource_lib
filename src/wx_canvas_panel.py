@@ -176,8 +176,6 @@ class CanvasPanel(wx.Panel):
                                kwargs=kwargs)
         self.items_by_id[item.canv_id] = item
         self.items.append(item)
-        if self.partial_update_list is not None:
-           self.partial_update_list.add(item) 
         return item.canv_id
     
     def create_point(self, x0,y0, radius=2,
@@ -204,8 +202,6 @@ class CanvasPanel(wx.Panel):
                                kwargs=kwargs)
         self.items_by_id[item.canv_id] = len(self.items)    # next index
         self.items.append(item)
-        if self.partial_update_list is not None:
-           self.partial_update_list.add(item) 
         return item.canv_id
     
     def create_text(self, x0,y0,
@@ -218,8 +214,6 @@ class CanvasPanel(wx.Panel):
                                kwargs=kwargs)
         self.items_by_id[item.canv_id] = len(self.items)    # next index
         self.items.append(item)
-        if self.partial_update_list is not None:
-           self.partial_update_list.add(item) 
         return item.canv_id
         
 
@@ -239,6 +233,7 @@ class CanvasPanel(wx.Panel):
             if type(id_tag) == int:
                 if id_tag == item.canv_id:
                     item.deleted = True
+                    ###item.refresh()          # Force redraw
                     break   # id is unique
             
                 if id_tag in item.tags:
@@ -273,13 +268,16 @@ class CanvasPanel(wx.Panel):
         
         items_points = self.get_items_points(items)
         items_points_scaled = self.scale_points(items_points)
-        ipo = 0     # current offset into items_points_scaled
-        for item in items:
-            npts = len(item.points)
-            points = items_points_scaled[ipo:ipo+npts]
-            SlTrace.lg(f"item: {item}", "item")
-            item.draw(points=points, rect=rect)
-            ipo += npts # move to next item
+        item_types = ["create_rectangle", "create_line", "create_oval", "create_text"]
+        for item_type in item_types:
+            ipo = 0     # current offset into items_points_scaled
+            for item in items:                
+                npts = len(item.points)
+                points = items_points_scaled[ipo:ipo+npts]
+                SlTrace.lg(f"item: {item}", "item")
+                if item.canv_type == item_type:
+                    item.draw(points=points, rect=rect)
+                ipo += npts # move to next item
 
     def get_items_points(self, items=None):
         """ Get all drawing points, or embeded figures
@@ -343,7 +341,7 @@ class CanvasPanel(wx.Panel):
 
         if not upd.HaveRects():
             self.draw_items()
-            
+        SlTrace.lg(f"Got Rects")    
         while upd.HaveRects():
             rect = upd.GetRect()
             SlTrace.lg(f"Got Rect:{rect}")
@@ -538,17 +536,23 @@ class CanvasPanel(wx.Panel):
         :item: CanvasPanelItem/id
         """
         if type(item) != CanvasPanelItem:
-            item = self.items            
-    def refresh_rectangle(self, cx1,cy1,cx2,cy2,
+            item = self.items_by_id[item]   # Use id to get item
+        rect = item.bounding_rect()
+        self.grid_panel.RefreshRect(rect)
+                    
+    def refresh_rectangle(self, *args,
                                 **kwargs):
         """ Mark rectangle in need of repainting
-        :cx1: rectangle canvas coordinates
-        :cy1:
-        :cx2:
-        :cy2:
+        :arg[0]: wx.Rect 0 rectangle to refresh
+        :
+        :args[0]..args[3]: rectangle x1,y1, x2,y2 coordinates
         """
-        SlTrace.lg(f"RefreshRect({wx.Point(cx1,cy1),wx.Point(cx2,cy2)})", "refresh")
-        self.RefreshRect(wx.Rect(wx.Point(cx1,cy1),wx.Point(cx2,cy2)))
+        if isinstance(args[0], wx.Rect):
+            rect = args[0]
+        else:
+            rect = wx.Rect(wx.Point(args[0],args[1]),wx.Point(args[2],args[3]))
+        SlTrace.lg(f"refresh_rectangle({rect})", "refresh")
+        self.grid_panel.RefreshRect(rect)
 
     def update(self, x1=None, y1=None, x2=None, y2=None,
                full=False):
