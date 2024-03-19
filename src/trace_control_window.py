@@ -1,5 +1,5 @@
 # trace_control_window.py 27Jan2020
-
+import sys
 from tkinter import *
 import atexit
 
