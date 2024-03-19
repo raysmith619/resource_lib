@@ -45,7 +45,7 @@ class ImageInfo:
         if size is not None:
             i_width,i_height = size
             image = self.base_image.resize((int(i_width),
-                             int(i_height)), Image.ANTIALIAS)
+                             int(i_height)), Image.LANCZOS)
         else:
             image = self.base_image     # Unscaled
         if photoimage:

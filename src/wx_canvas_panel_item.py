@@ -25,12 +25,14 @@ class CanvasPanelItem:
     
     def __init__(self, canvas_panel,
                  canv_type,
-                 args=None, kwargs=None):
+                 *args,
+                 desc = None, **kwargs):
         self.canvas_panel = canvas_panel
         CanvasPanelItem.CANV_ID += 1
         self.canv_id = CanvasPanelItem.CANV_ID
         self.canvas_panel.items_by_id[self.canv_id] = self
         self.canv_type = canv_type
+        self.desc = desc
         self.deleted = False
         self.tags = set()
         if "tags" in kwargs:
@@ -60,9 +62,22 @@ class CanvasPanelItem:
         elif self.canv_type == "create_cursor":
             self.points = [wx_Point(args[0],args[1]),
                            wx_Point(args[2],args[3])]
+        elif self.canv_type == "create_composite":
+            self.points = []
+            self.comp_parts = []        # list of composite part items
+            
         else:
             raise Exception(f"draw: unrecognized type: {self.canv_type}")
 
+    def add(self, part):
+        """ Add another composite part
+        :part: id/CanvasPanelItem
+        """
+        if not isinstance(part, CanvasPanelItem):
+            part = self.canvas_panel.items_by_id[part]
+        self.points.extend(part.points)     # Accumulate points of components            
+        self.comp_parts.append(part)
+        
     def refresh(self):
         """ Set item to be redrawn
         """
@@ -123,7 +138,9 @@ class CanvasPanelItem:
         if "tags" in self.kwargs:
             self.tags = self.kwargs["tags"]
         
-        if self.canv_type == "create_rectangle":
+        if self.canv_type == "create_composite":
+            ret = self.create_composite_draw(points, rect=rect)
+        elif self.canv_type == "create_rectangle":
             ret = self.create_rectangle_draw(points, rect=rect)
         elif self.canv_type == "create_oval":
             ret = self.create_oval_draw(points, rect=rect)
@@ -138,8 +155,20 @@ class CanvasPanelItem:
         
         return ret
 
+    def get_parts(self):
+        """ Get parts (non composites), self if not composite
+        :returns: list of composite parts
+        """
+        if self.canv_type != "create_composite":
+            return [self]
+        
+        parts = []
+        for part in self.comp_parts:
+            parts.extend(part.get_parts())
+        return parts
+        
     def bounding_rect(self):
-        """ Get item's bounding rectangle
+        """ Get item's bounding rectangle NOT FOR COMPOSITE
         :returns: wx.Rect bounding rectangle
         """
         if self.canv_type == "create_rectangle":
@@ -160,6 +189,21 @@ class CanvasPanelItem:
         else:
             raise Exception(f"draw: unrecognized type: {self.canv_type}")
         return brect
+         
+    ###### create_composite    
+    def create_composite_draw(self, points=None, rect=None):
+        """ draw composite figure
+        :points: accumulated points from all components
+        :rect: rectangle if not overlapping don't draw
+                default: always draw
+        """
+        if points is None:
+            points = self.points
+        if len(points) == 0:
+            return      # empty list
+
+        for part in self.comp_parts:
+            part.draw(rect=rect)
          
     ###### create_rectangle    
     def create_rectangle_draw(self, points, rect=None):

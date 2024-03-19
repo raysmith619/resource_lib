@@ -13,7 +13,7 @@ from datetime import datetime
 import sys
 import traceback
 import difflib
-from tkinter import *
+###from tkinter import *    # Not required
 
 from crs_funs import str2bool, str2val
 from select_error import SelectError

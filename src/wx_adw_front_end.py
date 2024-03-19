@@ -109,7 +109,6 @@ class AdwFrontEnd:
         self._show_marked = show_marked
         self.set_enable_mouse(enable_mouse)
         self._pendown = False       # True - move marks
-        self._cursor_item = None    # position cursor tag
         self.set_color(color)
         self.setup_beep()
         # direction for digit pad
@@ -318,7 +317,8 @@ class AdwFrontEnd:
                    f"  ul_cx: {ul_cx1} ul_cy1: {ul_cy1}"
                    f"  lr_cx2: {lr_cx2} lr_cy2: {lr_cy2}"
                    )
-        canv_pan.Refresh()
+        canv_pan.RefreshRect(wx.Rect(wx.Point(ul_cx1,ul_cy1),
+                                     wx.Point(lr_cx2,lr_cy2)))
 
 
     """ End of Magnify support
@@ -1535,29 +1535,6 @@ class AdwFrontEnd:
         """
         inc_x, inc_y = self.digit_dir[keyslow]
         self.move_cursor(x_inc=inc_x, y_inc=inc_y)
-
-    def cursor_update(self):
-        """ Update cursor (current position) display
-        """
-        if self._cursor_item is not None:
-            item_cells = self.get_cells_over_item(self._cursor_item)
-            self.canv_pan.delete(self._cursor_item)
-            self._cursor_item = None
-            for cell in item_cells:
-                self.refresh_cell(cell)
-                
-        rd = 5
-        pos_x,pos_y = self.get_xy_canvas()
-
-        x0 = pos_x-rd
-        x1 = pos_x+rd
-        y0 = pos_y-rd
-        y1 = pos_y+rd
-        self._cursor_item = self.canv_pan.create_oval(x0,y0,x1,y1,
-                                                    fill="red")
-        item_cells = self.get_cells_over_item(self._cursor_item)
-        for cell in item_cells:
-            self.refresh_cell(cell)
         
 
     def is_using_audio_beep(self):

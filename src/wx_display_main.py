@@ -10,16 +10,20 @@ from wx_tk_rem_user import TkRemUser
 
 if __name__ == '__main__':      # Required because we use multiprocessing
                                 # in some modules e.g. pyttsx_proc.py
-                                #                      
+                                #
+    from wx_tk_rem_host import TkRemHost
+                          
     SlTrace.clearFlags()
     subprocess = False
-    bdlist = "(1,1,red) (2,2) (3,3) (4,4,green) (4,3) (4,2,blue)"
+    bdlist = None
     parser = argparse.ArgumentParser()
     parser.add_argument('--bdlist', type=str, dest='bdlist', default=bdlist)
     parser.add_argument('--subprocess', action='store_true', dest='subprocess', default=subprocess)
     #parser.add_argument('--ncol=', type=int, dest='ncol', default=ncol)
     args = parser.parse_args()             # or die "Illegal options"
     SlTrace.lg(f"args: {args}\n")
+    
+    tkh = TkRemHost()
     tkr = TkRemUser()
     app = wx.App()
     bd = BrailleDisplay(tkr,display_list=args.bdlist)

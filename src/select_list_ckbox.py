@@ -376,7 +376,7 @@ if __name__ == '__main__':
     ###frame = Frame(root)
     ###frame.pack()
     SlTrace.setProps()
-    image_hash = ImageHash(image_dir="../../crs_dots/images")
+    image_hash = ImageHash(image_dir="../images/animals")
     image_files = image_hash.get_image_files()
     text_items = ["ONE","TWO", "3", "FOUR"]
     x0 = 300

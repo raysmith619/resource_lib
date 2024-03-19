@@ -153,7 +153,6 @@ class TkRemUser:
         import turtle as tur
         from wx_canvas_grid import CanvasGrid
         
-        colors = ["red","orange","yellow","green"]
         tur.speed("fastest")
         colors = ["red","orange","yellow","green",
                   "blue","indigo","violet"]
@@ -166,57 +165,6 @@ class TkRemUser:
             tur.right(360/len(colors))
         canvas = tur.getcanvas()
         self.sim_cg = CanvasGrid(base=canvas)
-        
-        '''
-        # short simulated
-        import turtle as tur
-        from wx_canvas_grid import CanvasGrid
-        colors = ["red","orange","yellow","green"]
-
-        for colr in colors:
-            tur.width(40)
-            tur.color(colr)
-            tur.forward(200)
-            tur.right(90)
-        canvas = tur.getcanvas()
-        self.sim_cg = CanvasGrid(base=canvas)
-        '''
-        
-        
-    def simulated_get(self):
-        """ Simulated get cells
-        """
-        from braille_cell_text import BrailleCellText
-        from wx_braille_cell_list import BrailleCellList
-        
-        spokes_picture="""
-        ,,,,,,,,,,,iii
-        ,,,,,,,,,,iiiii
-        ,,,,,,,,,,iiiii,,,,,,vvv
-        ,,,,,,,,,,iiiii,,,,,vvvvv
-        ,,,,,,,,,,,,ii,,,,,,vvvvv
-        ,,,bb,,,,,,,,i,,,,,,vvvvv
-        ,,bbbbb,,,,,,i,,,,,vv
-        ,,bbbbb,,,,,,i,,,,vv
-        ,,bbbbbbb,,,,ii,,vv
-        ,,,,,,,,bbbb,,i,vv,,,,,,,,rr
-        ,,,,,,,,,,bbbbivv,,,,,,,,rrrr
-        ,,,,,,,,,,,,,bvvrrrrrrrrrrrrr
-        ,,,,,,,,,,ggggyoo,,,,,,,,rrrr
-        ,,,,,,,,gggg,,y,oo,,,,,,,,rr
-        ,,ggggggg,,,,yy,,oo
-        ,,ggggg,,,,,,y,,,,oo
-        ,,ggggg,,,,,,y,,,,,oo
-        ,,,gg,,,,,,,,y,,,,,,ooooo
-        ,,,,,,,,,,,,yy,,,,,,ooooo
-        ,,,,,,,,,,yyyyy,,,,,ooooo
-        ,,,,,,,,,,yyyyy,,,,,,ooo
-        ,,,,,,,,,,yyyyy
-        ,,,,,,,,,,,yyy
-        """
-        spokes_bct = BrailleCellText(text=spokes_picture)
-        spokes_cells = spokes_bct.get_cells()
-        return spokes_cells
 
 if __name__ == '__main__':
     import sys

@@ -9,6 +9,7 @@ import time
 import wx
 from select_trace import SlTrace, SelectError 
 from wx_canvas_panel_item import CanvasPanelItem, wx_Point            
+from wx_adw_display_pending import AdwDisplayPending
 
         
 class CanvasPanel(wx.Panel):
@@ -27,7 +28,6 @@ class CanvasPanel(wx.Panel):
                     default: echo sym
         """
         self.frame = frame
-        self.partial_update_list = None # Set to partial update, if one
         self.sfx =  1       # default scaling
         self.sfy = 1
         if app is None:
@@ -62,6 +62,7 @@ class CanvasPanel(wx.Panel):
         self.items_by_id = {}   # Items stored by item.canv_id
                                 # Augmented by CanvasPanelItem.__init__()
         self.items = []         # Items in order drawn
+        self.adw_dp = AdwDisplayPending()        
         self.prev_reg = None    # Previously displayed
 
         #self.Bind(wx.EVT_PAINT, self.OnPaint)
@@ -148,22 +149,40 @@ class CanvasPanel(wx.Panel):
         if callback is None:
             callback = self.no_call
         wx.CallLater(delay, callback)
-            
+
+    def create_composite(self, desc=None):
+        """ Create a composite display object
+        whoose components are displayed in order as an object
+        :desc: description, if one
+        """
+        item = CanvasPanelItem(self, "create_composite", desc=desc)
+        self.items.append(item)
+        self.items_by_id[item.canv_id] = item    # store by id
+        return item.canv_id
+                    
     def create_rectangle(self, cx1,cy1,cx2,cy2,
                                 **kwargs):
         """ Implement creat_rectangle
             supporting: fill, outline, width
-        """
-        """_summary_
-
-        Returns:
-            _type_: _description_
+        :returns: id
         """
         item = CanvasPanelItem(self, "create_rectangle",
-                               args=[cx1,cy1,cx2,cy2],
-                               kwargs=kwargs)
+                               cx1,cy1,cx2,cy2,
+                               **kwargs)
         self.items.append(item)
         self.items_by_id[item.canv_id] = item    # store by id
+        return item.canv_id
+    
+    def create_cursor(self, x0,y0,x1,y1,
+                        **kwargs):
+        """ Implement create_cursor
+            supporting fill, outline, width
+        """
+        item = CanvasPanelItem(self, "create_cursor",
+                               x0,y0,x1,y1,
+                               **kwargs)
+        self.items_by_id[item.canv_id] = item
+        self.items.append(item)
         return item.canv_id
     
     def create_oval(self, x0,y0,x1,y1,
@@ -172,8 +191,8 @@ class CanvasPanel(wx.Panel):
             supporting fill, outline, width
         """
         item = CanvasPanelItem(self, "create_oval",
-                               args=[x0,y0,x1,y1],
-                               kwargs=kwargs)
+                               x0,y0,x1,y1,
+                               **kwargs)
         self.items_by_id[item.canv_id] = item
         self.items.append(item)
         return item.canv_id
@@ -198,8 +217,8 @@ class CanvasPanel(wx.Panel):
         :kwargs:  width=, fill=, tags=[]
         """
         item = CanvasPanelItem(self, "create_line",
-                               args=args,
-                               kwargs=kwargs)
+                               *args,
+                               **kwargs)
         self.items_by_id[item.canv_id] = len(self.items)    # next index
         self.items.append(item)
         return item.canv_id
@@ -210,8 +229,8 @@ class CanvasPanel(wx.Panel):
             supporting fill, font
         """
         item = CanvasPanelItem(self, "create_text",
-                               args=[x0,y0],
-                               kwargs=kwargs)
+                               x0,y0,
+                               **kwargs)
         self.items_by_id[item.canv_id] = len(self.items)    # next index
         self.items.append(item)
         return item.canv_id
@@ -247,17 +266,29 @@ class CanvasPanel(wx.Panel):
         SlTrace.lg(f"panel size: {size}", "paint")
         e.Skip()
 
-    def draw_items(self, items=None, rect=None):
+    def draw_items(self, items=None, rect=None,
+                   types="create_composite"):
         """ Draw scalled items
         :items: items to draw default: self.items
         :rect: Draw only items in this rectangle
                 default: draw all items
+        :types: item types to draw
+                "ALL" - all types except "create_composite"
+                default: "create_composite"
         """
         if items is None:
             items = self.items
         if len(items) == 0:
             return
-        
+        do_composite = False
+        do_all = False
+        if types == "create_composite":
+            do_composite = True
+        elif types == "ALL":
+            do_all = True
+        else:
+            if not isinstance(types,list):
+                types = [types]     # Make list
         self.pos_adj = self.cur_pos-self.orig_pos
         SlTrace.lg(f"orig_size: {self.orig_size}"
                    f" cur_size: {self.cur_size}", "item")
@@ -268,16 +299,17 @@ class CanvasPanel(wx.Panel):
         
         items_points = self.get_items_points(items)
         items_points_scaled = self.scale_points(items_points)
-        item_types = ["create_rectangle", "create_line", "create_oval", "create_text"]
-        for item_type in item_types:
-            ipo = 0     # current offset into items_points_scaled
-            for item in items:                
-                npts = len(item.points)
-                points = items_points_scaled[ipo:ipo+npts]
-                SlTrace.lg(f"item: {item}", "item")
-                if item.canv_type == item_type:
-                    item.draw(points=points, rect=rect)
-                ipo += npts # move to next item
+
+        ipo = 0     # current offset into items_points_scaled
+        for item in items:                
+            npts = len(item.points)
+            points = items_points_scaled[ipo:ipo+npts]
+            SlTrace.lg(f"item: {item}", "item")
+            if ((do_composite and item.canv_type == "create_composite")
+                    or (do_all and item.canv_type != "create_composite")
+                    or (item.canv_type in types)):
+                item.draw(points=points, rect=rect)
+            ipo += npts # move to next item
 
     def get_items_points(self, items=None):
         """ Get all drawing points, or embeded figures
@@ -337,18 +369,8 @@ class CanvasPanel(wx.Panel):
             SlTrace.lg(f"Further Paint size: {self.GetSize()}", "paint")
             SlTrace.lg(f"Frame size: {self.frame.GetSize()}", "paint")
             pass
-        upd = wx.RegionIterator(self.grid_panel.GetUpdateRegion())
 
-        if not upd.HaveRects():
-            self.draw_items()
-        SlTrace.lg(f"Got Rects")    
-        while upd.HaveRects():
-            rect = upd.GetRect()
-            SlTrace.lg(f"Got Rect:{rect}")
-            # Repaint this rectangle
-            self.draw_items(rect=rect)
-            upd.Next()
-
+        self.display_pending()
 
         self.prev_pos = self.cur_pos
         self.prev_size = self.cur_size
@@ -400,6 +422,12 @@ class CanvasPanel(wx.Panel):
                             self.grid_panel_offset)
         return panel_loc
 
+    def id_to_item(self, canv_id):
+        """ Return item, given id
+        :returns: canv item
+        """
+        return self.items_by_id[canv_id]
+    
     def get_panel_items(self, loc, canv_type="create_rectangle"):
         """ Get item/items at this location
         :loc: wx.Point location at this point
@@ -705,6 +733,26 @@ class CanvasPanel(wx.Panel):
         return '???'    # Unrecognized
 
 
+    """
+    Links to adw_display_pending
+    """
+        
+    def add_cell(self, cell):
+        """ Add cell to be displayed
+        :cell: BrailleCell
+        """            
+        self.adw_dp.add_cell(cell)
+
+    def add_cursor(self, cursor):
+        """ Display list and clear it
+        """
+        self.adw_dp.add_cursor(cursor)
+
+    
+    def display_pending(self):
+        """ Display list and clear it
+        """
+        self.adw_dp.display_pending()
 
 if __name__ == "__main__":
     add_menus = True     # True add menus to frame

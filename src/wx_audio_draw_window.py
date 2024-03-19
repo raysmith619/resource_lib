@@ -124,6 +124,8 @@ class AudioDrawWindow(wx.Frame):
         super().__init__(None, title=title,
                          size=wx.Size(win_width, win_height))
         self.cells = {}         # Dictionary of cells by (ix,iy)
+        self.cells_comps = {}   # Dictionary of cell composite items by (ix,iy)
+        self._cursor_item = None    # position cursor tag
         if tkr is None:
             tkr = TkRemUser(simulated=True)
         self.tkr = tkr
@@ -798,13 +800,12 @@ class AudioDrawWindow(wx.Frame):
                 default: False --> show braille dots
         """
         ix = cell.ix
-        iy = cell.iy    
+        iy = cell.iy
+        comp_id = self.canv_pan.create_composite(desc=str(cell))
+        comp_item = self.canv_pan.id_to_item(comp_id)
+        self.canv_pan.add_cell(comp_item)   
         cx1,cy1,cx2,cy2 = self.get_win_ullr_at_ixy_canvas((ix,iy))
         SlTrace.lg(f"{ix},{iy}: {cell} :{cx1},{cy1}, {cx2},{cy2} ", "display_cell")
-        self.erase_cell(cell)
-        if not cell.is_visible():
-            self.display_cell_end(cell)
-            return              # Nothing to show
         
         if cell.mtype==BrailleCell.MARK_UNMARKED:
             canv_id = self.canv_pan.create_rectangle(cx1,cy1,cx2,cy2,
@@ -814,7 +815,8 @@ class AudioDrawWindow(wx.Frame):
             canv_id = self.canv_pan.create_rectangle(cx1,cy1,cx2,cy2,
                                     fill="#b0b0b0",
                                     outline="dark gray")
-        cell.canv_items.append(canv_id)
+        comp_item.add(canv_id)
+        
         color = self.color_str(cell._color)
         if len(color) < 1 or color[0] not in BrailleCell.color_for_character:
             color = "black"
@@ -834,7 +836,6 @@ class AudioDrawWindow(wx.Frame):
                                                 fill=color)
                 cell.canv_items.append(canv_id)
                 SlTrace.lg(f"canv_pan.create_oval({x0},{y0},{x1},{y1}, fill={color})", "aud_create")
-            self.display_cell_end(cell)
             return
             
         dots = cell.dots
@@ -866,9 +867,8 @@ class AudioDrawWindow(wx.Frame):
             y1 = dy
             canv_id = self.canv_pan.create_oval(x0,y0,x1,y1,
                                             fill=color)
-            cell.canv_items.append(canv_id) 
+            comp_item.add(canv_id) 
             SlTrace.lg(f"canv_pan.create_oval({x0},{y0},{x1},{y1}, fill={color})", "aud_create")
-        self.display_cell_end(cell)
         
     def display_cell_end(self, cell):
         """ Complete cell display
@@ -1046,14 +1046,18 @@ class AudioDrawWindow(wx.Frame):
         :item: item(CanvasPanelItem)/id
         :returns: list of overlapping cells (BrailleCell)
         """
-        item_cells = []
+        item_celld = {}     # dictionary by (ix,iy)
         if not isinstance(item, CanvasPanelItem):
             item = self.canv_pan.items_by_id[item]
-        item_rect = item.bounding_rect()
+        item_parts = item.get_parts()
+        
         for cell in self.iterate_cells():
             cell_rect = self.get_cell_rect(cell)
-            if cell_rect.Intersects(item_rect):
-                item_cells.append(cell)
+            for item_part in item_parts:
+                item_rect = item_part.bounding_rect()
+                if cell_rect.Intersects(item_rect):
+                    item_celld[(cell.ix,cell.iy)] = cell   # Only one of each
+        item_cells = list(item_celld.values())
         return item_cells
             
                    
@@ -1502,6 +1506,29 @@ class AudioDrawWindow(wx.Frame):
         return adw 
 
 
+    def cursor_update(self):
+        """ Update cursor (current position) display
+        """
+        if self._cursor_item is not None:
+            item_cells = self.get_cells_over_item(self._cursor_item)
+            self.canv_pan.delete(self._cursor_item)
+            self._cursor_item = None
+            for cell in item_cells:
+                self.canv_pan.add_cell(cell)
+                
+        rd = 5
+        pos_x,pos_y = self.get_xy_canvas()
+
+        x0 = pos_x-rd
+        x1 = pos_x+rd
+        y0 = pos_y-rd
+        y1 = pos_y+rd
+        self._cursor_item = self.canv_pan.create_cursor(x0,y0,x1,y1,
+                                                    fill="red")
+        self.canv_pan.add_cursor(self._cursor_item)
+        for cell in item_cells:
+            self.canv_pan.add_cell(cell)
+
 
 
     """
@@ -1543,11 +1570,6 @@ class AudioDrawWindow(wx.Frame):
         """ Get access to audio beep
         """
         return self.fte.get_audio_beep()
-
-    def cursor_update(self):
-        """ Update cursor (current position) display
-        """
-        self.fte.cursor_update()
 
     def set_color(self, color):
         """ Set current color
