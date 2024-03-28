@@ -218,7 +218,7 @@ class AudioDrawWindow(wx.Frame):
             mag_info.parent_info.child_infos.append(mag_info)
         self.mag_info = mag_info
         SlTrace.lg(f"\nAudioDrawWindow() mag_info:\n{mag_info}\n")
-        self.mag_selection_tag = None       # mag selection canvas tag, if one
+        self.mag_selection_id = None       # mag selection canvas tag, if one
         self.is_selected = False            # Flag as not yet selected
         self.pos_history = []       # position history (ix,iy)
         self.pos_rep_force_output = False
@@ -801,7 +801,8 @@ class AudioDrawWindow(wx.Frame):
         """
         ix = cell.ix
         iy = cell.iy
-        comp_id = self.canv_pan.create_composite(desc=str(cell))
+        comp_id = self.canv_pan.create_composite(disp_type=CanvasPanelItem.DT_CELL,
+                                                 desc=str(cell))
         comp_item = self.canv_pan.id_to_item(comp_id)
         self.canv_pan.add_cell(comp_item)   
         cx1,cy1,cx2,cy2 = self.get_win_ullr_at_ixy_canvas((ix,iy))
@@ -910,7 +911,7 @@ class AudioDrawWindow(wx.Frame):
             #fill = self.cell_mtype_to_fill(mtype)
             #self.update_cell(cell, fill=fill)
             self.display_cell(cell)
-
+            self.refresh_cell(cell)
 
     def partial_update_add(self, item):
         """ Add item to partial update
@@ -1041,23 +1042,21 @@ class AudioDrawWindow(wx.Frame):
         items = self.canv_pan.get_panel_items(loc, canv_type=canv_type)
         return items
 
-    def get_cells_over_item(self, item):
-        """ Get cells overlapping item
+    def get_overlapping_items(self, item):
+        """ Get display items overlapping item
         :item: item(CanvasPanelItem)/id
-        :returns: list of overlapping cells (BrailleCell)
+        :returns: list of overlapping items (CanvasPanelItem)
         """
-        item_celld = {}     # dictionary by (ix,iy)
-        if not isinstance(item, CanvasPanelItem):
+        item_d = {}     # dictionary by (id)
+        if type(item) == int:
             item = self.canv_pan.items_by_id[item]
-        item_parts = item.get_parts()
+        displayed_items = self.get_displayed_items()
         
-        for cell in self.iterate_cells():
-            cell_rect = self.get_cell_rect(cell)
-            for item_part in item_parts:
-                item_rect = item_part.bounding_rect()
-                if cell_rect.Intersects(item_rect):
-                    item_celld[(cell.ix,cell.iy)] = cell   # Only one of each
-        item_cells = list(item_celld.values())
+        for displayed_item in displayed_items:
+            if self.is_overlapping(item, displayed_item):
+                did = displayed_item.get_id()
+                item_d[did] = displayed_item
+        item_cells = list(item_d.values())
         return item_cells
             
                    
@@ -1319,6 +1318,7 @@ class AudioDrawWindow(wx.Frame):
         """ remove all cells - clearing board
         Initialize empty board
         """
+        SlTrace.lg("\nclear_cells")
         cells = self.get_cells()
         for cell in list(cells.values()):
             self.erase_cell(cell)
@@ -1377,7 +1377,7 @@ class AudioDrawWindow(wx.Frame):
     def update_idle(self):
         """ Update pending
         """
-        self.Refresh()
+        #self.Refresh()
 
     """ Creation/Modification Code
     """
@@ -1509,13 +1509,31 @@ class AudioDrawWindow(wx.Frame):
     def cursor_update(self):
         """ Update cursor (current position) display
         """
+        self.remove_cursor()
+        self.add_cursor()
+        self.refresh_cursor()
+        if self.mag_selection_id is not None:
+            self.canv_pan.add_item(self.mag_selection_id)
+
+
+    def refresh_cursor(self):
+        """ Refresh cursor update
+        """
         if self._cursor_item is not None:
-            item_cells = self.get_cells_over_item(self._cursor_item)
+            self.refresh_item(self._cursor_item)
+                
+    def remove_cursor(self):
+        """ Remove old cursor if one"""
+        if self._cursor_item is not None:
+            overlapping_items = self.get_overlapping_items(self._cursor_item)
             self.canv_pan.delete(self._cursor_item)
             self._cursor_item = None
-            for cell in item_cells:
-                self.canv_pan.add_cell(cell)
-                
+            for item in overlapping_items:
+                self.canv_pan.add_item(item)
+    
+    def add_cursor(self):
+        """ Add new cursor display
+        """            
         rd = 5
         pos_x,pos_y = self.get_xy_canvas()
 
@@ -1524,10 +1542,12 @@ class AudioDrawWindow(wx.Frame):
         y0 = pos_y-rd
         y1 = pos_y+rd
         self._cursor_item = self.canv_pan.create_cursor(x0,y0,x1,y1,
+                                                    disp_type=CanvasPanelItem.DT_CURSOR,
                                                     fill="red")
         self.canv_pan.add_cursor(self._cursor_item)
-        for cell in item_cells:
-            self.canv_pan.add_cell(cell)
+        overlapping_items = self.get_overlapping_items(self._cursor_item)
+        for item in overlapping_items:
+                self.canv_pan.add_item(item)
 
 
 
@@ -1538,6 +1558,21 @@ class AudioDrawWindow(wx.Frame):
         """ Redraw screen
         """
         self.canv_pan.redraw()
+
+    def refresh_item(self, item):
+        self.canv_pan.refresh_item(item)
+
+    def get_displayed_items(self):
+        """ Get list of displayed items
+        :returns: list of permanently displayed values (AdwDisplayPendingItem)
+        """
+        return self.canv_pan.get_displayed_items()
+
+    def is_overlapping(self, item1, item2):
+        """ Check if two display items are overlapping
+        :returns: True iff overlapping
+        """
+        return self.canv_pan.is_overlapping(item1, item2)
 
     """
          Links to front end functions
@@ -1689,6 +1724,7 @@ class AudioDrawWindow(wx.Frame):
 
 
 if __name__ == "__main__":
+    SlTrace.setupLogging(logToScreen=True)
     def test_window_ops():
         SlTrace.clearFlags()
         app = wx.App()
@@ -1740,7 +1776,8 @@ if __name__ == "__main__":
                             app=app,
                             silent=False)
         
-        SlTrace.setFlags("refresh,draw_rect,draw_oval,mouse_cell")
+        #SlTrace.setFlags("refresh,draw_rect,draw_oval,mouse_cell")
         aw.MainLoop()
     
+    #test_window_ops()
     test_tk_track()

@@ -68,7 +68,7 @@ class CanvasFrame(wx.Frame):
         return self.panel.delete(id_tag)
 
 
-threaded mainloop version
+#threaded mainloop version
     def mainloop(self):
         title = self.title
         if title is None:

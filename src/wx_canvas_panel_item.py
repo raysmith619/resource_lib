@@ -9,9 +9,9 @@ from select_trace import SlTrace
 
 def wx_Point(x, y=None):
     """ Force int args
-    :x: x value
+    :x: x value or wx.Point if y is None
     :y: y value
-    :returns: wx_Point
+    :returns: wx.Point
     """
     if y is None:
         return x
@@ -23,15 +23,30 @@ class CanvasPanelItem:
     """
     CANV_ID = 0
     
+    # Display types top level
+    DT_NONE = None                  # Not top level
+    DT_CELL = "DT_CELL"             # BrailleCell
+    DT_CURSOR = "DT_CURSOR"         # Cursor
+    DT_MAG_SEL = "DT_MAG_SEL"       # Magnification selection
+    
     def __init__(self, canvas_panel,
                  canv_type,
                  *args,
+                 disp_type=None,
                  desc = None, **kwargs):
+        """ Canvas display type
+        Supports main units of display, using disp_type for top level
+        items
+        :canvas_panel: parent panel, in which items are displayed
+        :canv_type: basic display units: rect, oval,...composite
+        :disp_type: top level display units default: not top level
+        """
         self.canvas_panel = canvas_panel
         CanvasPanelItem.CANV_ID += 1
         self.canv_id = CanvasPanelItem.CANV_ID
         self.canvas_panel.items_by_id[self.canv_id] = self
         self.canv_type = canv_type
+        self.disp_type = disp_type
         self.desc = desc
         self.deleted = False
         self.tags = set()
@@ -73,7 +88,7 @@ class CanvasPanelItem:
         """ Add another composite part
         :part: id/CanvasPanelItem
         """
-        if not isinstance(part, CanvasPanelItem):
+        if type(part) == int:
             part = self.canvas_panel.items_by_id[part]
         self.points.extend(part.points)     # Accumulate points of components            
         self.comp_parts.append(part)
@@ -94,6 +109,8 @@ class CanvasPanelItem:
     def __str__(self):
         st = "CanvasPanelItem:"
         st += f"[{self.canv_id}]"
+        if self.disp_type is not None:
+            st += f" self.disp_type"
         st += f"{self.canv_type}"
         if self.canvas_panel.orig_pos != (0,0):
             st += f" orig: {self.canvas_panel.orig_pos}"
@@ -166,7 +183,31 @@ class CanvasPanelItem:
         for part in self.comp_parts:
             parts.extend(part.get_parts())
         return parts
+
+    def bounding_rect_composite(self, item):
+        """ Get bounding rectangle of composite
+        :item: composite type
+        :returns: bounding rectangle
+        """
+        parts = item.get_parts()
+        if len(parts) == 0:
+            return wx.Rect(wx.Point(0,0), wx.Point(0,0))    # Empty
+        brect  = self.bounding_rect(parts[0])
+        ul_x, ul_y = brect.getLeft(),brect.getTop()
+        lr_x, lr_y = brect.getRight(),brect.getBottom()
         
+        for part in parts[1:]:
+            br = self.bounding_rect(part)
+            br_ul_x, br_ul_y = br.getLeft(),br.getTop()
+            br_lr_x, br_lr_y = br.getRight(),br.getBottom()
+            ul_x = min(ul_x,br_ul_x)
+            ul_y = min(ul_y, br_ul_y)
+            lr_x = max(lr_x,br_lr_x)
+            lr_y = max(lr_y, br_lr_y)
+        bbrect = wx.Rect(wx.Point(ul_x,ul_y),wx.Point(lr_x,lr_y))
+        return bbrect    
+            
+                
     def bounding_rect(self):
         """ Get item's bounding rectangle NOT FOR COMPOSITE
         :returns: wx.Rect bounding rectangle
@@ -186,6 +227,8 @@ class CanvasPanelItem:
         elif self.canv_type == "create_cursor":
             brect = wx.Rect(wx.Point(self.points[0].x,self.points[0].y),
                             wx.Point(self.points[1].x, self.points[1].y))
+        elif self.canv_type == "create_composite":
+            brect = self.bounding_rect_composite(self)
         else:
             raise Exception(f"draw: unrecognized type: {self.canv_type}")
         return brect

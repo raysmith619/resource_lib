@@ -1,4 +1,6 @@
 #wx_adw_display_pending.py  10Mar2024  crs  Author
+import wx
+
 from select_trace import SlTrace
 
 """
@@ -13,80 +15,109 @@ Items of interest
 User sets function to do actual item display
 by calling set_display_fun(<user's item display function>)    
 """
-class AdwDisplayPendingItem:
-    DI_CELL = 1         # BrailleCell
-    DI_CURSOR = 2       # Cursor
-    DI_MAG_SEL = 3      # Magnification selection
-    DI_CPAN_ITEM = 4    # Canvas Panel item
-    
-    def __init__(self, ditype, item):
-        self.ditype = ditype,
-        self.item = item
-        
+            
 class AdwDisplayPending:
-    def __init__(self):
+    def __init__(self, canv_pan):
+        """ pending display items
+        :canv_pan: canvas panel (CanvPanel)
+        """
+        self.canv_pan = canv_pan
         self.items = []         # one-time list for update
-        self.perm_items = {}    # permanent list, for redrawing
+        self.perm_items = {}    # permanent dictionary, by id, for redrawing
         self.disp_fun = None    # Set as user's item displaying function
+        self.prev_npending = None   # Track changes
         
     
-    def add_item(self, ditype, item):
+    def add_item(self, item):
         """ Add display item
-        :ditype: item type
-        :item: item
+        :item: item/id (CanvasPanelItem)
         """
-        di_item = AdwDisplayPendingItem(ditype, item)
-        self.items.append(di_item)
-        self.add_perm_item(item)
+        if type(item) == int:
+            itm = self.canv_pan.id_to_item(item)
+        else:
+            itm = item
+        if type(itm) == int:
+            SlTrace.lg("item: {item}")
+        self.items.append(itm)
+        self.add_perm_item(itm)
+        self.canv_pan.refresh_item(itm)
         
     def add_perm_item(self, item):
         """ Add permanent item to support redrawing
         TBD handling item changes, overlay etc.
         
-        :di_item: item to be added for redrawing
+        :item: item to be added for redrawing
         """
         self.perm_items[item.canv_id] = item
         
-    def add_cell(self, cell):
+    def add_cell(self, di_item):
         """ Add cell to be displayed
-        :cell: BrailleCell
+        :cell: display item (AdwDisplayPendingItem)
         """            
-        self.add_item(AdwDisplayPendingItem.DI_CELL, cell)
+        self.add_item(di_item)
         
     def add_cursor(self, cursor):
         """ Add cell to be displayed
         :cell: BrailleCell
         """            
-        self.add_item(AdwDisplayPendingItem.DI_CURSOR, cursor)
+        self.add_item(cursor)
         
     def add_mag_sel(self, mag_sel):
         """ Add magnification selection to be displayed
         :mag_sel: magnification selection
         """            
-        self.add_item(AdwDisplayPendingItem.DI_MAG_SEL, mag_sel)
+        self.add_item(mag_sel)
         
     def add_cpan_item(self, cpan_item):
         """ Add cell to be displayed
         :cpan_item: CanvasPanelItem item to display
         """            
-        self.add_item(AdwDisplayPendingItem.DI_CPAN_ITEM, cpan_item)
-    
+        self.add_item(cpan_item)
+
+    def get_displayed_items(self):
+        """ Get list of displayed items
+        :returns: list of permanently displayed values (AdwDisplayPendingItem)
+        """
+        return self.perm_items.values()
+
+    def is_overlapping(self, item1, item2):
+        """ Check if two display items are overlapping
+        :returns: True iff overlapping
+        """
+        
+        
     def display_pending(self):
         """ Display list and clear it
         """
-        for diitem in self.items:
-            self.display_item(diitem)
-        self.items = []     # Clear list
+        if len(self.items) > 0:
+            self.npending = len(self.items)
+            
+            color = self.canv_pan.color
+            dc = wx.PaintDC(self.canv_pan.grid_panel)
+            dc.SetPen(wx.Pen(color))
+            style = wx.SOLID
+            dc.SetBrush(wx.Brush(color, style))
+            if self.prev_npending is None or self.npending != self.prev_npending:
+                SlTrace.lg(f"{self.npending} display_pending prev = {self.prev_npending}")
+                self.prev_npending = self.npending
+            for diitem in self.items:
+                self.display_item(diitem)
+            #self.items = []     # Clear list
     
-    def display_item(self, diitem):
+    def display_item(self, item):
         """ Display item
         :diitem: DisplayListItem item to display
         """
-        if self.disp_fun is None:
-            SlTrace.lg("No DisplayList function for item")
+        if self.disp_fun:
+            self.disp_fun(item)
             return
-        
-        self.disp_fun(diitem)
+        self.draw_item(item)
+
+    def draw_item(self, item):
+        """ Draw item
+        :item: CanvasPanalItem/canv_id item to draw
+        """
+        self.canv_pan.draw_item(item)
             
     def set_display_item_fun(self, disp_fun):
         """ Set display item function

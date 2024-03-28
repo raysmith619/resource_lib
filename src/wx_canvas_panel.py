@@ -62,7 +62,7 @@ class CanvasPanel(wx.Panel):
         self.items_by_id = {}   # Items stored by item.canv_id
                                 # Augmented by CanvasPanelItem.__init__()
         self.items = []         # Items in order drawn
-        self.adw_dp = AdwDisplayPending()        
+        self.adw_dp = AdwDisplayPending(self)        
         self.prev_reg = None    # Previously displayed
 
         #self.Bind(wx.EVT_PAINT, self.OnPaint)
@@ -130,7 +130,7 @@ class CanvasPanel(wx.Panel):
         return pts_s
       
     def get_id(self):
-        """ Get unique id
+        """ Get unique item id id
         """
         self.can_id += 1
         return self.can_id
@@ -150,12 +150,13 @@ class CanvasPanel(wx.Panel):
             callback = self.no_call
         wx.CallLater(delay, callback)
 
-    def create_composite(self, desc=None):
+    def create_composite(self, disp_type=None, desc=None):
         """ Create a composite display object
-        whoose components are displayed in order as an object
+        whose components are displayed in order as an object
         :desc: description, if one
         """
-        item = CanvasPanelItem(self, "create_composite", desc=desc)
+        item = CanvasPanelItem(self, "create_composite",
+                               disp_type=disp_type, desc=desc)
         self.items.append(item)
         self.items_by_id[item.canv_id] = item    # store by id
         return item.canv_id
@@ -219,7 +220,7 @@ class CanvasPanel(wx.Panel):
         item = CanvasPanelItem(self, "create_line",
                                *args,
                                **kwargs)
-        self.items_by_id[item.canv_id] = len(self.items)    # next index
+        self.items_by_id[item.canv_id] = item
         self.items.append(item)
         return item.canv_id
     
@@ -231,7 +232,7 @@ class CanvasPanel(wx.Panel):
         item = CanvasPanelItem(self, "create_text",
                                x0,y0,
                                **kwargs)
-        self.items_by_id[item.canv_id] = len(self.items)    # next index
+        self.items_by_id[item.canv_id] = item
         self.items.append(item)
         return item.canv_id
         
@@ -252,7 +253,7 @@ class CanvasPanel(wx.Panel):
             if type(id_tag) == int:
                 if id_tag == item.canv_id:
                     item.deleted = True
-                    ###item.refresh()          # Force redraw
+                    item.refresh()          # Force redraw
                     break   # id is unique
             
                 if id_tag in item.tags:
@@ -266,6 +267,14 @@ class CanvasPanel(wx.Panel):
         SlTrace.lg(f"panel size: {size}", "paint")
         e.Skip()
 
+    def draw_item(self, item):
+        """ Draw item
+        :item: CanvasPanalItem/canv_id item to draw
+        """
+        if type(item) == int:
+            item = self.id_to_item(item)
+        item.draw()
+        
     def draw_items(self, items=None, rect=None,
                    types="create_composite"):
         """ Draw scalled items
@@ -333,10 +342,6 @@ class CanvasPanel(wx.Panel):
         SlTrace.lg(f"\nOnPaint {self.on_paint_count}", "paint")
         size = self.GetSize()
         SlTrace.lg(f"panel size: {size}", "paint")
-        style = wx.SOLID
-        dc = wx.PaintDC(self.grid_panel)
-        dc.SetPen(wx.Pen(self.color))
-        dc.SetBrush(wx.Brush(self.color, style))
         
             
         if self.on_paint_count == 1:
@@ -371,12 +376,34 @@ class CanvasPanel(wx.Panel):
             pass
 
         self.display_pending()
-
+#        self.check_for_display()    # TFD - wait while events are processed
         self.prev_pos = self.cur_pos
         self.prev_size = self.cur_size
+        SlTrace.lg(f"OnPaint: {self.cur_pos} {self.cur_size}")
 
+    def set_check_proceed(self, proceed=True):
+        self.check_proceed = proceed
 
+    def my_app_kill(self, my_app):
+        """ stop sup application loop
+        :my_app: local wx.App instance
+        """         
+        my_app.ExitMainLoop()
         
+    def check_for_display(self):
+        """ Debug wait with event processing
+        """
+        self.app.MainLoop()
+
+        duration = 4
+        self.check_proceed = False
+        wx.CallLater(duration*1000, self.set_check_proceed)
+        while not self.check_proceed:
+            my_app = wx.App()
+            wx.CallLater(10, self.my_app_kill, my_app=my_app)
+            my_app.MainLoop()
+            pass
+            
     def itemconfig(self, tags, **kwargs):
         """ Adjust items with tags with kwargs
         :tags: tag or tag list of items to change
@@ -403,7 +430,7 @@ class CanvasPanel(wx.Panel):
         :item: item / id
         :**kwargs: attributes to be changed
         """
-        if type(item) != CanvasPanelItem:
+        if type(item) == int:
             item = self.items_by_id[item]
         item.update(**kwargs)
         bdrect = item.bounding_rect()
@@ -555,16 +582,19 @@ class CanvasPanel(wx.Panel):
     def redraw(self):
         """ Redraw screen
         """
-        self.Refresh()
-        self.Update()
-        self.Show()
+        #self.Refresh()
+        #self.Update()
+        #self.Show()
 
     def refresh_item(self, item):        
         """ mark item's region to be displayed
         :item: CanvasPanelItem/id
         """
-        if type(item) != CanvasPanelItem:
-            item = self.items_by_id[item]   # Use id to get item
+        if type(item) == int:
+            if item >= len(self.items):
+                return      # Outside bounds - ignore
+            
+            item = self.items[item]
         rect = item.bounding_rect()
         self.grid_panel.RefreshRect(rect)
                     
@@ -589,6 +619,7 @@ class CanvasPanel(wx.Panel):
             If x1 is a wx.Rect use Rect
             :full: force full update
         """
+        return  # TFD
         now = time.time()
         '''
         since_last = now - self.time_of_update
@@ -736,12 +767,32 @@ class CanvasPanel(wx.Panel):
     """
     Links to adw_display_pending
     """
+    
+    def add_item(self, item):
+        """ Add display item
+        :item: item/id (CanvasPanelItem)
+        """
+        self.adw_dp.add_item(item)
+
+    def get_displayed_items(self):
+        """ Get list of displayed items
+        :returns: list of permanently displayed values (AdwDisplayPendingItem)
+        """
+        return self.adw_dp.get_displayed_items()
+
+
+    def is_overlapping(self, item1, item2):
+        """ Check if two display items are overlapping
+        :returns: True iff overlapping
+        """
+        return self.adw_dp.is_overlapping(item1, item2)
+
         
-    def add_cell(self, cell):
+    def add_cell(self, di_item):
         """ Add cell to be displayed
-        :cell: BrailleCell
+        :di_item: display item
         """            
-        self.adw_dp.add_cell(cell)
+        self.adw_dp.add_cell(di_item)
 
     def add_cursor(self, cursor):
         """ Display list and clear it

@@ -23,7 +23,7 @@ if __name__ == '__main__':      # Required because we use multiprocessing
     args = parser.parse_args()             # or die "Illegal options"
     SlTrace.lg(f"args: {args}\n")
     
-    tkh = TkRemHost()
+    #tkh = TkRemHost()
     tkr = TkRemUser()
     app = wx.App()
     bd = BrailleDisplay(tkr,display_list=args.bdlist)

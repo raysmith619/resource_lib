@@ -20,6 +20,7 @@ from magnify_info import MagnifySelect
 from wx_adw_menus import AdwMenus
 from wx_adw_scanner import AdwScanner
 from wx_key_cmd_proc import KeyCmdProc
+from wx_canvas_panel_item import CanvasPanelItem
 
 class AdwFrontEnd:
 
@@ -238,6 +239,8 @@ class AdwFrontEnd:
                                ix_max=ix_max, iy_max=iy_max)
         mag_info.select = select
         self.show_mag_selection(mag_info)
+        self.show_mag_selection(mag_info)   # HACK - first call gives shortened rectangle
+                                            #        untill refresh
         self.is_selected = True
         return True
 
@@ -285,9 +288,9 @@ class AdwFrontEnd:
         """ Remove magnify selection and marker
         """
         canv_pan = self.canv_pan
-        if self.adw.mag_selection_tag is not None:
-            canv_pan.delete(self.adw.mag_selection_tag)
-            self.adw.mag_selection_tag = None
+        if self.adw.mag_selection_id is not None:
+            canv_pan.delete(self.adw.mag_selection_id)
+            self.adw.mag_selection_id = None
             self.update()       # View change
             self.canv_pan.Refresh()
             
@@ -306,20 +309,21 @@ class AdwFrontEnd:
 
         ixy_lr = (select.ix_max,select.iy_max)
         _,_,lr_cx2,lr_cy2 = self.get_win_ullr_at_ixy_canvas(ixy_lr)
-        self.adw.mag_selection_tag = canv_pan.create_line(ul_cx1,ul_cy1,
-                                                          lr_cx2,ul_cy1,
-                                                          lr_cx2,lr_cy2,
-                                                          ul_cx1,lr_cy2,
-                                                          ul_cx1,ul_cy1,
-                                                          fill="#00008b",
-                                                          width=4)
+        self.adw.mag_selection_id = canv_pan.create_line(ul_cx1,ul_cy1,
+                                                lr_cx2,ul_cy1,
+                                                lr_cx2,lr_cy2,
+                                                ul_cx1,lr_cy2,
+                                                ul_cx1,ul_cy1,
+                                                fill="#00008b",
+                                                width=4,
+                                                disp_type=CanvasPanelItem.DT_MAG_SEL)
         SlTrace.lg(f"Selected region\n"
-                   f"  ul_cx: {ul_cx1} ul_cy1: {ul_cy1}"
+                   f"  ul_cx1: {ul_cx1} ul_cy1: {ul_cy1}"
                    f"  lr_cx2: {lr_cx2} lr_cy2: {lr_cy2}"
                    )
+        self.canv_pan.add_item(self.adw.mag_selection_id)
         canv_pan.RefreshRect(wx.Rect(wx.Point(ul_cx1,ul_cy1),
                                      wx.Point(lr_cx2,lr_cy2)))
-
 
     """ End of Magnify support
     """
@@ -1558,12 +1562,12 @@ class AdwFrontEnd:
     def update(self, full=False):
         """ Update display
         """
-        self.adw.update(full=full)
+        #self.adw.update(full=full)
 
     def update_idle(self):
         """ Update pending
         """
-        self.adw.update_idle()
+        #self.adw.update_idle()
 
 
     """
