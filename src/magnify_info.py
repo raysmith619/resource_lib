@@ -8,11 +8,13 @@ import copy
 
 class MagnifyDisplayRegion:
     """ Region of display, from which a selection may be created """
-    def __init__(self, x_min=None,y_min=None,
+    def __init__(self, win_fract=True,
+                    x_min=None,y_min=None,
                     x_max=None,y_max=None,
-                    ncols=None, nrows=None,
+                    ncols=40, nrows=25,
                     dup=None):
         """ Setup region of display
+        :win_fract: True - values are fraction (0. to 1.) of whole display area
         :x_min: minimum x value - left side 
         :y_min: minimum y value - top side
         :x_max: maximum x value - right side
@@ -22,6 +24,7 @@ class MagnifyDisplayRegion:
         :dup: if not none use this (MagnifyDisplayRegion) for None entries
         """
         if dup is not None:
+            win_fract = dup.win_fract
             if x_min is None:
                 x_min = dup.x_min
             if y_min is None:
@@ -34,6 +37,7 @@ class MagnifyDisplayRegion:
                 ncols = dup.ncols
             if nrows is None:
                 nrows = dup.nrows
+        self.win_fract = win_fract
         self.x_min = x_min
         self.y_min = y_min
         self.x_max = x_max
@@ -42,7 +46,8 @@ class MagnifyDisplayRegion:
         self.nrows = nrows
 
     def __str__(self):
-        ret =  (f"x_min:{self.x_min}"
+        ret =  (f"win_fract:{self.win_fract}"
+                f" x_min:{self.x_min}"
                 f" y_min:{self.y_min}"
                 f" x_max:{self.x_max}"
                 f" y_max:{self.y_max}"
@@ -123,7 +128,7 @@ class MagnifyInfo:
         self.base_canvas = base_canvas
 
     def __str__(self):
-        ret = "MagI[{self.info_number}]:"
+        ret = f"MagI[{self.info_number}]:"
         if self.description:
             ret += f" self.description"
         if self.select is not None:

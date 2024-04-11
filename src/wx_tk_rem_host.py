@@ -79,6 +79,7 @@ class TkRemHost:
             ret_dt = cmd_dt     # return an augmented dictionary
             if cmd_name == 'get_cell_specs':
                 ret = self.get_cell_specs(
+                    win_fract = self.if_attr(cmd_dt, 'win_fract'),
                     x_min = self.if_attr(cmd_dt, 'x_min'),
                     y_min = self.if_attr(cmd_dt, 'y_min'),
                     x_max = self.if_attr(cmd_dt, 'x_max'),
@@ -87,6 +88,10 @@ class TkRemHost:
                     n_rows = self.if_attr(cmd_dt, 'n_rows'))
             elif cmd_name == 'get_canvas_lims':
                 ret = self.get_canvas_lims()
+            elif cmd_name == 'get_cell_rect_tur':
+                ret = self.get_cell_rect_tur(
+                    ix = self.if_attr(cmd_dt, 'ix'),
+                    iy = self.if_attr(cmd_dt, 'iy'))
             elif cmd_name == 'test_command':
                 ret = self.test_command(message=cmd_dt['message'])
             else:
@@ -114,14 +119,23 @@ class TkRemHost:
             ret = cmd_dt[attr_name]
         return ret
 
-    def get_cell_specs(self, 
+    def get_cell_specs(self,
+                        win_fract=None, 
                         x_min=None, y_min=None,
                         x_max=None, y_max=None,
                         n_cols=None, n_rows=None):
         return self.canvas_grid.get_cell_specs(
+                        win_fract=win_fract,
                         x_min=x_min, y_min=y_min,
                         x_max=x_max, y_max=y_max,
                         n_cols=n_cols, n_rows=n_rows)
+
+    def get_cell_rect_tur(self,
+                        ix=None, 
+                        iy=None):
+        return self.canvas_grid.get_cell_rect_tur(
+                        ix=ix,
+                        iy=iy)
             
 
     def get_canvas_lims(self):

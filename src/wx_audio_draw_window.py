@@ -19,9 +19,10 @@ from wx_speaker_control import SpeakerControlLocal
 from grid_path import GridPath
 from braille_cell import BrailleCell
 from magnify_info import MagnifyInfo, MagnifyDisplayRegion
+from wx_stuff import *
 from wx_adw_front_end import AdwFrontEnd
 from wx_adw_menus import AdwMenus
-from wx_canvas_panel import CanvasPanel, wx_Point
+from wx_canvas_panel import CanvasPanel
 from wx_braille_cell_list import BrailleCellList
 from wx_tk_rem_user import TkRemUser
 from wx_canvas_panel_item import CanvasPanelItem
@@ -29,13 +30,15 @@ from wx_canvas_panel_item import CanvasPanelItem
 class AudioDrawWindow(wx.Frame):
     def __init__(self,
         tkr=None,
-        canvas_grid=None,
+        canvas_grid=None,       #NO LONGER USED
         display_list=None,
         app=None,
         title=None, speaker_control=None,
         win_width=800, win_height=800,
         grid_width=40, grid_height=25,
+        win_fract=True,
         x_min=None, y_min=None,
+        x_max=None, y_max=None,
         line_width=1, color="black",
         pos_check_interval= .1,
         pos_rep_interval = .1,
@@ -46,7 +49,7 @@ class AudioDrawWindow(wx.Frame):
         blank_char=",",
         drawing=False,
         show_marked=False,
-        shift_to_edge=True,
+        shift_to_edge=None,
         silent=False,
         look_dist=2,
         menu_str="",
@@ -60,17 +63,28 @@ class AudioDrawWindow(wx.Frame):
         :tkr: Access to remote tk information default: simulated access
         :app: wx application object
             default: create object
-        :canvas_grid: optional CanvasGrid object to provide initializtion
-                default: None
         :speaker_control: (SpeakerControlLocal) local access to centralized speech making
         :win_width: display window width in pixels
             default: 800
         :win_height: display window height in pixels
             default: 800
+        :win_fract: True - x_min,x_max are fraction of win_width
+                            y_min,y_max are fractions of win_height
+                    False - values
+                    default: True
         :x_min: minimum coordinate
-                default: 0
+                default: win_fract: True: 0
+                                False: 0
         :y_min: minimum coordinate
-                default: 0
+                default: win_fract: True:  0
+                                    False: 0
+
+        :x_max: maximum coordinate
+                default: win_fract: True: 1
+                                    False: win_width
+        :y_max: maximum coordinate
+                default: win_fract: True: 1
+                                    False: win_height
         :grid_width: braille width in cells
             default: 40
         :grid_height: braille width in cells
@@ -93,7 +107,7 @@ class AudioDrawWindow(wx.Frame):
                     default: "," dot 2.
         :shift_to_edge: shift picture to edge/top
                     to aid in finding
-                    default: True - shift
+                    default: False - no shift
         :drawing: We're in drawing mode
                  default: False - no drawing
         :show_marked: Make marked cells
@@ -121,6 +135,10 @@ class AudioDrawWindow(wx.Frame):
         if app is None:
             app = wx.App()
         self.app = app
+        if win_width is None:
+            win_width = 800
+        if win_height is None:
+            win_height = 800
         super().__init__(None, title=title,
                          size=wx.Size(win_width, win_height))
         self.cells = {}         # Dictionary of cells by (ix,iy)
@@ -138,9 +156,13 @@ class AudioDrawWindow(wx.Frame):
         self.win_height = win_height
         self.pgmExit = pgmExit
         if x_min is None:
-            x_min = 0
+            x_min = 0. if win_fract else 0.
         if y_min is None:
-            y_min = 0
+            y_min = 0. if win_fract else 0.
+        if x_max is None:
+            x_max = 1. if win_fract else win_width
+        if y_max is None:
+            y_max = 1. if win_fract else win_height
         # create the audio feedback window
         self.title = title
         
@@ -157,26 +179,18 @@ class AudioDrawWindow(wx.Frame):
 
 
         self._visible = visible
-        if canvas_grid is not None:
-            x_min = canvas_grid.g_xmin
-            y_min = canvas_grid.g_ymin
-            x_max = canvas_grid.g_xmax
-            y_max = canvas_grid.g_ymax
-            ncols = grid_width = canvas_grid.g_ncols
-            nrows = grid_height = canvas_grid.g_nrows
-        else:
-            x_max = x_min + win_width    
-            y_max = y_min + win_height
-            nrows=grid_height
-            ncols=grid_width
         self.grid_width = grid_width
         self.grid_height = grid_height
         self.canv_pan = CanvasPanel(self)
+        if shift_to_edge is None:
+            shift_to_edge = True
+        self.shift_to_edge = shift_to_edge
         self.fte = AdwFrontEnd(self, title=title, silent=silent, color=color)
         self.canv_pan.set_key_press_proc(self.fte.key_press)
         self.menus = AdwMenus(self.fte, frame=self)
             
         self.cell_height = win_height/self.grid_height
+        self.set_win_fract(win_fract)
         self.set_x_min(x_min)
         self.set_y_min(y_min)
         self.set_x_max(x_max)
@@ -185,28 +199,36 @@ class AudioDrawWindow(wx.Frame):
         self.speak_text(title)
 
         self.escape_pressed = False # True -> interrupt/flush
-        self.set_cell_lims()
+        #self.set_cell_lims()
         self.do_talking = True      # Enable talking
         self.logging_speech = True  # Output speech to log/screen
         self.from_initial_canvas = False    # True iff from initial drawing
+        nrows = grid_height
+        ncols = grid_width
         if mag_info is None:
             self.from_initial_canvas = True     # Setup from original canvas
             top_region = MagnifyDisplayRegion(
-                x_min=self.get_x_min(), y_min=self.get_y_min(),
-                x_max=self.get_x_max(),
-                y_max=self.get_y_max(),
+                win_fract=win_fract,
+                x_min=x_min,
+                x_max=x_max,
+                y_min=y_min,
+                y_max=y_max,
                 nrows=nrows,
                 ncols=ncols)
-            x_min, x_max, y_min, y_max = tkr.get_canvas_lims()
+            if not win_fract:
+                x_min, x_max, y_min, y_max = tkr.get_canvas_lims()  # get actual limits
             display_region = MagnifyDisplayRegion(
-                x_min=x_min, y_min=y_min,
+                win_fract=win_fract,
+                x_min=x_min,
+                y_min=y_min,
                 x_max=x_max,
                 y_max=y_max,
                 nrows=nrows,
                 ncols=ncols)
             mag_info = MagnifyInfo(top_region=top_region, display_region=display_region)
-            self.cell_specs = self.get_cell_specs(x_min=x_min, x_max=x_max,
-                                             y_min=y_min,y_max=y_max)
+            self.cell_specs = self.get_cell_specs(win_fract=win_fract,
+                                            x_min=x_min,x_max=x_max,
+                                            y_min=y_min,y_max=y_max)
         else:
             if mag_info.description:
                 title = mag_info.description
@@ -229,7 +251,6 @@ class AudioDrawWindow(wx.Frame):
         self.running = True         # Set False to stop
         ###wxport###self.mw.focus_force()
         self.blank_char = blank_char
-        self.shift_to_edge = shift_to_edge
         self.set_look_dist(look_dist)
         #self.pos_check()            # Startup possition check loop
         self.fte.do_complete(menu_str=menu_str, key_str=key_str)
@@ -255,7 +276,7 @@ class AudioDrawWindow(wx.Frame):
             self.draw_cells(self.cell_specs)
         self.key_goto()      # Might as well go to figure
         self.find_edges()
-        
+        self.get_cell_bounds()  # Show figure bounds
 
     def exit(self, rc=None):
         """ Main exit if creating magnifications
@@ -375,10 +396,12 @@ class AudioDrawWindow(wx.Frame):
                     cs[(bcell.ix,bcell.iy)] = bcell
                 cells = cs
             self.cells = cells      # Copy
-        min_x, max_y, max_x,min_y = self.bounding_box()
-        if min_x is not None:            
-            SlTrace.lg(f"Lower left: min_x:{min_x} min_y:{min_y}")
-            SlTrace.lg(f"Upper Right: max_x:{max_x} max_y:{max_y}")
+        min_x, max_y, max_x,min_y = self.bounding_box(cells=cells)
+        if min_x is not None:
+            SlTrace.lg(f"Drawn cells bounding box")            
+            SlTrace.lg(f"Upper left: min_x:{min_x} max_y:{max_y}")
+            SlTrace.lg(f"Lower Right: max_x:{max_x} min_y:{min_y}")
+            self.get_cell_bounds(cells=cells)
         SlTrace.lg(f"{len(cells)} cells")
         for cell in cells.values():
             self.display_cell(cell)
@@ -411,7 +434,9 @@ class AudioDrawWindow(wx.Frame):
             bottom_edge = self.bottom_edge
         else:
             left_edge = 0
-            top_edge = self.grid_height-1
+            top_edge = 0
+            right_edge = self.grid_width-1
+            bottom_edge = self.grid_height-1
 
         braille_text = ""
         for iy in range(top_edge, bottom_edge):
@@ -542,55 +567,7 @@ class AudioDrawWindow(wx.Frame):
                 default:False
         """
         self.set_cursor_pos_win(x=x, y=y, quiet=quiet)
-
-    def is_inbounds_ixy(self, *ixy):
-        """ Check if ixy pair is in bounds
-        :ixy: if tuple ix,iy pair default: current location
-              else ix,iy indexes
-            ix: cell x index default current location
-            iy: cell y index default current location
-        :returns: True iff in bounds else False
-        """
-        ix_cur,iy_cur = self.get_ixy_at()
-        if len(ixy) ==  0:
-            ix,iy = ix_cur,iy_cur
-        elif len(ixy) == 1 and isinstance(ixy[0], tuple):
-            ix,iy = ixy[0]
-        elif len(ixy) == 2:
-            ix,iy = ixy
-        else:
-            raise Exception(f"bad is_inbounds_ixy args: {ixy}")
-        if ix is None:
-            ix = ix_cur
-        if iy is None:
-            iy = iy_cur
-        if ix < 0 or ix >= len(self.cell_xs):
-            return False
-         
-        if iy < 0 or iy >= len(self.cell_ys):
-            return False
-        
-        return True 
-                       
-    def set_cell_lims(self):
-        """ create cell boundary values bottom through top
-         so:
-             cell_xs[0] == left edge
-             cell_xs[grid_width] == right edge
-             cell_ys[0] == top edge
-             cell_ys[grid_height] == bottom edge
-        """
-         
-        self.cell_xs = []
-        self.cell_ys = []
-
-        for i in range(self.grid_width+1):
-            x = int(self.get_x_min() + i*self.win_width/self.grid_width)
-            self.cell_xs.append(x)
-        for i in reversed(range(self.grid_height+1)):
-            y = int(self.get_y_min() + i*self.win_height/self.grid_height)
-            self.cell_ys.append(y)
-            
+                
     def get_ix_min(self):
         """ get minimum ix on grid
         :returns: min ix
@@ -627,17 +604,23 @@ class AudioDrawWindow(wx.Frame):
 
         
 
-    def bounding_box(self):
+    def bounding_box(self, cells=None, add_edge=None):
         """ canvas coordinates which bound displayed figure
+        :cells: list of cells, (with cell.ix,cell.iy) or (ix,iy) tuples
+                default: list of all cells in figure
+        :add_edge: number of cells to add/subtract (if possible)
+                     to enlarge/shrink box
+                    default: no change
         :returns: min_x, max_y, max_x, min_y  (upper left) (lower right)
                     None,None,None,None if no figure
         """
-        min_ix, max_iy, max_ix, min_iy = self.bounding_box_ci()
+        min_ix, min_iy, max_ix, max_iy = self.bounding_box_ci(
+                                    cells=cells, add_edge=add_edge)
         if min_ix is None:
             return None,None,None,None      # No figure
         
-        min_x, max_y, _, _ = self.get_cell_rect_tur(min_ix,max_iy)
-        _, _, max_x, min_y = self.get_cell_rect_tur(max_ix,min_iy)
+        min_x, max_y, _, _ = self.get_cell_rect_tur(min_ix,min_iy)
+        _, _, max_x, min_y = self.get_cell_rect_tur(max_ix,max_iy)
         return min_x,max_y, max_x, min_y
     
     def bounding_box_ci(self, cells=None, add_edge=None):
@@ -960,32 +943,6 @@ class AudioDrawWindow(wx.Frame):
         
                     
         
-    def get_cell_rect_tur(self, ix, iy):
-        """ Get cell's turtle rectangle x, y  upper left, x,  y lower right
-        :ix: cell x index
-        :iy: cell's  y index
-        :returns: (min_x,max_y, max_x,min_y)
-        """
-        if ix is None or ix < 0:
-            SlTrace.lg(f"ix:{ix} < 0")
-            ix = 0
-        max_ix = len(self.cell_xs)-1
-        if ix+1 > max_ix:
-            SlTrace.lg(f"ix:{ix+1} >= {len(self.cell_xs)}")
-            ix = max_ix-1
-        if iy is None or iy < 0:
-            SlTrace.lg(f"iy:{iy} < 0", "aud_move")
-            iy = 0
-        max_iy = len(self.cell_ys)-1
-        if iy+1 > max_iy:
-            SlTrace.lg(f"iy:{iy+1} >= {len(self.cell_ys)}")
-            iy = max_iy-1
-        x1 = self.cell_xs[ix]
-        x2 = self.cell_xs[ix+1]
-        y1 = self.cell_ys[iy+1]
-        y2 = self.cell_ys[iy]
-        return (x1,y1,x2,y2)
-        
         
     def get_ixy_at(self, pt=None):
         """ Get cell(indexes) in which point resides
@@ -1026,7 +983,7 @@ class AudioDrawWindow(wx.Frame):
         ix = cell.ix
         iy = cell.iy    
         cx1,cy1,cx2,cy2 = self.get_win_ullr_at_ixy_canvas((ix,iy))
-        rect = wx.Rect(wx.Point(cx1,cy1), wx.Point(cx2,cy2))
+        rect = wx.Rect(wx_Point(cx1,cy1), wx_Point(cx2,cy2))
         return rect
         
     def get_cell_items(self, cell, canv_type="create_rectangle"):
@@ -1084,6 +1041,7 @@ class AudioDrawWindow(wx.Frame):
         """        
         
         specs = self.get_cell_specs(
+                        win_fract=self.win_fract,
                         x_min=x_min, y_min=y_min,
                         x_max=x_max, y_max=y_max,
                         ncols=ncols, nrows=ncols)
@@ -1095,7 +1053,8 @@ class AudioDrawWindow(wx.Frame):
             braille_cells.append(bcell)
         return braille_cells
     
-    def get_cell_specs(self, 
+    def get_cell_specs(self,
+                       win_fract=True, 
                         x_min=None, y_min=None,
                         x_max=None, y_max=None,
                         ncols=None, nrows=None):
@@ -1103,12 +1062,13 @@ class AudioDrawWindow(wx.Frame):
         :returns: list of cell specs (ix,iy,color)
         """        
         return self.tkr.get_cell_specs(
+                        win_fract=win_fract,
                         x_min=x_min, y_min=y_min,
                         x_max=x_max, y_max=y_max,
                         ncols=ncols, nrows=ncols)
 
 
-    def get_canvas_lims(self):
+    def get_canvas_lims(self, win_fract=True):
         """ Get canvas limits - internal values, to which
         self.base.find_overlapping(cx1,cy1,cx2,cy2) obeys.
         NOTE: These values, despite some vague documentation, may be negative
@@ -1116,7 +1076,7 @@ class AudioDrawWindow(wx.Frame):
         
         :returns: internal (xmin, xmax, ymin, ymax)
         """
-        return self.tkr.get_canvas_lims()
+        return self.tkr.get_canvas_lims(win_fract=win_fract)
 
 
 
@@ -1383,6 +1343,9 @@ class AudioDrawWindow(wx.Frame):
     """
 
     def create_audio_window(self, title=None,
+                 win_width=None,
+                 win_height=None,
+                 win_fract=True,
                  xmin=None, xmax=None, ymin=None, ymax=None,
                  nrows=None, ncols=None, mag_info=None, pgmExit=None,
                  require_cells=False,
@@ -1390,7 +1353,10 @@ class AudioDrawWindow(wx.Frame):
         """ Create new AudioDrawWindow to navigate canvas from the section
         :title: optinal title
                 region (xmin,ymin, xmax,ymax) with nrows, ncols
+        :win_width: window width default: self.win_width
+        :win_height: window height default: self.win_height
         :speaker_control: (SpeakerControlLocal) local access to centralized speech facility
+        :win_fract: True - xmin,xmax... are fractions 0. to 1. of window region
         :xmin,xmax,ymin,ymax,: see get_grid_lims()
                         default: CanvasGrid instance values
         :nrows,ncols: grid size for scanning
@@ -1414,7 +1380,8 @@ class AudioDrawWindow(wx.Frame):
         if mag_info is not None:
             title = f"Magnification {mag_info.description}"
         else:
-            mag_info = self.create_magnify_info(x_min=xmin, y_min=ymin,
+            mag_info = self.create_magnify_info(win_fract=win_fract,
+                                          x_min=xmin, y_min=ymin,
                                           x_max=xmax, y_max=ymax,
                                           ncols=ncols, nrows=nrows)
             
@@ -1422,7 +1389,8 @@ class AudioDrawWindow(wx.Frame):
             nrows = mag_info.mag_nrows
         if ncols is None:
             ncols = mag_info.mag_ncols
-        cell_specs = self.get_cell_specs(x_min=xmin, y_min=ymin,
+        cell_specs = self.get_cell_specs(win_fract=win_fract,
+                                          x_min=xmin, y_min=ymin,
                                           x_max=xmax, y_max=ymax,
                                           ncols=ncols, nrows=nrows)    
         self.n_cells_created = len(cell_specs)
@@ -1436,8 +1404,12 @@ class AudioDrawWindow(wx.Frame):
                               speaker_control=self.speaker_control,
                               iy0_is_top=True, mag_info=mag_info,
                               pgmExit=pgmExit,
-                              x_min=self.get_x_min(),
-                              y_min=self.get_y_min(),
+                              win_width=win_width,
+                              win_height=win_height,
+                              x_min=xmin,
+                              y_min=ymin,
+                              x_max=xmax,
+                              y_max=ymax,
                               silent=silent)
         adw.draw_cells(cells=cell_specs)
         adw.key_goto()      # Might as well go to figure
@@ -1475,6 +1447,44 @@ class AudioDrawWindow(wx.Frame):
                                base_canvas=self)
         return mag_info
                    
+    def get_cell_bounds(self, cells=None, add_edge=None, display_region=None,
+                        special=False):
+        """ Get cell list bounds
+        :cells: list of cells, (with cell.ix,cell.iy) or (ix,iy) tuples
+                default: list of all cells in figure
+        :add_edge: number of cells to add/subtract (if possible)
+                     to enlarge/shrink box
+                    default: no change
+        :display_region: (MagnifyDisplayRegion) display region
+        :special: True - suppress extra display e.g. non-None cells processing
+        :returns: xmin,ymin (upper left), xmax,ymax (lower right) display
+        """
+        if not special and cells is not None:
+            SlTrace.lg("\nFull display bounds")
+            self.get_cell_bounds(cells=[(0,0), (self.grid_width-1,self.grid_height-1)],
+                                 special=True)
+            SlTrace.lg("\nFull figure bounds")
+            self.get_cell_bounds(cells=None)
+        ix_min, iy_min, ix_max, iy_max = self.bounding_box_ci(cells, add_edge)
+        if display_region is None:
+            di = self.get_mag_info()
+            if di is None:
+                SlTrace.lg("No Magnification Info")
+                return None,None,None,None
+            display_region = di.display_region
+        dr = display_region
+        disp_x_cell = (dr.x_max-dr.x_min)/dr.ncols
+        disp_y_cell = (dr.y_max-dr.y_min)/dr.nrows
+        xmin = ix_min*disp_x_cell + dr.x_min
+        ymin = iy_min*disp_y_cell + dr.y_min
+        xmax = (ix_max+1)*disp_x_cell + dr.x_min
+        ymax = (iy_max+1)*disp_y_cell + dr.y_min
+        SlTrace.lg(f"bounding indexes: ix_min:{ix_min}, iy_min:{iy_min}"
+                   f", ix_max:{ix_max}, iy_max:{iy_max}")
+        SlTrace.lg(f"cell bounds:"
+                   f" xmin:{xmin} ymin:{ymin} xmax:{xmax} ymax:{ymax}"
+                   f" nrows:{dr.nrows} ncols:{dr.ncols}")
+                   
     def create_magnification_window(self, mag_info):
         """ Create magnification
         :mag_info: MagnificationInfo containing info
@@ -1495,8 +1505,8 @@ class AudioDrawWindow(wx.Frame):
         child_info.display_region = MagnifyDisplayRegion(x_min=xmin, x_max=xmax,
                                         y_min=ymin, y_max=ymax)
         child_info.description = (f"{child_info.info_number}"
-                                  + f" region min x: {xmin:.0f}, min y: {ymin:.0f},"
-                                  + f" max x: {xmax:.0f}, max y: {ymax:.0f}")
+                                  + f" region min x: {xmin:.2f}, min y: {ymin:.2f},"
+                                  + f" max x: {xmax:.2f}, max y: {ymax:.2f}")
         adw = self.create_audio_window(xmin=xmin, xmax=xmax,
                                        ymin=ymin, ymax=ymax,
                                        nrows=disp_region.nrows,
@@ -1549,7 +1559,18 @@ class AudioDrawWindow(wx.Frame):
         for item in overlapping_items:
                 self.canv_pan.add_item(item)
 
+    """
+    Links to canvas_grid
+    """
 
+        
+    def get_cell_rect_tur(self, ix, iy):
+        """ Get cell's turtle rectangle x, y  upper left, x,  y lower right
+        :ix: cell x index
+        :iy: cell's  y index
+        :returns: (min_x,max_y, max_x,min_y)
+        """
+        return self.tkr.get_cell_rect_tur(ix=ix, iy=iy)
 
     """
     Links to canvas panel - most are direct
@@ -1666,6 +1687,16 @@ class AudioDrawWindow(wx.Frame):
         :returns: (x,y) tuple
         """
         return self.fte.get_xy_canvas(xy=xy)
+    
+    def set_win_fract(self, val):
+        """ Set fraction indicator
+        :val: new win_fract
+        :returns: new win_fract
+        """
+        return self.fte.set_win_fract(val)
+
+    def get_win_fract(self):
+        return self.fte.get_win_fract()
     
     def set_x_min(self, val):
         """ Set min

@@ -62,6 +62,7 @@ class TkRemUser:
         return data
     
     def get_cell_specs(self, 
+                        win_fract=True, 
                         x_min=None, y_min=None,
                         x_max=None, y_max=None,
                         ncols=None, nrows=None):
@@ -70,6 +71,7 @@ class TkRemUser:
         """        
         if self.simulated:
             return self.get_cell_specs_simulated(
+                        win_fract=win_fract, 
                         x_min=x_min, y_min=y_min,
                         x_max=x_max, y_max=y_max,
                         ncols=ncols, nrows=nrows)
@@ -87,6 +89,7 @@ class TkRemUser:
         return ret_dt['ret_val']
     
     def get_cell_specs_simulated(self, 
+                        win_fract=True, 
                         x_min=None, y_min=None,
                         x_max=None, y_max=None,
                         ncols=None, nrows=None):
@@ -94,16 +97,54 @@ class TkRemUser:
         :returns: list of cell specs (ix,iy,color)
         """        
         return self.sim_cg.get_cell_specs(
-                    x_min=x_min, y_min=y_min,
-                    x_max=x_max, y_max=y_max,
+                        win_fract=win_fract, 
+                        x_min=x_min, y_min=y_min,
+                        x_max=x_max, y_max=y_max,
                     n_cols=ncols, n_rows=nrows)
     
-    def get_canvas_lims(self):
+
+    def get_cell_rect_tur(self, ix, iy):
+        """ Get cell's turtle rectangle x, y  upper left, x,  y lower right
+        :ix: cell x index
+        :iy: cell's  y index
+        :returns: (min_x,max_y, max_x,min_y)
+        """
+        if self.simulated:
+            return self.get_cell_rect_tur_simulated(
+                        ix=ix,iy=iy)
+        
+        args = locals()
+        del(args['self'])
+        args['cmd_name'] = 'get_cell_rect_tur'
+        SlTrace.lg(f"USER: args:{args}")
+        cmd_data = pickle.dumps(args)
+        self.send_cmd_data(cmd_data)
+        cmd_resp_data = self.get_resp_data()
+        SlTrace.lg(f"USER: cmd_resp_data: {cmd_resp_data}", "data")
+        ret_dt = pickle.loads(cmd_resp_data)
+        SlTrace.lg(f"USER: ret_dt: {ret_dt}")
+        return ret_dt['ret_val']
+    
+    def get_cell_rect_tur_simulated(self, 
+                        ix,iy):
+        """ Get cell rectangle
+        :returns: )
+        """        
+        return self.sim_cg.get_cell_rect_tur(
+                        ix,iy)
+    
+    
+    def get_canvas_lims(self, win_fract=True):
         """ Get canvas limits
+        :win_fract: True - fractional 0. to 1.
+                    False - window coordinates
         :returns: internal (xmin, xmax, ymin, ymax)
         """
         if self.simulated:
-            return self.get_canvas_lims_simulated()
+            return self.get_canvas_lims_simulated(win_fract=win_fract)
+        
+        if win_fract:
+            return (0.,1., 0., 1.)
                         
         args = locals()
         del(args['self'])
@@ -117,10 +158,13 @@ class TkRemUser:
         SlTrace.lg(f"USER: ret_dt: {ret_dt}")
         return ret_dt['ret_val']
     
-    def get_canvas_lims_simulated(self):
+    def get_canvas_lims_simulated(self, win_fract=True):
         """ Simulate access to canvas info
         :returns: internal (xmin, xmax, ymin, ymax)
         """
+        if win_fract:
+            return (0.,1.,0.,1.)
+        
         winfo_width = 1280
         winfo_height = 1000
         xmax = winfo_width/2
@@ -128,6 +172,7 @@ class TkRemUser:
         ymax = winfo_height/2
         ymin = -ymax
         return (xmin,xmax,ymin,ymax)
+
     
     def test_command(self, 
                         message="Test message"):

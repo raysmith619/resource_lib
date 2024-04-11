@@ -3,20 +3,10 @@
 CanvasPanel item which is used to create/recreate display
 """
 import wx
+from wx_stuff import *
 
 from select_trace import SlTrace
 
-
-def wx_Point(x, y=None):
-    """ Force int args
-    :x: x value or wx.Point if y is None
-    :y: y value
-    :returns: wx.Point
-    """
-    if y is None:
-        return x
-    
-    return wx.Point(int(x), int(y))
    
 class CanvasPanelItem:
     """ Item to display canvas panel item

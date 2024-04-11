@@ -98,7 +98,8 @@ class AdwDisplayPending:
             style = wx.SOLID
             dc.SetBrush(wx.Brush(color, style))
             if self.prev_npending is None or self.npending != self.prev_npending:
-                SlTrace.lg(f"{self.npending} display_pending prev = {self.prev_npending}")
+                SlTrace.lg(f"{self.npending} display_pending prev = {self.prev_npending}",
+                           "display_pending")
                 self.prev_npending = self.npending
             for diitem in self.items:
                 self.display_item(diitem)

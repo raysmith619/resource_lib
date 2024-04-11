@@ -10,6 +10,7 @@ from math import sqrt
 from datetime import datetime
 import time 
 
+from wx_stuff import *
 from select_trace import SlTrace
 from wx_audio_beep import AudioBeep
 
@@ -49,7 +50,7 @@ class AdwFrontEnd:
                  silent=False,
                  pgmExit=None,
                  show_marked=False,
-                 shift_to_edge=True,
+                 shift_to_edge=None,
                  color="blue",
                  ):
         """ front end support
@@ -76,6 +77,9 @@ class AdwFrontEnd:
         if title is None:
             title = "Audio Menu"
         self.title = title
+        if shift_to_edge is None:
+            shift_to_edge = adw.shift_to_edge
+        self.shift_to_edge = shift_to_edge
         self.win_print_entry = adw.win_print_entry
         self._multi_key_progress = False    # No multi-key cmd in progress
         self.key_str = key_str
@@ -241,6 +245,7 @@ class AdwFrontEnd:
         self.show_mag_selection(mag_info)
         self.show_mag_selection(mag_info)   # HACK - first call gives shortened rectangle
                                             #        untill refresh
+        self.get_cell_bounds(cells=self.adw.pos_history)
         self.is_selected = True
         return True
 
@@ -282,7 +287,7 @@ class AdwFrontEnd:
             self.stop_scanning()    # Stop old scanning - possible confusion
             self.speak_text(f"Magnification has {n_cells_created} cell"
                             "s" if n_cells_created != 1 else "")
-        adw.Raise() # Bring to top   
+            adw.Raise() # Bring to top   
 
     def remove_mag_selection(self):
         """ Remove magnify selection and marker
@@ -322,8 +327,8 @@ class AdwFrontEnd:
                    f"  lr_cx2: {lr_cx2} lr_cy2: {lr_cy2}"
                    )
         self.canv_pan.add_item(self.adw.mag_selection_id)
-        canv_pan.RefreshRect(wx.Rect(wx.Point(ul_cx1,ul_cy1),
-                                     wx.Point(lr_cx2,lr_cy2)))
+        canv_pan.RefreshRect(wx.Rect(wx_Point(ul_cx1,ul_cy1),
+                                     wx_Point(lr_cx2,lr_cy2)))
 
     """ End of Magnify support
     """
@@ -544,6 +549,18 @@ class AdwFrontEnd:
             xy = self.get_xy()
         x,y = xy
         return x-self.x_min, y-self.y_min
+    
+    def set_win_fract(self, val):
+        """ Set fraction indicator
+        :val: new win_fract
+        :returns: new win_fract
+        """
+        self.win_fract = val
+        return val
+
+    def get_win_fract(self):
+        return self.win_fract
+
 
     def set_x_min(self, val):
         """ Set min
@@ -1761,6 +1778,19 @@ class AdwFrontEnd:
                        Links to adw
     ############################################################
     """
+                   
+    def get_cell_bounds(self, cells=None, add_edge=None, display_region=None):
+        """ Get cell list bounds
+        :cells: list of cells, (with cell.ix,cell.iy) or (ix,iy) tuples
+                default: list of all cells in figure
+        :add_edge: number of cells to add/subtract (if possible)
+                     to enlarge/shrink box
+                    default: no change
+        :display_region: (MagnifyDisplayRegion) display region
+        :returns: xmin,ymin (upper left), xmax,ymax (lower right) display
+        """
+        return self.adw.get_cell_bounds(cells=cells, add_edge=add_edge,
+                                        display_region=display_region)
 
     def mark_cell(self, cell,
                   mtype=BrailleCell.MARK_SELECTED):
@@ -1911,6 +1941,8 @@ class AdwFrontEnd:
         :shift_to_edge: shift figure towards edge to ease finding figure
                         default: self.shift_to_edge
         """
+        if shift_to_edge:
+            shift_to_edge = self.shift_to_edge
         self.adw.print_braille(title=title, shift_to_edge=shift_to_edge)
 
     def speak_text_stop(self):

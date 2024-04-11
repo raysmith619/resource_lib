@@ -7,8 +7,9 @@ from tkinter Canvas use to wxPython.
 """
 import time
 import wx
-from select_trace import SlTrace, SelectError 
-from wx_canvas_panel_item import CanvasPanelItem, wx_Point            
+from select_trace import SlTrace, SelectError
+from wx_stuff import * 
+from wx_canvas_panel_item import CanvasPanelItem            
 from wx_adw_display_pending import AdwDisplayPending
 
         
@@ -379,7 +380,7 @@ class CanvasPanel(wx.Panel):
 #        self.check_for_display()    # TFD - wait while events are processed
         self.prev_pos = self.cur_pos
         self.prev_size = self.cur_size
-        SlTrace.lg(f"OnPaint: {self.cur_pos} {self.cur_size}")
+        SlTrace.lg(f"OnPaint: {self.cur_pos} {self.cur_size}", "paint")
 
     def set_check_proceed(self, proceed=True):
         self.check_proceed = proceed

@@ -43,7 +43,7 @@ class BrailleDisplay:
                  color_fill = None,
                  point_resolution=None,
                  blank_char=",",
-                 shift_to_edge=True,
+                 shift_to_edge=None,
                  braille_print=True,
                  braille_window=True,
                  print_cells=False,
@@ -89,7 +89,7 @@ class BrailleDisplay:
                     default: "," dot 2.
         :shift_to_edge: shift picture to edge/top
                     to aid in finding
-                    default: True - shift
+                    default: False - no shift
         :braille_print:  Print text picture targeted for embosser
                     default: True
         :braille_window: Create interactive braille_window
@@ -132,7 +132,8 @@ class BrailleDisplay:
         self._braille_print = braille_print
         self._print_cells = print_cells
         self.blank_char = blank_char
-        shift_to_edge = False               # TFD
+        if shift_to_edge is None:
+            shift_to_edge = False               # TFD
         self.shift_to_edge = shift_to_edge
         self.tk_items = tk_items
         self.canvas_items = canvas_items

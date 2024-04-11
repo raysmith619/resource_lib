@@ -62,7 +62,7 @@ class CanvasGrid(tk.Canvas):
         self.ncall_get_cell_specs = 0       # Facilitate tracking          
         self.master = master
         if base is None:
-            base = self 
+            base = tk.Canvas(master) 
         self.base = base
         self.title = title
         self.pgmExit = pgmExit
@@ -80,30 +80,34 @@ class CanvasGrid(tk.Canvas):
         if g_xmax is None:
             g_xmax = self.base.winfo_width()/2 
         self.g_xmax = g_xmax
-        g_width = g_xmax-g_xmin
+        self.g_width = self.base.winfo_width()
         if g_ymin is None:
             g_ymin = -self.base.winfo_height()/2
         self.g_ymin = g_ymin
         if g_ymax is None:
             g_ymax = self.base.winfo_height()/2
         self.g_ymax = g_ymax
-        self.g_height = g_ymax-g_ymin
+        self.g_height = self.base.winfo_height()
         self.g_nrows = g_nrows
         self.g_ncols = g_ncols
         self.grid_tag = None        # Most recent grid paint tag
-        self.set_grid_lims()
+        self.set_cell_lims()
 
-    def get_canvas_lims(self):
+    def get_canvas_lims(self, win_fract=True):
         """ Get canvas limits - internal values, to which
         self.base.find_overlapping(cx1,cy1,cx2,cy2) obeys.
         NOTE: These values, despite some vague documentation, may be negative
               to adhere to turtle coordinate settings.
-        
+        :win_fract: True - fraction of window -x_min = 0. x_max = 1....
         :returns: internal (xmin, xmax, ymin, ymax)
         """
+        if win_fract:
+            return (0.,1., 0.,1.)
+        
         return (self.g_xmin, self.g_xmax, self.g_ymin, self.g_ymax)
             
-    def get_grid_lims(self, xmin=None, xmax=None, ymin=None, ymax=None,
+    def get_grid_lims(self, win_fract=True,
+                      xmin=None, xmax=None, ymin=None, ymax=None,
                       ncols=None, nrows=None):
         """ create grid boundary values bottom through top, given limits
          so:
@@ -113,50 +117,176 @@ class CanvasGrid(tk.Canvas):
              grid_ys[grid_height] == bottom edge
              cell(i,j): grid_xs[i], grid_xs[i+1], grid_ys[j], grid_ys[j+1]
             All coordinates are in canvas values: y==0 at top, increasing down
-        :xmin: minimum x default: self.g_xmin
-        :xmax: maximim x default: self.g_xmax
-        :ymin: minimum y default: self.g_ymin
-        :ymax: maximim y defailt: self.g_ymax
+        :win_fract: True(default) - xmin,... are fractions (0. to 1.) of display
+        :xmin: minimum x default: 0. or self.g_xmin
+        :xmax: maximim x default: 1. or self.g_xmax
+        :ymin: minimum y default: 0. or self.g_ymin
+        :ymax: maximim y defailt: 1 or self.g_ymax
         :ncols: grid horizontal columns default: self.g_ncols
         :nrows: grid vertical rows default: self.g_nrows
-        :returns: (grid_xs,grid_ys) - list of x limits, list of y limits
+        :returns: (grid_xs,grid_ys) - list of x limits (coordinates),
+                                      list of y limits (coordinates)
         """
+        
         if xmin is None:
-            xmin = self.g_xmin 
+            xmin = 0. if win_fract else self.g_xmin 
         if xmax is None:
-            xmax = self.g_xmax 
+            xmax = 1. if win_fract else self.g_xmax 
         if ymin is None:
-            ymin = self.g_ymin 
+            ymin = 0. if win_fract else self.g_ymin 
         if ymax is None:
-            ymax = self.g_ymax 
+            ymax = 1. if win_fract else self.g_ymax 
         if ncols is None:
             ncols = self.g_ncols 
         if nrows is None:
             nrows = self.g_nrows 
             
-        g_width = abs(xmax-xmin)    # Assumes equal shift of max and min
-        g_height = abs(ymax-ymin) 
+        g_width = self.g_width
+        g_height = self.g_height 
         grid_xs = []
         grid_ys = []
 
         for i in range(ncols+1):
-            x = xmin + i*g_width/ncols
+            x = self.g_xmin+i*(xmax-xmin)*g_width/ncols if win_fract else xmin + i*g_width/ncols                 
             grid_xs.append(x)
         for i in range(nrows+1):
-            y = ymin + i*g_height/nrows
+            y = self.g_ymin+i*(ymax-ymin)*g_height/nrows if win_fract else ymin + i*g_height/nrows
             grid_ys.append(y)
         return grid_xs,grid_ys
-        
-    def set_grid_lims(self):
-        """ create grid boundary values bottom through top
-         so:
-             grid_xs[0] == left edge
-             grid_xs[grid_width] == right edge
-             grid_ys[0] == top edge
-             grid_ys[grid_height] == bottom edge
-             cell(i,j): grid_xs[i], grid_xs[i+1], grid_ys[j], grid_ys[j+1]
+
+    def is_inbounds_ixy(self, *ixy):
+        """ Check if ixy pair is in bounds
+        :ixy: if tuple ix,iy pair default: current location
+              else ix,iy indexes
+            ix: cell x index default current location
+            iy: cell y index default current location
+        :returns: True iff in bounds else False
         """
-        self.grid_xs, self.grid_ys = self.get_grid_lims()
+        ix_cur,iy_cur = self.get_ixy_at()
+        if len(ixy) ==  0:
+            ix,iy = ix_cur,iy_cur
+        elif len(ixy) == 1 and isinstance(ixy[0], tuple):
+            ix,iy = ixy[0]
+        elif len(ixy) == 2:
+            ix,iy = ixy
+        else:
+            raise Exception(f"bad is_inbounds_ixy args: {ixy}")
+        if ix is None:
+            ix = ix_cur
+        if iy is None:
+            iy = iy_cur
+        if ix < 0 or ix >= len(self.cell_xs):
+            return False
+         
+        if iy < 0 or iy >= len(self.cell_ys):
+            return False
+        
+        return True 
+                       
+    def set_cell_lims(self, cell_y_increase=False):
+        """ create cell boundary values bottom through top
+        Assumes values increases with cell index
+        To adjust for the reverse replace index i with (N-i)
+        Sets up self.cell_y_min
+                self.cell_y_max
+         so:
+             cell_xs[0] == left edge
+             cell_xs[grid_width] == right edge
+                            y-increasing             y-decreasing
+             top edge :     cell_ys[0]               cell_ys[grid_height]   
+             bottom edge :  cell_ys[grid_height]     cell_ys[0]
+        :cell_y_increase: y value increases with index
+                    default: False to follow turtle coordinate system
+        """
+         
+        self.cell_xs = []
+        self.cell_ys = []
+        self.cell_y_increase = cell_y_increase
+
+        x_min = self.get_x_min()
+        x_max = self.get_x_max()
+        grid_width = self.g_xmax-self.g_xmin
+        x_cell = (x_max-x_min)/grid_width
+        for i in range(self.g_ncols+1):
+            x = int(x_min + i*x_cell)
+            self.cell_xs.append(x)
+            
+        y_min = self.get_y_min()
+        y_max = self.get_y_max()
+        y_cell = (y_max-y_min)/self.g_nrows
+        for i in range(self.g_nrows+1):
+            y = int(y_min + i*y_cell)   # Stored in y increasing order
+            self.cell_ys.append(y)
+
+        if self.cell_y_increase:
+            self.cell_y_min = self.cell_ys[0]
+            self.cell_y_max = self.cell_ys[len(self.cell_ys)-1]
+        else:   # decrease
+            self.cell_y_min = self.cell_ys[len(self.cell_ys)-1]
+            self.cell_y_max = self.cell_ys[0]
+
+
+
+    def get_cell_iy12(self, y):
+        """ Get cell index based on previous set_cell_lims setting of
+        self.cell_ys and self.cell_y_increase
+        :y: y value
+        """
+        if y < self.cell_y_min:
+            SlTrace.lg(f" y({y} too small set to {self.cell_y_min})")
+            y = self.cell_y_min
+        if y > self.cell_y_max:
+            SlTrace.lg(f" y({y} too large set to {self.cell_y_max})")
+            y = self.cell_y_min
+        for i in range(len(self.cell_ys)):
+            if self.cell_ys_increases:
+                i_top = i
+                i_bot = i_bot + 1   #  y index and value increase downward
+                yc_topv = self.cell_ys[i_top]
+                yc_botv = self.cell_ys[i_bot]
+                if y <= yc_topv and y >= yc_botv:
+                    break    
+            else:   # decrease
+                i_top = len(self.cell_ys)-1
+                i_bot = i_bot - 1
+                yc_topv = self.cell_ys[i_top]
+                yc_botv = self.cell_ys[i_bot]
+                if y <= yc_topv and y >= yc_botv:
+                    break    
+        return i_top,i_bot
+
+    def get_cell_y12(self, iy, cell_y_increase=None, cell_ys=None):
+        """ Get cell ytop,ybot range given iy index
+        :iy:
+        :cell_y_increase: value icreases with index iff Trie
+                default: False - index increases down value increases up == turtle coord
+        :ys: y limit array (increasing with index)
+        """
+        if cell_y_increase is None:
+            cell_y_increase = self.cell_y_increase
+        if cell_ys is None:
+            cell_ys = self.cell_ys
+        if cell_y_increase:
+            cell_iy_top = iy
+            cell_iy_bot = cell_iy_top+1
+        else:       # decrease
+            if iy == 0:
+                cell_iy_top = 0
+            else:
+                cell_iy_top = iy-1
+            cell_iy_bot = cell_iy_top+1
+                        
+        if cell_iy_top < 0:
+            SlTrace.lg(f"cell iy({cell_iy_top} too small set to {0})")
+            cell_iy_top = 0
+            cell_iy_bot = cell_iy_top+1
+        if cell_iy_bot >= len(cell_ys):
+            SlTrace.lg(f" iy({cell_iy_bot} too large set to {len(cell_ys)-1})")
+            cell_iy_bot = len(cell_ys)-1
+            cell_iy_top = cell_iy_bot-1
+        cell_y_top = cell_ys[cell_iy_top]
+        cell_y_bot = cell_ys[cell_iy_bot]
+        return cell_y_top,cell_y_bot            
 
     def item_to_color(self, item_ids):
         """ Get color string given item id
@@ -226,13 +356,36 @@ class CanvasGrid(tk.Canvas):
             self.delete(grid_tag)
             self.grid_tag = None
             self.update()
+        
+    def get_cell_rect_tur(self, ix, iy):
+        """ Get cell's turtle rectangle x, y  upper left, x,  y lower right
+        :ix: cell x index
+        :iy: cell's  y index
+        :returns: (min_x,max_y, max_x,min_y)
+        """
+        if ix is None or ix < 0:
+            SlTrace.lg(f"ix:{ix} < 0")
+            ix = 0
+        max_ix = len(self.cell_xs)-1
+        if ix+1 > max_ix:
+            SlTrace.lg(f"ix:{ix+1} >= {len(self.cell_xs)}")
+            ix = max_ix-1
+        if iy is None or iy < 0:
+            SlTrace.lg(f"iy:{iy} < 0", "aud_move")
+            iy = 0
+        x1 = self.cell_xs[ix]
+        x2 = self.cell_xs[ix+1]
+        y1,y2 = self.get_cell_y12(iy)
+        return (x1,y1,x2,y2)
 
                        
-    def get_grid_ullr(self, ix, iy, xs=None, ys=None):
+    def get_grid_ullr(self, ix, iy, cell_y_increase=None, xs=None, ys=None):
         """ Get cell's canvas rectangle x, y  upper left, x,  y lower right
         
         :ix: cell x index
         :iy: cell's  y index
+        :y_increase: y increases with iy iff True
+                    default: use current self.cell_y_increase
         :xs: grid x-values default: self.grid_xs
         :ys: grid y-values default: self.grid_ys 
         :returns: grid cell limits: (w_left_x,w_upper_y,
@@ -245,12 +398,11 @@ class CanvasGrid(tk.Canvas):
             xs = self.grid_xs
         if ys is None:
             ys = self.grid_ys
+        if cell_y_increase is None:
+            cell_y_increase = self.cell_y_increase
         ixmax = len(xs)-2           # last element is upper bound
-        iymax = len(ys)-2
         w_left_x = xs[0]            # left edge
-        w_upper_y = ys[0]           # top edge
         w_right_x = xs[ixmax-1]
-        w_lower_y = ys[iymax-1]
         
         if ix >= 0:
             if ix <= ixmax:
@@ -259,22 +411,20 @@ class CanvasGrid(tk.Canvas):
             else:
                 w_left_x = xs[ixmax]
                 w_right_x = xs[ixmax+1]
-        if iy >= 0:
-            if iy <= iymax:
-                w_upper_y = ys[iy]
-                w_lower_y = ys[iy+1]
-            else:
-                w_upper_y = ys[iymax]
-                w_lower_y = ys[iymax+1]
+        w_upper_y, w_lower_y = self.get_cell_y12(iy, cell_y_increase=cell_y_increase,
+                                                 cell_ys=ys)
         return (w_left_x,w_upper_y, w_right_x,w_lower_y)
 
 
     def get_canvas_items(self,
+                        win_fract=None,
                         xmin=None, xmax=None, ymin=None, ymax=None,
                         ncols=None, nrows=None,
                         types=None, ex_types=None,
                         tags=None, ex_tags=None, get_color=False):
         """ Get items within grid cells
+        :win_fract: True(default) - xmin,... are fractions of display
+                    False - xmin,... are coodinates
         :xmin,xmax,ymin,ymax, ncols, nrows: see get_grid_lims()
                         default: CanvasGrid instance values
         :types: list of types, select only items of these types default: All types
@@ -293,7 +443,8 @@ class CanvasGrid(tk.Canvas):
                                         color string
         """
                         # Get grid limites - defaulting to self.values
-        xs,ys = self.get_grid_lims(xmin=xmin, xmax=xmax, ymin=ymin,ymax=ymax,
+        xs,ys = self.get_grid_lims(win_fract = win_fract,
+                                   xmin=xmin, xmax=xmax, ymin=ymin,ymax=ymax,
                                    ncols=ncols,nrows=nrows)
         ixy_ids_list = []       # Building list of (ix,iy), [overlapping ids]
         if types is not None and ex_types is not None:
@@ -317,8 +468,8 @@ class CanvasGrid(tk.Canvas):
         
         SlTrace.lg(f"get_canvas_items"
                    f" xmin={xmin}, xmax={xmax}, ymin={ymin}, ymax={ymax}", "get_items")
-        for ix in range(len(xs)-1):
-            for iy in range(len(ys)-1):
+        for ix in range(len(xs)):
+            for iy in range(len(ys)):
                 cx1,cy1,cx2,cy2 = self.get_grid_ullr(ix=ix, iy=iy, xs=xs, ys=ys)
                 item_ids_over_raw = self.base.find_overlapping(cx1,cy1,cx2,cy2)
                 if self.ncall_get_cell_specs > 0 or SlTrace.trace("get_items"):
@@ -377,15 +528,19 @@ class CanvasGrid(tk.Canvas):
 
 
     def get_cell_specs(self,
+                        win_fract=True,
                         x_min=None, x_max=None,
                         y_min=None, y_max=None,
                         n_cols=None, n_rows=None):
         """ Get cell specifications (ix,iy,color) from grid
+        :win_fract: True - x_min,... are fractions of region
+                    False x_min are coordinates
         :xmin,xmax,ymin,ymax, ncols, nrows: see get_grid_lims()
                         default: CanvasGrid instance values
         """
         self.ncall_get_cell_specs += 1
-        ixy_items = self.get_canvas_items(xmin=x_min, xmax=x_max,
+        ixy_items = self.get_canvas_items(win_fract=win_fract,
+                                          xmin=x_min, xmax=x_max,
                                           ymin=y_min,ymax=y_max,
                                           ncols=n_cols,nrows=n_rows)
         cell_specs = []
@@ -552,6 +707,18 @@ class CanvasGrid(tk.Canvas):
         xmax = (select.ix_max+1)*disp_x_cell + disp_region.x_min
         ymax = (select.iy_max+1)*disp_y_cell + disp_region.y_min
         return (xmin,ymin, xmax,ymax)   # left, top, right, bottom
+
+    def get_x_max(self):
+        return self.g_xmax
+
+    def get_x_min(self):
+        return self.g_xmin
+
+    def get_y_max(self):
+        return self.g_ymax
+
+    def get_y_min(self):
+        return self.g_ymin
 
     def show_mag_info_items(self, mag_info, ix, iy,
                             title=None, types=None, ex_types=None,

@@ -31,7 +31,8 @@ class TraceControlWindow(wx.Frame):
         tc_y0 = 100
         tc_w = 200
         tc_h = 200
-        super().__init__(self, tcbase, -1, "Trace", size=(tc_w,tc_h), pos=(tc_x0,tc_y0))
+        super().__init__(self, tcbase, id=wx.ID_ANY, title="Trace",
+                         size=(tc_w,tc_h), pos=(tc_x0,tc_y0))
         panel = wx.Pannel(self)
         BTNS_X0 = 10
         BTNS_Y0 = 20
@@ -317,6 +318,7 @@ class TraceControlWindow(wx.Frame):
             SlTrace.lg(f"flag={flag} var={var} val={var.get()}")
 
 if __name__ == '__main__':
+    app = wx.App()
     def report_change(flag, val, cklist=None):
         SlTrace.lg("changed: %s = %d" % (flag, val))
         new_val = SlTrace.getLevel(flag)
@@ -359,11 +361,11 @@ if __name__ == '__main__':
             sys.exit()
         SlTrace.traceButton("quit", our_quit)
                     
-    app = TraceControlWindow(change_call=report_change)
+    tcw = TraceControlWindow(change_call=report_change)
     
     for i in range(end_level):
         test_int("tint1", default=2)
-        app.sleep(1)
+        tcw.sleep(1)
         
-        
+    app.MainLoop()    
     SlTrace.lg("End of test")
