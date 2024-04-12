@@ -245,7 +245,7 @@ class AdwFrontEnd:
         self.show_mag_selection(mag_info)
         self.show_mag_selection(mag_info)   # HACK - first call gives shortened rectangle
                                             #        untill refresh
-        self.get_cell_bounds(cells=self.adw.pos_history)
+        self.get_cell_bounds("mag_select", cells=self.adw.pos_history)
         self.is_selected = True
         return True
 
@@ -1779,8 +1779,10 @@ class AdwFrontEnd:
     ############################################################
     """
                    
-    def get_cell_bounds(self, cells=None, add_edge=None, display_region=None):
+    def get_cell_bounds(self, title=None, cells=None,
+                        add_edge=None, display_region=None):
         """ Get cell list bounds
+        :title: optional title default: no title
         :cells: list of cells, (with cell.ix,cell.iy) or (ix,iy) tuples
                 default: list of all cells in figure
         :add_edge: number of cells to add/subtract (if possible)
@@ -1789,7 +1791,7 @@ class AdwFrontEnd:
         :display_region: (MagnifyDisplayRegion) display region
         :returns: xmin,ymin (upper left), xmax,ymax (lower right) display
         """
-        return self.adw.get_cell_bounds(cells=cells, add_edge=add_edge,
+        return self.adw.get_cell_bounds(title=title, cells=cells, add_edge=add_edge,
                                         display_region=display_region)
 
     def mark_cell(self, cell,

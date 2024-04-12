@@ -449,7 +449,7 @@ class SlTrace:
                 cls.propPathSaved = abs_propName
                 outf = open(abs_propName, "w")
                 list_props = cls.trace("list_props")
-                cls.defaultProps.store(outf, title, list_props=list_props)
+                cls.defaultProps.store(outf, title, list_props=False)  # avoid clutter
                 cls.defaultProps = None     # Flag as no longer available
                 outf.close()
         except IOError as e:

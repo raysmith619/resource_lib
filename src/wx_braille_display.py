@@ -73,8 +73,8 @@ class BrailleDisplay:
         :use_full_cells: Use full cells for point/lines
             e.g. place color letter in cell
             default: True - usefull cells
-        :x_min: x value for left side default: -win_width/2
-        :y_min:  y value for bottom default: -win_height/2
+        :x_min: x value for left side default: -self.draw_width()/2
+        :y_min:  y value for bottom default: -self.draw_height()/2
         :line_width: line width
         :point_resolution: Distance between points below
             with, no difference is recognized
@@ -114,20 +114,20 @@ class BrailleDisplay:
         self.win_width = win_width
         if win_height is None:
             win_height = 800
-        if x_min is None:
-            x_min = -win_width/2
-        self.x_min = x_min
-        self.x_max = x_min + win_width
-        if y_min is None:
-            y_min = -win_height/2
-        self.y_min = y_min
-        self.y_max = y_min + win_height
-        
         self.win_height = win_height
+        if x_min is None:
+            x_min = -self.draw_width()/2
+        self.x_min = x_min
+        self.x_max = x_min + self.draw_width()
+        if y_min is None:
+            y_min = -self.draw_height()/2
+        self.y_min = y_min
+        self.y_max = y_min + self.draw_height()
+        
         self.grid_width = grid_width
-        self.cell_width = win_width/self.grid_width
+        self.cell_width = self.draw_width()/self.grid_width
         self.grid_height = grid_height
-        self.cell_height = win_height/self.grid_height
+        self.cell_height = self.draw_height()/self.grid_height
         self._braille_window = braille_window
         self._braille_print = braille_print
         self._print_cells = print_cells
@@ -138,6 +138,19 @@ class BrailleDisplay:
         self.tk_items = tk_items
         self.canvas_items = canvas_items
         self.app = wx.App()
+
+        """
+        duplicates from AudioDrawWindow 
+        """
+    def draw_height(self):
+        """ drawing area height reduced from window height
+        """
+        return self.win_height*(21/25)  # Hack for now
+
+    def draw_width(self):
+        """ drawing area width reduced from window width
+        """
+        return self.win_width*(38/40)  # Hack for now
     
     
     def MainLoop(self):

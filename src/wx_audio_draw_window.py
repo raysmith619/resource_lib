@@ -68,8 +68,8 @@ class AudioDrawWindow(wx.Frame):
             default: 800
         :win_height: display window height in pixels
             default: 800
-        :win_fract: True - x_min,x_max are fraction of win_width
-                            y_min,y_max are fractions of win_height
+        :win_fract: True - x_min,x_max are fraction of self.draw_width()
+                            y_min,y_max are fractions of self.draw_height()
                     False - values
                     default: True
         :x_min: minimum coordinate
@@ -81,10 +81,10 @@ class AudioDrawWindow(wx.Frame):
 
         :x_max: maximum coordinate
                 default: win_fract: True: 1
-                                    False: win_width
+                                    False: self.draw_width()
         :y_max: maximum coordinate
                 default: win_fract: True: 1
-                                    False: win_height
+                                    False: self.draw_height()
         :grid_width: braille width in cells
             default: 40
         :grid_height: braille width in cells
@@ -160,9 +160,9 @@ class AudioDrawWindow(wx.Frame):
         if y_min is None:
             y_min = 0. if win_fract else 0.
         if x_max is None:
-            x_max = 1. if win_fract else win_width
+            x_max = 1. if win_fract else self.draw_width()
         if y_max is None:
-            y_max = 1. if win_fract else win_height
+            y_max = 1. if win_fract else self.draw_height()
         # create the audio feedback window
         self.title = title
         
@@ -189,7 +189,7 @@ class AudioDrawWindow(wx.Frame):
         self.canv_pan.set_key_press_proc(self.fte.key_press)
         self.menus = AdwMenus(self.fte, frame=self)
             
-        self.cell_height = win_height/self.grid_height
+        self.cell_height = self.draw_height()/self.grid_height
         self.set_win_fract(win_fract)
         self.set_x_min(x_min)
         self.set_y_min(y_min)
@@ -271,12 +271,14 @@ class AudioDrawWindow(wx.Frame):
                 dcell = BrailleCell(ix=ix, iy=iy,
                                     color=color)
                 display_cells[(ix,iy)] = dcell
+            SlTrace.lg("from display_list - draw_cells")
             self.draw_cells(cells=display_cells)
         if self.from_initial_canvas:
+            SlTrace.lg("from_initial_canvas - draw_cells")
             self.draw_cells(self.cell_specs)
         self.key_goto()      # Might as well go to figure
         self.find_edges()
-        self.get_cell_bounds()  # Show figure bounds
+        self.get_cell_bounds("setup_cells")  # Show figure bounds
 
     def exit(self, rc=None):
         """ Main exit if creating magnifications
@@ -401,7 +403,7 @@ class AudioDrawWindow(wx.Frame):
             SlTrace.lg(f"Drawn cells bounding box")            
             SlTrace.lg(f"Upper left: min_x:{min_x} max_y:{max_y}")
             SlTrace.lg(f"Lower Right: max_x:{max_x} min_y:{min_y}")
-            self.get_cell_bounds(cells=cells)
+            self.get_cell_bounds("draw_cells", cells=cells)
         SlTrace.lg(f"{len(cells)} cells")
         for cell in cells.values():
             self.display_cell(cell)
@@ -896,6 +898,16 @@ class AudioDrawWindow(wx.Frame):
             self.display_cell(cell)
             self.refresh_cell(cell)
 
+    def draw_height(self):
+        """ drawing area height reduced from window height
+        """
+        return self.win_height*(21/25)  # Hack for now
+
+    def draw_width(self):
+        """ drawing area width reduced from window width
+        """
+        return self.win_width*(38/40)  # Hack for now
+    
     def partial_update_add(self, item):
         """ Add item to partial update
         :item: item to add
@@ -959,10 +971,10 @@ class AudioDrawWindow(wx.Frame):
         x,y = pt
         x_min = self.get_x_min()
         y_min = self.get_y_min()
-        ix = int((x-x_min)/self.win_width*self.grid_width)
-        iy = int((y-y_min)/self.win_height*self.grid_height)
-        #ix = int((x)/self.win_width*self.grid_width)        # TFD
-        #iy = int((y)/self.win_height*self.grid_height)      # TFD
+        ix = int((x-x_min)/self.draw_width()*self.grid_width)
+        iy = int((y-y_min)/self.draw_height()*self.grid_height)
+        #ix = int((x)/self.self.draw_height()*self.grid_width)        # TFD
+        #iy = int((y)/self.self.draw_height()*self.grid_height)      # TFD
         return (ix,iy)
 
     def get_cells(self):
@@ -1065,7 +1077,7 @@ class AudioDrawWindow(wx.Frame):
                         win_fract=win_fract,
                         x_min=x_min, y_min=y_min,
                         x_max=x_max, y_max=y_max,
-                        ncols=ncols, nrows=ncols)
+                        ncols=ncols, nrows=nrows)
 
 
     def get_canvas_lims(self, win_fract=True):
@@ -1094,10 +1106,10 @@ class AudioDrawWindow(wx.Frame):
         ix,iy = ixy
         x_min = self.get_x_min()
         y_min = self.get_y_min()
-        x_left = int(ix*(self.win_width/self.grid_width) + x_min)
-        x_right = int((ix+1)*(self.win_width/self.grid_width) + x_min)
-        y_top = int((iy*(self.win_height/self.grid_height) + y_min))
-        y_bottom = int((iy+1)*(self.win_height/self.grid_height) + y_min)
+        x_left = int(ix*(self.draw_width()/self.grid_width) + x_min)
+        x_right = int((ix+1)*(self.draw_width()/self.grid_width) + x_min)
+        y_top = int((iy*(self.draw_height()/self.grid_height) + y_min))
+        y_bottom = int((iy+1)*(self.draw_height()/self.grid_height) + y_min)
         return (x_left,y_top, x_right,y_bottom)
 
     def get_win_ullr_at_ixy_canvas(self, ixy):
@@ -1354,7 +1366,7 @@ class AudioDrawWindow(wx.Frame):
         :title: optinal title
                 region (xmin,ymin, xmax,ymax) with nrows, ncols
         :win_width: window width default: self.win_width
-        :win_height: window height default: self.win_height
+        :win_height: window height default: self.draw_height()
         :speaker_control: (SpeakerControlLocal) local access to centralized speech facility
         :win_fract: True - xmin,xmax... are fractions 0. to 1. of window region
         :xmin,xmax,ymin,ymax,: see get_grid_lims()
@@ -1447,9 +1459,10 @@ class AudioDrawWindow(wx.Frame):
                                base_canvas=self)
         return mag_info
                    
-    def get_cell_bounds(self, cells=None, add_edge=None, display_region=None,
+    def get_cell_bounds(self, title=None, cells=None, add_edge=None, display_region=None,
                         special=False):
         """ Get cell list bounds
+        :title: optional title display default: no title
         :cells: list of cells, (with cell.ix,cell.iy) or (ix,iy) tuples
                 default: list of all cells in figure
         :add_edge: number of cells to add/subtract (if possible)
@@ -1459,8 +1472,10 @@ class AudioDrawWindow(wx.Frame):
         :special: True - suppress extra display e.g. non-None cells processing
         :returns: xmin,ymin (upper left), xmax,ymax (lower right) display
         """
+        if title is not None:
+            SlTrace.lg(f"\n{title}")
         if not special and cells is not None:
-            SlTrace.lg("\nFull display bounds")
+            SlTrace.lg("Full display bounds")
             self.get_cell_bounds(cells=[(0,0), (self.grid_width-1,self.grid_height-1)],
                                  special=True)
             SlTrace.lg("\nFull figure bounds")

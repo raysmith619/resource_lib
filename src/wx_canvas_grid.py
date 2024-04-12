@@ -146,12 +146,26 @@ class CanvasGrid(tk.Canvas):
         grid_xs = []
         grid_ys = []
 
+        fg_xmin = self.g_xmin + xmin*g_width
+        fg_xmax = self.g_xmin + xmax*g_width
+        fg_width = fg_xmax - fg_xmin
         for i in range(ncols+1):
-            x = self.g_xmin+i*(xmax-xmin)*g_width/ncols if win_fract else xmin + i*g_width/ncols                 
+            if win_fract:
+                x = fg_xmin + i*fg_width/ncols
+            else:
+                xmin + i*g_width/ncols                 
             grid_xs.append(x)
+            
+        fg_ymin = self.g_ymin + ymin*g_height
+        fg_ymax = self.g_ymin + ymax*g_height
+        fg_height = fg_ymax - fg_ymin
         for i in range(nrows+1):
-            y = self.g_ymin+i*(ymax-ymin)*g_height/nrows if win_fract else ymin + i*g_height/nrows
-            grid_ys.append(y)
+            if win_fract:
+                x = fg_ymin + i*fg_height/nrows
+            else:
+                xmin + i*g_height/nrows                 
+            grid_ys.append(x)
+
         return grid_xs,grid_ys
 
     def is_inbounds_ixy(self, *ixy):
@@ -446,6 +460,11 @@ class CanvasGrid(tk.Canvas):
         xs,ys = self.get_grid_lims(win_fract = win_fract,
                                    xmin=xmin, xmax=xmax, ymin=ymin,ymax=ymax,
                                    ncols=ncols,nrows=nrows)
+        SlTrace.lg(f"\nget_canvas_items")
+        SlTrace.lg(f"xmin={xmin}, xmax={xmax}"
+                   f", ymin={ymin},ymax={ymax}"
+                   f", ncols={ncols},nrows={nrows}")
+        SlTrace.lg(f"xs:{xs}\nys:{ys}")
         ixy_ids_list = []       # Building list of (ix,iy), [overlapping ids]
         if types is not None and ex_types is not None:
             raise BrailleError("Don't support both types and ex_types")

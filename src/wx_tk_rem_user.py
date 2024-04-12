@@ -165,8 +165,8 @@ class TkRemUser:
         if win_fract:
             return (0.,1.,0.,1.)
         
-        winfo_width = 1280
-        winfo_height = 1000
+        winfo_width = self.sc_width
+        winfo_height = self.sc_height
         xmax = winfo_width/2
         xmin = -xmax
         ymax = winfo_height/2
@@ -197,16 +197,22 @@ class TkRemUser:
         """
         import turtle as tur
         from wx_canvas_grid import CanvasGrid
-        
+        sc_width = 800
+        sc_height = 900
+        self.sc_width = sc_width
+        self.sc_height = sc_height
+        screen = tur.Screen()
+        screen.setup(sc_width, sc_height)
         tur.speed("fastest")
         colors = ["red","orange","yellow","green",
                   "blue","indigo","violet"]
-        
+        sp_len = 250
+        dot_size = sp_len/3
         for colr in colors:
             tur.color(colr)
-            tur.forward(300)
+            tur.forward(sp_len)
             tur.dot(100)
-            tur.backward(300)
+            tur.backward(sp_len)
             tur.right(360/len(colors))
         canvas = tur.getcanvas()
         self.sim_cg = CanvasGrid(base=canvas)
