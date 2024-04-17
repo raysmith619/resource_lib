@@ -106,9 +106,9 @@ class AdwMenus:
                 {"name" : "Help", "cmd" : self.mag_help},
                 {"name" : ("rem_pos","Remove Pos History"), "cmd" : self.erase_pos_history},
                 {"name" : "Select", "cmd" : self.mag_select},
-                {"name" : "Expand &Left/Right", "cmd" : self.mag_expand_right},
+                {"name" : "Expand To &Fill", "cmd" : self.mag_expand_to_fill},
                 {"name" : "Expand &Top", "cmd" : self.mag_expand_top},
-                {"name" : "View", "cmd" : self.mag_view},              
+                {"name" : "View", "cmd" : self.mag_view_cmd},              
                 ],
             "navigate" :
                 [
@@ -438,18 +438,25 @@ class AdwMenus:
         """
         return self.fte.mag_select()
 
-    def mag_expand_right(self, _=None):
-        """ Expand selection region right and left by 20%
+    def mag_expand_to_fill(self, _=None):
+        """ Expand selection region to enclose figure
         """
-        self.fte.mag_exapnd_right()
+        self.fte.mag_expand_to_fill()
 
     def mag_expand_top(self, _=None):
         """ Expand selection region top/bottom by 20%
         """
         self.fte.mag_exapnd_top()
 
-    def mag_view(self, _=None):
+    def mag_view(self, cells=None, _=None):
         """ View selected region, creating a new AudioDrawWindow
+        """
+        self.fte.mag_view(cells=cells)
+
+    def mag_view_cmd(self, _=None):
+        """ View selected region (menu dispatch cmd)
+        creating a new AudioDrawWindow menu cmd
+        _ : event - not used
         """
         self.fte.mag_view()
 
@@ -593,8 +600,8 @@ class FteFake:
         SlTrace.lg("fte.erase_pos_history")
     def mag_select(self):
         SlTrace.lg("mag_select")    
-    def mag_exapnd_right(self):
-        SlTrace.lg("mag_exapnd_right")    
+    def mag_expand_to_fill(self):
+        SlTrace.lg("mag_expand_to_fill")    
     def mag_exapnd_top(self):
         SlTrace.lg("mag_exapnd_top")    
     def mag_view(self):

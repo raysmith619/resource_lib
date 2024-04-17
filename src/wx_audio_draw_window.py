@@ -196,7 +196,7 @@ class AudioDrawWindow(wx.Frame):
         self.set_x_max(x_max)
         self.set_y_max(y_max)
         self.set_drawing(drawing)
-        self.speak_text(title)
+        ###self.speak_text(title)
 
         self.escape_pressed = False # True -> interrupt/flush
         #self.set_cell_lims()
@@ -234,7 +234,7 @@ class AudioDrawWindow(wx.Frame):
                 title = mag_info.description
                 ###wxport###mw.title(title)
                 self.title = title
-                self.speak_text(f"Magnification of {title}")
+                ###self.speak_text(f"Magnification of {title}")
         mag_info.display_window = self    # Magnification setup
         if mag_info.parent_info is not None:
             mag_info.parent_info.child_infos.append(mag_info)

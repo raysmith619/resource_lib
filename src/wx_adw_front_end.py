@@ -220,17 +220,22 @@ class AdwFrontEnd:
         """
         self.set_drawing(False)
 
-    def mag_select(self):
+    def mag_select(self, cells=None):
         """ Select magnification region
-            -rectangle including all figure cells traveled so far
+        :cells: cells defining selection region
+                selection is the rectangle including
+                default: all figure cells traveled so far
+                        (self.adw.pos_history)
             :returns: True if some selected else False
         """
+        if cells is None:
+            cells = self.adw.pos_history
         mag_info = self.get_mag_info()
         if mag_info is None:
             SlTrace.lg("Magnification is not enabled")
             return False
 
-        ix_min, iy_min, ix_max, iy_max = self.adw.bounding_box_ci(cells=self.adw.pos_history)
+        ix_min, iy_min, ix_max, iy_max = self.adw.bounding_box_ci(cells=cells)
         if (ix_min is None or iy_min is None
                 or ix_max is None or   iy_max is None):
             self.speak_text(f"Bad selection:"
@@ -245,20 +250,24 @@ class AdwFrontEnd:
         self.show_mag_selection(mag_info)
         self.show_mag_selection(mag_info)   # HACK - first call gives shortened rectangle
                                             #        untill refresh
-        self.get_cell_bounds("mag_select", cells=self.adw.pos_history)
+        self.get_cell_bounds("mag_select", cells=cells)
         self.is_selected = True
         return True
 
-    def mag_expand_right(self):
+    def mag_expand_to_fill(self):
         """ Expand selection region right and left by 20%
         """
+        ix_min,iy_min,ix_max,iy_max = self.bounding_box_ci(add_edge=1)
+        self.mag_view(cells=[(ix_min,iy_min),(ix_max,iy_max)])
 
     def mag_expand_top(self):
         """ Expand selection region top and bottom by 20%
         """
 
-    def mag_view(self):
+    def mag_view(self, cells=None):
         """ View selected region, creating a new AudioDrawWindow
+        :cells: selection cells
+                default: use select default
         """
         mag_info = self.get_mag_info()
         if mag_info is None:
@@ -266,7 +275,7 @@ class AdwFrontEnd:
             return
 
         # Select again, in case of change.  Doesn't hurt.
-        if not self.mag_select():
+        if not self.mag_select(cells=cells):
             self.speak_text("No history to select")
             return
 
@@ -1778,6 +1787,19 @@ class AdwFrontEnd:
                        Links to adw
     ############################################################
     """
+    
+    def bounding_box_ci(self, cells=None, add_edge=None):
+        """ cell indexes which bound the list of cells
+        :cells: list of cells, (with cell.ix,cell.iy) or (ix,iy) tuples
+                default: list of all cells in figure
+        :add_edge: number of cells to add/subtract (if possible)
+                     to enlarge/shrink box
+                    default: no change
+        :returns: 
+                    None,None,None,None if no figure
+                    upper left ix,iy  lower right ix,iy
+        """
+        return self.adw.bounding_box_ci(cells=cells, add_edge=add_edge)
                    
     def get_cell_bounds(self, title=None, cells=None,
                         add_edge=None, display_region=None):
@@ -2207,11 +2229,11 @@ if __name__ == '__main__':
             SlTrace.lg("adw.erase_pos_history")
         def mag_select(self):
             SlTrace.lg("mag_select")    
-        def mag_exapnd_right(self):
+        def mag_expand_to_fill(self):
             SlTrace.lg("mag_exapnd_right")    
         def mag_exapnd_top(self):
             SlTrace.lg("mag_exapnd_top")    
-        def mag_view(self):
+        def mag_view(self, cells=None):
             SlTrace.lg("mag_view")    
 
         """ nav support"""
