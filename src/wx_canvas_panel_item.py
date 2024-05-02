@@ -18,6 +18,7 @@ class CanvasPanelItem:
     DT_CELL = "DT_CELL"             # BrailleCell
     DT_CURSOR = "DT_CURSOR"         # Cursor
     DT_MAG_SEL = "DT_MAG_SEL"       # Magnification selection
+    DT_SCAN_ITEM = "DT_SCAN_ITEM"   # Scanning item display
     
     def __init__(self, canvas_panel,
                  canv_type,

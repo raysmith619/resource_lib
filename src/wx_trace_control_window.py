@@ -7,17 +7,14 @@ import atexit
 import wx
 
 from select_trace import SlTrace
-from crs_funs import str2val
-
+from wx_trace_control_pan3 import TraceControlPanel
+        
 class TraceControlWindow(wx.Frame):
     def __init__(self, tcbase=None, change_call=None):
         """ Trace flag dictionary
         :tcbase: - parent - call basis must have tc_destroy to be called if we close
         :change_call: - call with change flag, value, if present
         """
-        self.flag_by_cb = {}             # Dictionary hashed on cb widget
-        self.data_by_flag = {}
-        self.standalone = False      # Set True if standalone operation
         if tcbase is None:
             SlTrace.lg("Standalone TraceControlWindow")
             root = wx.Frame(None, -1, "Trace Control")
@@ -25,153 +22,17 @@ class TraceControlWindow(wx.Frame):
             frame.Show()
             self.standalone = True
         self.tcbase = tcbase
-        self.change_call = change_call
-                    
         tc_x0 = 800
         tc_y0 = 100
-        tc_w = 200
+        tc_w = 400
         tc_h = 200
-        super().__init__(self, tcbase, id=wx.ID_ANY, title="Trace",
+        wx.Frame.__init__(self, tcbase, id=wx.ID_ANY,
                          size=(tc_w,tc_h), pos=(tc_x0,tc_y0))
-        panel = wx.Pannel(self)
-        BTNS_X0 = 10
-        BTNS_Y0 = 20
-        btns_xoff = 10
-        btns_yoff = 20
-        btns_x = BTNS_X0-btns_xoff  # so increment is uniform
-        btns_y = BTNS_Y0-btns_yoff
-        
-        btns_x += btns_xoff
-        btns_y += btns_yoff
-        tc_all_button = wx.Button(panel, label="SET ALL", pos=(btns_x,btns_y))
-        tc_all_button.Bind(wx.EVT_CLICK, self.select_all)
-        
-        btns_x += btns_xoff
-        btns_y += btns_yoff
-        tc_none_button = wx.Button(panel, label="NONE", pos=(btns_x,btns_y))
-        tc_none_button.Bind(wx.EVT_CLICK, self.select_none)
-        
-        btns_x += btns_xoff
-        btns_y += btns_yoff
-        tc_none_button = wx.Button(panel, label="BPT", pos=(btns_x,btns_y))
-        tc_none_button.Bind(wx.EVT_CLICK, self.select_bpt)
+        self.tcp = TraceControlPanel(self)                    
 
-        self.show_list_which = "ALL"    # "ALL", "SET"
-        
-        btns_x += btns_xoff
-        btns_y += btns_yoff
-        tc_show_button = wx.Button(panel, label="SHOW...", pos=(btns_x,btns_y))
-        tc_show_button.Bind(wx.EVT_CLICK, self.show_list)
-        self.tc_show_button = tc_show_button
-        if self.show_list_which == "ALL":
-            self.tc_show_button.setLabelText("Show All")
-        elif self.show_list_which == "SET":
-            self.tc_show_button.setLabelText("Show Set")
-
-        self.flags_text = None
-        self.sb = None
-        self.create_flags_region(flags=SlTrace.getAllTraceFlags())
         if SlTrace.trace("trace_flags"):
             self.list_ckbuttons()
-        
-    def create_flags_region(self, flags=None):
-        if self.tc_text_frame is not None:
-            self.tc_text_frame.pack_forget()
-            self.tc_text_frame.destroy()
-            self.tc_text_frame = None
-            
-        if self.sb is not None:
-            self.sb.destroy()
-        self.update()                           # Show progress
-        self.tc_text_frame = Frame(self.tc_frame)
-        self.tc_text_frame.pack(side="top", fill="both", expand=True)
-
-        self.start = 0
-        self.sb = Scrollbar(master=self.tc_text_frame, orient="vertical")
-        max_width = 5
-        min_height = 10
-        t_height = min_height
-        max_height = 20
-        nfound = 0
-        for flag in flags:
-            val = SlTrace.getLevel(flag)
-            width = len(flag)
-            if callable(val):
-                val_len = 5
-            elif type(val) == bool:
-                val_len = 2
-            else:
-                val_len = len(str(val))
-            width += val_len
-            if width > max_width:
-                max_width = width
-            nfound += 1
-        win_width = max_width
-        if nfound < min_height:
-            t_height = min_height
-        if nfound > max_height:
-            t_height = max_height
-            
-        text = Text(self.tc_text_frame, width=win_width, height=t_height,
-                    yscrollcommand=self.sb.set,
-                    state=DISABLED)
-        self.sb.config(command=text.yview)
-        self.sb.pack(side="right",fill="y")
-        text.pack(side="top", fill="both", expand=True)
-        self.update()                           # Show progress
-        self.flag_by_cb = {}             # Dictionary hashed on cb widget
-        self.data_by_flag = {}
-        for flag in sorted(flags):
-            level = SlTrace.getLevel(flag)
-            if type(level) == bool:
-                var = BooleanVar()
-                var.set(level)
-                ####fmt_text = "%-*s" % (max_width, flag)
-                fmt_text = flag
-                cb = Checkbutton(text, text=fmt_text, padx=0, pady=0, bd=0, variable = var, bg="white")
-                self.flag_by_cb[cb] = flag
-                self.data_by_flag[flag] = (cb, flag, var)
-                text.config(state=NORMAL)
-                text.window_create("end", window=cb)
-                text.insert("end", "\n")
-                text.config(state=DISABLED)
-                cb.bind("<Button-1>", self.select_button)
-            elif type(level) == int or type(level) == float or type(level) == str:
-                if type(level) == int:
-                    var = IntVar()
-                elif type(level) == float:
-                    var = DoubleVar()
-                elif type(level) == str:
-                    var = StringVar()
-                var.set(level)
-                var_width = len(str(level)) + 2
-                text_var = StringVar()
-                text_var.set(f"{level:{var_width}}")
-                ####fmt_text = "%-*s" % (max_width, flag)
-                fmt_text = flag
-                ent = Entry(text, width=var_width, textvariable=text_var)
-                self.flag_by_cb[ent] = flag
-                self.data_by_flag[flag] = (ent, flag, text_var)     # field is what we need
-                text.config(state=NORMAL)
-                text.window_create("end", window=ent)
-                text.insert("end", fmt_text)
-                text.insert("end", "\n")
-                text.config(state=DISABLED)
-                ent.bind("<Return>", self.enter_entry)
-            elif callable(level):
-                fmt_text = "%-*s" % (max_width, flag)
-                btn = Button(text, text=flag, command=level)
-                self.flag_by_cb[btn] = flag
-                self.data_by_flag[flag] = (btn, flag, None)     # field is what we need
-                text.config(state=NORMAL)
-                text.window_create("end", window=btn)
-                text.insert("end", "\n")
-                
-            ###cb.pack()
-        self.update()                           # Show progress
-        if self.standalone:
-            atexit.register(self.on_exit)
-            self.update_loop()
+        self.Show()
 
     def on_exit(self):
         """ Close down window on program exit
@@ -196,6 +57,7 @@ class TraceControlWindow(wx.Frame):
         without stoping tkinter stuff
         :sec: number of milliseconds to delay before returning
         """
+        return  # TFD
         if self.tc_mw is None:
             return
         
@@ -221,101 +83,23 @@ class TraceControlWindow(wx.Frame):
         
         if self.tcbase is not None and hasattr(self.tcbase, 'tc_destroy'):
             self.tcbase.tc_destroy()
-
-    def show_list(self):
-        """ Select buttons to show
-        """
-        if self.show_list_which == "ALL":
-            self.show_list_which = "JUST_SET"
-            self.show_list_variable.set("Show ALL")
-            just_flags = []
-            for flag in SlTrace.getTraceFlags():
-                val = SlTrace.getLevel(flag)
-                if type(val) != bool:
-                    just_flags.append(flag) # Include all non-boolean
-                elif val:
-                    just_flags.append(flag)
-        else:
-            self.show_list_which = "ALL"
-            self.show_list_variable.set("Show SET")
-            just_flags = SlTrace.getTraceFlags()
-            
-        self.create_flags_region(just_flags)
-        
-    def select_all(self):
-        """ Select all known trace flags
-        """
-        for flag in sorted(SlTrace.getTraceFlags()):   # In display order
-            if type(self.getLevel(flag)) == bool:
-                self.set_trace_level(flag, True)
-
-
-    def select_none(self):
-        """ Select all known trace flags
-        """
-        for flag in sorted(SlTrace.getTraceFlags()):   # In display order
-            if type(self.getLevel(flag)) == bool:
-                self.set_trace_level(flag, False)
-
-    def getLevel(self, flag):
-        return SlTrace.getLevel(flag)
-    
-    def breakpoint(self):
-        """ Force immediate breakpoint - enter debugger
-        """
-        import pdb
-        SlTrace.lg("Breakpoint")
-        pdb.set_trace()
                 
     def enter_entry(self, event):
         flag = self.flag_by_cb[event.widget]
         old_level = SlTrace.getLevel(flag)
-        _, flag, text_var = self.data_by_flag[flag]
-        entry_text = text_var.get()
-        new_level = str2val(entry_text, old_level)        
-        self.set_trace_level(flag, new_level, change_cb=False)  # No select for Entry
+        tcb, flag = self.data_by_flag[flag]
                 
     def select_button(self, event):
         flag = self.flag_by_cb[event.widget]
-        cb, flag, var = self.data_by_flag[flag]
+        tcb, flag = self.data_by_flag[flag]
         val = SlTrace.getLevel(flag)        # Variable doesn't seem to work for us
         val = not val                           # Keep value in strace
         self.set_trace_level(flag, val, change_cb=False)  # CB already set
         
-        
-    def set_trace_level(self, flag, val, change_cb=True):
-        """ Set trace level, changing Control button if requested
-        :flag: - trace flag name
-        :val: - value to set
-        :change_cb: True(default) appropriately change the control
-        """
-        if flag not in self.data_by_flag:
-            SlTrace.lg("set_trace_level(%s,%d) - flag has no check button" % (flag, val))
-            return
-         
-        cb, flag, var = self.data_by_flag[flag]        
-        if cb is None:
-            SlTrace.lg("set_trace_level(%s,%d) - flag None check button" % (flag, val))
-            return
-
-        if change_cb and hasattr(cb, "select"):
-            if val != 0:
-                cb.select()
-            else:
-                cb.deselect()
-                    
-        SlTrace.lg("flag=%s, var=%s, val=%s" %(flag, var, val), "trace_flags")
-        SlTrace.setLevel(flag, val)
-            
-        if self.change_call is not None:
-            self.change_call(flag, val)
 
 
     def list_ckbuttons(self):
-        cb_flags = sorted(self.data_by_flag.keys())
-        for flag in cb_flags:
-            var = self.data_by_flag[flag][2]
-            SlTrace.lg(f"flag={flag} var={var} val={var.get()}")
+        self.tcp.list_ckbuttons()
 
 if __name__ == '__main__':
     app = wx.App()
@@ -351,6 +135,7 @@ if __name__ == '__main__':
 
         
     def test_int(flag, level=threshold, default=None):
+        return  # TFD
         SlTrace.lg(f"Set {flag} to over {end_level} to quit")
         if SlTrace.trace(flag, threshold):
             SlTrace.lg(f"{flag} = {SlTrace.trace(flag)} >= {level}")
@@ -361,11 +146,13 @@ if __name__ == '__main__':
             sys.exit()
         SlTrace.traceButton("quit", our_quit)
                     
-    tcw = TraceControlWindow(change_call=report_change)
+    tcw = TraceControlWindow(root, change_call=report_change)
     
-    for i in range(end_level):
-        test_int("tint1", default=2)
-        tcw.sleep(1)
+    test_interval = False
+    if test_interval:
+        for i in range(end_level):
+            test_int("tint1", default=2)
+            tcw.sleep(1)
         
     app.MainLoop()    
     SlTrace.lg("End of test")

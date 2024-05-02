@@ -9,10 +9,13 @@ import math
 import time
 import copy
 import cProfile, pstats, io         # profiling support
+import wx
 
+from wx_stuff import wx_Point
 from sinewave_numpy import SineWaveNumPy
 
 from select_trace import SlTrace
+from wx_canvas_panel_item import CanvasPanelItem
 from wx_sinewave_beep import SineWaveBeep
 from adw_perimeter import AdwPerimeter
 
@@ -97,7 +100,7 @@ class AdwScanner:
         self.space_time = space_time
         self.sample_rate = sample_rate
         self._scan_item = None          # Scanning image
-        self._display_item = None       # Currently displayed item, if any
+        self._display_item_id = None       # Currently displayed item, if any
         self._scan_item_tag = None             # Scanning item tag
         self._report_item = None        # Latest scanning report item
         self._scanning = False          # Currently scanning
@@ -107,7 +110,7 @@ class AdwScanner:
         self.set_skip_run_max(skip_run_max)
         self.set_scan_len(scan_len)
         self.skip_color = None          # color of run if any
-        self._display_item = None
+        self._display_item_id = None
         self.profile_running = False    # Setup disabled profiling
         self.set_no_item_wait(no_item_wait)
         self._in_display_item = False   # Avoid recursion
@@ -479,8 +482,8 @@ class AdwScanner:
         self.forward_path = []
         self.reverse_path = []
         self.current_scan_path = []     # let scan_path_item setup
-        ###wxport###self.scan_loop_checking = self.mw.after(0, self.scan_loop_proc)
-        ###wxport###self.mw.after(0,self.scan_path_item)
+        self.scan_loop_checking = wx.CallAfter(self.scan_loop_proc)
+        wx.CallAfter(self.scan_path_item)
 
     def scan_loop_proc(self):
         """ Keep speaker_control moderately full of scan path items
@@ -491,8 +494,8 @@ class AdwScanner:
             #    self.scan_path_item()
             if self.get_sound_queue_size() < 1:
                 self.scan_path_item()
-            ###wxport###self.scan_loop_checking = self.mw.after(self.scan_loop_proc_time_ms,
-            ###wxport###                                        self.scan_loop_proc)
+            self.scan_loop_checking = wx.CallLater(self.scan_loop_proc_time_ms,
+                                                    self.scan_loop_proc)
 
     def stop_scan(self):
         """ Stop current scan
@@ -502,7 +505,7 @@ class AdwScanner:
 
         self._scanning = False
         if self.scan_loop_checking is not None:
-            ###wxport###self.mw.after_cancel(self.scan_loop_checking)
+            self.scan_loop_checking.Stop()
             self.scan_loop_checking = None
         self.remove_display_item()
         self.remove_report_item()
@@ -544,7 +547,6 @@ class AdwScanner:
         if len(self.current_scan_path) > 0:
             item = self.current_scan_path.pop(0)
             SlTrace.lg(f"\nitem: {item}", "scanning")
-            self._display_item = item
             self.display_item(item)
             if self.scan_use_tone:
                 self.speaker_control.play_tone(
@@ -558,8 +560,8 @@ class AdwScanner:
                 ###if self.no_item_wait and not self.more_to_get:
                 if self.no_item_wait:
                     self.report_item(item, no_wait = True)
-                    ###wxport###self.mw.after(int(self.cell_time*1000),
-                    ###wxport###self.scan_path_item_complete)
+                    wx.CallLater(int(self.cell_time*1000),
+                                self.scan_path_item_complete)
                 else:
                     self.report_item(item, after=self.scan_path_item_complete)
 
@@ -570,7 +572,7 @@ class AdwScanner:
         self.report_item_complete()
         if not self.no_item_wait:
             if self._scanning:
-                """###wxport###self.mw.after(0, self.scan_path_item)"""
+                wx.CallAfter(self.scan_path_item)
 
     def do_combine_wave(self):
         """ Do combined wave scan
@@ -583,7 +585,7 @@ class AdwScanner:
             self.first_scan = False
             self.wave_index = -1        # Bumped before do_wave
             if self.scan_loop_checking is not None:
-                ###wxport###self.mw.after_cancel(self.scan_loop_checking)
+                wx.CallAfter(self.scan_loop_checking)
                 self.scan_loop_checking = None
             self.forward_path = self.get_more_scan_path(nitem=
                                                         len(self.scan_items),
@@ -698,7 +700,7 @@ class AdwScanner:
         if not self._scanning:
             return
 
-        ###wxport###self.mw.after(0, self.do_combine_wave)
+        wx.CallAfter(self.do_combine_wave)
 
     def make_combine_wave(self, item_path):
         """ Create a SinewaveNumpy.sinewave_numpy ndarray of the items components
@@ -722,27 +724,39 @@ class AdwScanner:
         if self._in_display_item:
             return
 
-        if self._display_item is not None:
+        if self._display_item_id is not None:
             self.remove_display_item()
-        ###wxport###canvas = self.canvas
         ixy = item.ix, item.iy
         x_left,y_top, x_right,y_bottom = self.get_win_ullr_at_ixy_canvas(ixy)
-        ###wxport###self._scan_item_tag = canvas.create_rectangle(x_left,y_top,
-        ###wxport###                                              x_right,y_bottom,
-        ###wxport###                                              outline="black", width=2)
-        self.update()
-        self._display_item = item
+        SlTrace.lg(f"display_item: {ixy}"
+                   f" x_left:{x_left} y_top:{y_top}"
+                   f" x_right:{x_right} y_bottom:{y_bottom}", "scanning")
+        scan_item_id = self.canv_pan.create_line(
+                    x_left,y_top,
+                    x_right,y_top,
+                    x_right,y_bottom,
+                    x_left,y_bottom,
+                    x_left,y_top,
+                    fill="#000000",
+                    width=4,
+                    disp_type=CanvasPanelItem.DT_SCAN_ITEM)
+        comp_item = self.canv_pan.id_to_item(scan_item_id)
+        self.canv_pan.add_item(comp_item)
+        self.scan_item_refresh_rect = wx.Rect(wx_Point(x_left,y_top),
+                                          wx_Point(x_right,y_bottom)) 
+        #self.canv_pan.RefreshRect(self.scan_item_refresh_rect)
+        self.canv_pan.Refresh()
+        self._display_item_id = scan_item_id
         self._in_display_item = False
 
     def remove_display_item(self):
         """ remove current display item, if any
         """
-        if  self._display_item is not None:
-            ###wxport###canvas = self.canvas
-            if self._scan_item_tag is not None:
-                ###wxport###self.canvas.delete(self._scan_item_tag)
-                self._scan_item_tag = None
-        self._display_item = None
+        if  self._display_item_id is not None:
+            self.canv_pan.delete(self._display_item_id)
+        self._display_item_id = None
+        self.canv_pan.RefreshRect(self.scan_item_refresh_rect)
+
 
     def remove_report_item(self):
         """ Remove any noise for reported item
@@ -767,15 +781,14 @@ class AdwScanner:
                 if sinewave_numpy is not None:
                     self._report_item = item
                     self.play_waveform(sinewave_numpy=sinewave_numpy)
-            ###wxport###self.mw.after(int (self.cell_time*1000), self.scan_path_item_complete)
+            wx.CallLater(int (self.cell_time*1000),
+                         self.scan_path_item_complete)
         else:
             sinewave_numpy = item.sinewave_numpy
             if sinewave_numpy is not None:
                 self._report_item = item
                 self.play_waveform(sinewave_numpy=sinewave_numpy,
                                    after=after)
-            else:
-                """###wxport###self.mw.after(0, after) # Just go on"""
 
 
     def report_item_complete(self):
@@ -916,16 +929,11 @@ class AdwScanner:
     def update(self):
         """ Update display
         """
-        if self._in_update>3:
-            return
-        self._in_update += 1
-        self.adw.update()
-        self._in_update -= 1
-
+        pass        # Need to do something else in wxPython
+    
     def mainloop(self):
         pass
-        ###wxport###self.mw.mainloop()
-
+        self.app.MainLoop()
     """
     ############################################################
                        Links to speaker_control

@@ -13,7 +13,7 @@ from datetime import datetime
 import sys
 import traceback
 import difflib
-###from tkinter import *    # Not required
+import tkinter as tk
 
 from crs_funs import str2bool, str2val
 from select_error import SelectError
@@ -449,7 +449,8 @@ class SlTrace:
                 cls.propPathSaved = abs_propName
                 outf = open(abs_propName, "w")
                 list_props = cls.trace("list_props")
-                cls.defaultProps.store(outf, title, list_props=False)  # avoid clutter
+                cls.defaultProps.store(outf, title,
+                        list_props = list_props)
                 cls.defaultProps = None     # Flag as no longer available
                 outf.close()
         except IOError as e:
@@ -682,11 +683,13 @@ class SlTrace:
                 cls.propName = os.path.join(prop_dir, cls.propName)
             else:
                 cls.propName = os.path.abspath(cls.propName)
-            
+        loadedProps = cls.loadedProps   # Check if newly loaded    
         cls.defaultProps = JavaProperties(cls.propName)
         cls.loadedProps = cls.defaultProps.copy()      # Save for possible comparison
         cls.loadTraceFlags()        # Populate flags from properties
-                                     
+        if loadedProps is None:
+            SlTrace.lg(f"Trace levels from properties file {cls.propName}")
+            cls.listFlags()
 
 
     @classmethod
@@ -821,7 +824,7 @@ class SlTrace:
             cls.lg(msg)
         if cls.mw is None:
             cls.mw_standalone_mw = True
-            cls.mw = Tk()       # create one
+            cls.mw = tk.Tk()       # create one
         
         SelectReport(master=cls.mw, message=msg)
                  
@@ -844,7 +847,6 @@ class SlTrace:
         """
         defaultProps = cls.getDefaultProps()
         propfile = defaultProps.get_path()
-        SlTrace.lg(f"Trace levels from properties file {propfile}")
         props = defaultProps.get_properties()
         pattern = r"^\s*" + cls.traceFlagPrefix + r"\.(.*)"
         r = re.compile(pattern)
@@ -865,13 +867,6 @@ class SlTrace:
                     SlTrace.lg(f"Skipping trace flag {key} = {value} because functions need re-setup")
                     continue
                 cls.setLevel(name, value)
-        all_flags = cls.getAllTraceFlags()
-        all_flags_str = ",".join(all_flags)
-        cls.lg("loadTraceFlags: %s" % all_flags_str)
-        if cls.trace("trace_flags"):
-            for flag in all_flags:
-                level = cls.getLevel(flag)
-                cls.lg(f"{flag} = {level}")
 
     
     @classmethod
@@ -885,6 +880,14 @@ class SlTrace:
         for flag in flags:
             level = cls.getLevel(flag)
             cls.lg(f"{flag} = {level}")
+
+    @classmethod
+    def listFlags(cls):
+        all_flags = cls.getAllTraceFlags()
+        for flag in all_flags:
+            level = cls.getLevel(flag)
+            cls.lg(f"{flag} = {level}")
+
     
     @classmethod
     def getTraceFlagKey(cls, name):

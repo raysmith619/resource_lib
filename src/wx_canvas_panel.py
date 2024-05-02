@@ -164,7 +164,7 @@ class CanvasPanel(wx.Panel):
                     
     def create_rectangle(self, cx1,cy1,cx2,cy2,
                                 **kwargs):
-        """ Implement creat_rectangle
+        """ Implement create_rectangle
             supporting: fill, outline, width
         :returns: id
         """

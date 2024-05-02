@@ -3,7 +3,7 @@
 import wx
 
 from select_trace import SlTrace
-from trace_control_window import TraceControlWindow
+from wx_trace_control_window import TraceControlWindow
 
 
 class MenuDisp:

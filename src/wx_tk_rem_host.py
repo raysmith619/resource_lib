@@ -47,15 +47,15 @@ class TkRemHost:
         
     def serv_th_proc(self):
         while True:
-            SlTrace.lg(f"HOST: serv_th_proc")
+            SlTrace.lg(f"HOST: serv_th_proc", "HOST")
             self.connection, self.address = self.sockobj.accept()
-            SlTrace.lg(f"HOST:Got connection: address:{self.address}")
+            SlTrace.lg(f"HOST:Got connection: address:{self.address}", "HOST")
             data = self.connection.recv(self.max_recv)
             if len(data) > 0:
-                SlTrace.lg(f"HOST: data: {data}", "data")
+                SlTrace.lg(f"HOST: data: {data}", "data", "HOST")
                 self.cmd_queue.put(data)
             else:
-                SlTrace.lg("HOST: No data length == 0")
+                SlTrace.lg("HOST: No data length == 0", "HOST")
                 break
 
     def data_proc(self, data=None):
@@ -67,14 +67,14 @@ class TkRemHost:
                                 'get_cell_specs'
                     
         """
-        SlTrace.lg(f"HOST: data_proc: {data} queue.empty: {self.cmd_queue.empty()}", "data_proc")
+        SlTrace.lg(f"HOST: data_proc: {data} queue.empty: {self.cmd_queue.empty()}", "HOSTdata_proc")
         if data is None:
             if not self.cmd_queue.empty():
                 data = self.cmd_queue.get()
         if data is not None:
             cmd_dt = pickle.loads(data)
-            SlTrace.lg(f"HOST: cmd_dt: {cmd_dt}", "cmds")
-            SlTrace.lg(f"HOST: cmd_dt: {cmd_dt}")
+            SlTrace.lg(f"HOST: cmd_dt: {cmd_dt}", "HOSTcmds")
+            SlTrace.lg(f"HOST: cmd_dt: {cmd_dt}", "HOSTcmds")
             cmd_name = cmd_dt['cmd_name']
             ret_dt = cmd_dt     # return an augmented dictionary
             if cmd_name == 'get_cell_specs':
@@ -95,10 +95,10 @@ class TkRemHost:
             elif cmd_name == 'test_command':
                 ret = self.test_command(message=cmd_dt['message'])
             else:
-                raise NameError(f"HOST: Unrecognized cmd: {cmd_name} in {cmd_dt}")
+                raise NameError(f"HOST: Unrecognized cmd: {cmd_name} in {cmd_dt}", "HOSTcmds")
         
             ret_dt['ret_val'] = ret
-            SlTrace.lg(f"HOST: ret_dt:{ret_dt}")
+            SlTrace.lg(f"HOST: ret_dt:{ret_dt}", "HOSTcmds")
             ret_data = pickle.dumps(ret_dt)
             self.connection.send(ret_data)
         if not self.cmd_queue.empty():

@@ -100,6 +100,9 @@ def dot_sorted(lst):
     return srt_list
 
 def str2bool(v):
+    if re.match(r"^\d{2,}$", v):
+        print(f"str2bool: {v} converted to 1")
+        v = "1"
     if v.lower() in ('yes', 'true', 't', 'y', '1'):
         return True
     elif v.lower() in ('no', 'false', 'f', 'n', '0'):
@@ -109,8 +112,9 @@ def str2bool(v):
         print(f"Treat {v} as False")
         return False
     else:
-        raise SelectError('Not a recognized Boolean value %s' % v)
-
+        #raise SelectError('Not a recognized Boolean value %s' % v)
+        print('Not a recognized Boolean value %s - treat as False' % v)
+        return False
     
 def str2val(string, value_or_type):
     """ Convert string to value of type default

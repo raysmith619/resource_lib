@@ -464,7 +464,7 @@ class CanvasGrid(tk.Canvas):
         SlTrace.lg(f"xmin={xmin}, xmax={xmax}"
                    f", ymin={ymin},ymax={ymax}"
                    f", ncols={ncols},nrows={nrows}")
-        SlTrace.lg(f"xs:{xs}\nys:{ys}")
+        SlTrace.lg(f"xs:{xs}\nys:{ys}", "canvas_items")
         ixy_ids_list = []       # Building list of (ix,iy), [overlapping ids]
         if types is not None and ex_types is not None:
             raise BrailleError("Don't support both types and ex_types")
@@ -486,12 +486,13 @@ class CanvasGrid(tk.Canvas):
                 ex_tags = [ex_tags]
         
         SlTrace.lg(f"get_canvas_items"
-                   f" xmin={xmin}, xmax={xmax}, ymin={ymin}, ymax={ymax}", "get_items")
+                   f" xmin={xmin}, xmax={xmax}, ymin={ymin}, ymax={ymax}",
+                   "canvas_items")
         for ix in range(len(xs)):
             for iy in range(len(ys)):
                 cx1,cy1,cx2,cy2 = self.get_grid_ullr(ix=ix, iy=iy, xs=xs, ys=ys)
                 item_ids_over_raw = self.base.find_overlapping(cx1,cy1,cx2,cy2)
-                if self.ncall_get_cell_specs > 0 or SlTrace.trace("get_items"):
+                if self.ncall_get_cell_specs > 0 or SlTrace.trace("canvas_items"):
                     if len(item_ids_over_raw) > 0:
                         color = self.item_to_color(item_ids=item_ids_over_raw)
                     else:
@@ -616,8 +617,8 @@ class CanvasGrid(tk.Canvas):
         xs,ys = self.get_grid_lims(xmin=xmin,ymin=ymin, xmax=xmax,ymax=ymax,
                                 ncols=ncols,nrows=nrows)
         ixy_item_prefix = "" if prefix is None else prefix
-        SlTrace.lg(f"{ixy_item_prefix} xs: {xs}")
-        SlTrace.lg(f"{ixy_item_prefix} ys: {ys}")
+        SlTrace.lg(f"{ixy_item_prefix} xs: {xs}", "canvas_items")
+        SlTrace.lg(f"{ixy_item_prefix} ys: {ys}", "canvas_items")
         for ixy_item in ixy_ids_list:
             (ix,iy), ids = ixy_item
             ixy_item_prefix = "" if prefix is None else prefix
@@ -626,7 +627,7 @@ class CanvasGrid(tk.Canvas):
             ixy_item_prefix += f" {ix},{iy}:"
             ixy_item_prefix +=  f" [{w_left_x},{w_upper_y}, {w_right_x},{w_lower_y}]"
             if len(ids) > 1:
-                SlTrace.lg("")
+                SlTrace.lg("", "canvas_items")
             for item_id in ids:
                 self.show_canvas_item(item_id=item_id, prefix=ixy_item_prefix,
                                       always_list=always_list)
@@ -652,7 +653,7 @@ class CanvasGrid(tk.Canvas):
         else:
             item_sample_iopts = None
      
-        SlTrace.lg(f"{prefix} {item_id}: {itype} {coords}")
+        SlTrace.lg(f"{prefix} {item_id}: {itype} {coords}", "canvas_items")
         ###self.show_coords(coords)
         
         for key in iopts:
@@ -671,9 +672,9 @@ class CanvasGrid(tk.Canvas):
                             is_changed = False
             if is_changed:
                 if isinstance(val, float):
-                    SlTrace.lg(f"    {key} {val:.2f}")
+                    SlTrace.lg(f"    {key} {val:.2f}", "canvas_items")
                 else:                     
-                    SlTrace.lg(f"    {key} {val}")
+                    SlTrace.lg(f"    {key} {val}", "canvas_items")
             self.item_samples[itype] = iopts
 
     def create_magnify_info(self, x_min=None,y_min=None,

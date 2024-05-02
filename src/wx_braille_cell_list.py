@@ -24,7 +24,7 @@ class BrailleCellList:
         """
         self.cells = [] # List of BrailleCell
         if cells_or_string is not  None:
-            SlTrace.lg(f"\nBrailleCellList:{cells_or_string}\n")
+            SlTrace.lg(f"\nBrailleCellList:{cells_or_string}\n", "cell_list")
             if isinstance(cells_or_string, str):
                 self.cells = self.get_from_string(cells_or_string)
             elif isinstance(cells_or_string,list):

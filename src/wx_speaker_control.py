@@ -642,8 +642,8 @@ class SpeakerControlLocal:
         SlTrace.lg("force_clear")
         self.sc.force_clear()
         rwait = 2000
-        SlTrace.lg(f"Waiting {rwait} msec")
-        self.wx_win.after(rwait)
+        ###PORT SlTrace.lg(f"Waiting {rwait} msec")
+        ###PORT self.wx_win.after(rwait)
         if restart:
             SlTrace.lg("Restarting Speaker control")
             self.sc.start_control()
@@ -702,7 +702,7 @@ class SpeakerControlLocal:
                                    sample_rate=sample_rate)
         SlTrace.lg(f"play_waveform waveform: {waveform}", "sound_queue")
         cmd = self.sc.send_cmd(cmd_type="CMD_WAVEFORM", waveform=waveform,
-                         wx_win=self.wx_win, after=after)
+                         after=after)
         if after is not None:
             self.add_awaiting(cmd)
 

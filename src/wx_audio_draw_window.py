@@ -1811,12 +1811,12 @@ if __name__ == "__main__":
         
         aw.MainLoop()
 
-    def test_tk_track():
+    def test_tk_track(figure=1):
         SlTrace.clearFlags()
         app = wx.App()
         SlTrace.lg("After clearFlags")
         SlTrace.lg("Checking talk_cmd", "talk_cmd")
-        tkr = TkRemUser(simulated=True)
+        tkr = TkRemUser(simulated=True, figure=figure)
         aw = AudioDrawWindow(tkr=tkr,
                             title="AudioDrawWindow Self-Test",
                             app=app,
@@ -1826,4 +1826,5 @@ if __name__ == "__main__":
         aw.MainLoop()
     
     #test_window_ops()
-    test_tk_track()
+    #test_tk_track(figure=1)
+    test_tk_track(figure=2)
