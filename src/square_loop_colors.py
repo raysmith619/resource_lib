@@ -1,5 +1,6 @@
 # square_loop_colors.py
 # Display a square
+# Uses braille generation/display
 
 from turtle_braille_link import *    # Get our graphics
 ##from turtle import *		     # Get standard stuff
