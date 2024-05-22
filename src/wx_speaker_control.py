@@ -11,6 +11,8 @@ Support thread safe non-blocking speaker control:
 import threading
 import queue
 import time
+import wx
+
 import sounddevice as sd
 
 from format_exception import format_exception
@@ -171,7 +173,8 @@ class SpeakerControlCmd:
         self.after = after
         if after is not None:
             if fr is None:
-                raise SpeakerControlError(f"after missing fr cmd:{self}")
+                ###wxport###raise SpeakerControlError(f"after missing fr cmd:{self}")
+                pass
         if cmd_type == "CMD_MSG":
             if msg is None:
                 raise SpeakerControlError(f"msg missing with type MSG: {self}")
@@ -443,7 +446,8 @@ class SpeakerControl(Singleton):
             if cmd.after is not None:
                 cmd_id = cmd.cmd_id
                 if cmd.fr is None:
-                    raise SpeakerControlError(f"after missing fr in cmd {cmd}")
+                    ###wxportraise SpeakerControlError(f"after missing fr in cmd {cmd}")
+                    pass
                 if cmd_id in self.cmds_in_progress:
                     del self.cmds_in_progress[cmd_id]
                 
@@ -642,8 +646,8 @@ class SpeakerControlLocal:
         SlTrace.lg("force_clear")
         self.sc.force_clear()
         rwait = 2000
-        ###PORT SlTrace.lg(f"Waiting {rwait} msec")
-        ###PORT self.wx_win.after(rwait)
+        SlTrace.lg(f"Waiting {rwait} msec")
+        wx.CallAfter(rwait)
         if restart:
             SlTrace.lg("Restarting Speaker control")
             self.sc.start_control()
@@ -714,7 +718,7 @@ class SpeakerControlLocal:
         self.cmds_awaiting_after[cmd.cmd_id] = cmd
         if not self.awaiting_loop_going:
             self.awaiting_loop_going = True
-            self.wx_win.after(0, self.awaiting_after_ck)
+            wx.CallAfter(self.awaiting_after_ck)
 
     def awaiting_after_ck(self):
         """ Check cmds awaiting for after cking
@@ -727,11 +731,11 @@ class SpeakerControlLocal:
                 cmd = self.cmds_awaiting_after[cmd_id]
                 if not self.sc.is_in_progress(cmd_id):
                     SlTrace.lg(f"{cmd_id}: after_called for {cmd}", "sound_queue")
-                    self.wx_win.after(0, cmd.after)
+                    wx.CallAfter(cmd.after)
                     del self.cmds_awaiting_after[cmd_id]
         if len(self.cmds_awaiting_after) > 0:
             self.awaiting_loop_going = True
-            self.wx_win.after(self.awaiting_loop_ms, self.awaiting_after_ck)
+            wx.CallLater(self.awaiting_loop_ms, self.awaiting_after_ck)
 
     def clear_awaiting(self):
         """ Clear out awaiting, calling all awaiting
@@ -742,7 +746,7 @@ class SpeakerControlLocal:
             if cmd_id in self.cmds_awaiting_after:
                 cmd = self.cmds_awaiting_after[cmd_id]
                 SlTrace.lg(f"{cmd_id}: after_called for {cmd}", "sound_queue")
-                self.wx_win.after(0, cmd.after)
+                wx.CallAfter(cmd.after)
                 del self.cmds_awaiting_after[cmd_id]
                         
     def speak_text(self, msg, dup_stdout=True,
