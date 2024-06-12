@@ -21,7 +21,7 @@ These changes were the results of experiences with and comments from some 8th gr
 
 - Non-trailing blanks are replaced with "," characters so as not to be compressed by the braille producing software.  The ","
 characters, while not being "blank" are single dot braille constructs, and are empty view.
-- Blank area above and to the left is removed to facilitate viewers finding graphics objects.
+- Blank area above and to the left is reduced to facilitate viewers finding graphics objects.
 
 ## A set of screen shots for a simple program
 ### Example User program in IDLE
