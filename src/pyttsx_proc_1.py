@@ -5,7 +5,7 @@ pyttsxN ecapuslated in a Process
 """
 import multiprocessing as mp
 
-import pyttsx3
+import pyttsx4 as pyttsxN
 
 #from select_trace import SlTrace
 class SlTrace:
@@ -33,7 +33,7 @@ class PyttsxProc:
     def pyt_proc_proc(self):
         """ process speech commands
         """    
-        self.engine = pyttsx3.init()
+        self.engine = pyttsxN.init()
 
         self.running = True
         

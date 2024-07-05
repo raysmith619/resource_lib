@@ -8,7 +8,7 @@ import time
 import threading
 import queue
 
-import pyttsx3
+import pyttsx4 as pyttsxN
 
 from select_trace import SlTrace
 
@@ -50,7 +50,7 @@ class PyttsxSimple:
     def do_talk(self, text):
         """ Say text, returning when done
         """
-        self.engine = pyttsx3.init()
+        self.engine = pyttsxN.init()
         self.is_talking = True
         SlTrace.lg(f"do_talk({text})")
         self.engine.say(text)

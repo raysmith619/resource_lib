@@ -1,13 +1,13 @@
 #text_to_speech.py  07Jul2023  crs, Author
 """
 Text-to-speech
-Initially encapusulate pyttsx3 text-to-speach
+Initially encapusulate pyttsxN text-to-speach
 """
 import time
 import queue
 import threading
 
-from pyttsx3_engine import Pyttsx3Engine
+from pyttsxN_engine import pyttsxNEngine
 
 from select_trace import SlTrace
 from format_exception import format_exception
@@ -45,7 +45,7 @@ class TextToSpeechResult:
     
 class TextToSpeech:
     def __init__(self):
-        self.pytt3 = Pyttsx3Engine()
+        self.pytt3 = pyttsxNEngine()
 
                 
     def speak_text(self, msg, msg_type="REPORT",
@@ -90,8 +90,8 @@ class TextToSpeech:
     def stop():
         """ stop speech/talking
         """
-        if self.got_pyttsx3:
-            self.pyttsx3_engine.stop()
+        if self.got_pyttsxN:
+            self.pyttsxN_engine.stop()
             
             
 

@@ -3,7 +3,7 @@
 """
 import time
 
-import pyttsx3
+import pyttsx4 as pyttsxN
 
 class PyttsxSimple:
     def __init__(self, wait=False, limit=0):
@@ -16,7 +16,7 @@ class PyttsxSimple:
         self.is_talking = False
         self.wait = wait
         self.limit = limit
-        self.engine = pyttsx3.init()
+        self.engine = pyttsxN.init()
         self.engine.connect('started-utterance', self.onStart)
         self.engine.connect('finished-utterance', self.onEnd)
 

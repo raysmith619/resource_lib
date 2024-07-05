@@ -2,7 +2,7 @@
 """ Stopping current talking
 """
 import multiprocessing
-import pyttsx3
+import pyttsx4 as pyttsxN
 import time
 from threading import Thread
 
@@ -15,7 +15,7 @@ def threaded(fn):
     return wrapper
 
 def speak(phrase):
-    engine = pyttsx3.init()
+    engine = pyttsxN.init()
     engine.say(phrase)
     engine.runAndWait()
     engine.stop()

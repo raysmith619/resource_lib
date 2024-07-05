@@ -1,9 +1,9 @@
 #pyttsx_events.property
 """ Looking at events
 """
-import pyttsx3
+import pyttsx4 as pyttsxN
 
-engine = pyttsx3.init()
+engine = pyttsxN.init()
 def onStart(name):
     print('starting', name)
 def onWord(name, location, length):
@@ -15,7 +15,7 @@ def onEnd(name, completed):
     elif name == 'dog':
         engine.endLoop()
 
-engine = pyttsx3.init()
+engine = pyttsxN.init()
 engine.connect('started-utterance', onStart)
 engine.connect('started-word', onWord)
 engine.connect('finished-utterance', onEnd)

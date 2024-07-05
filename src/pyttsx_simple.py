@@ -3,13 +3,13 @@
 """
 import time
 
-import pyttsx3
+import pyttsx4 as pyttsxN
 
 class PyttsxSimple:
     def __init__(self):
         """
         """
-        self.engine = pyttsx3.init()
+        self.engine = pyttsxN.init()
             
     def talk(self, text):
         """ Say text

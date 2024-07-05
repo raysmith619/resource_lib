@@ -5,7 +5,7 @@ import time
 import queue
 import threading
 
-import pyttsx3
+import pyttsx4 as pyttsxN
 
 from select_trace import SlTrace
 
@@ -13,7 +13,7 @@ class PyttsxQueued:
     def __init__(self):
         """ Setup for queued talking
         """
-        self.engine = pyttsx3.init()
+        self.engine = pyttsxN.init()
         
         self.engine.connect('started-utterance', self.onStart)
         self.engine.connect('finished-utterance', self.onEnd)

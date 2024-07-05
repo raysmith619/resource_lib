@@ -5,7 +5,7 @@ import time
 import queue
 import threading
 
-import pyttsx3
+import pyttsx4 as pyttsxN
 
 from select_trace import SlTrace
 
@@ -13,7 +13,7 @@ class PyttsxQueued:
     def __init__(self):
         """ Setup for queued talking
         """
-        self.engine = pyttsx3.init()
+        self.engine = pyttsxN.init()
 
         self.pyt_queue = queue.Queue(10)  # speech queue of SpeakerControlCmd 
         self.pyt_thread = threading.Thread(target=self.pyt_proc_thread)
@@ -58,7 +58,7 @@ class PyttsxQueued:
         
     def run_and_wait_thread_proc(self, text):
         SlTrace.lg("starting run_and_wait_thread_proc")
-        eng = pyttsx3.init()
+        eng = pyttsxN.init()
         eng.say(text)
         SlTrace.lg(f"After eng.say({text})", "talk_cmd")
         eng.runAndWait()

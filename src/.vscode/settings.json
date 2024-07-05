@@ -1,4 +1,20 @@
 {
-    "python.defaultInterpreterPath": "python.defaultInterpreterPath",
-    "cmake.configureOnOpen": true
+    "name": "Python",
+    "type": "python",
+    "stopOnEntry": false,
+    "request": "launch",
+    "pythonPath": "${config.python.pythonPath}",
+    "program": "${file}",
+    "cwd": "${workspaceRoot}",
+    "debugOptions": [
+        "WaitOnAbnormalExit",
+        "WaitOnNormalExit",
+        "RedirectOutput"
+    ],
+    "terminal.integrated.env.windows" : {
+        "PYTHONPATH": "c:\\Users\\raysm\\vscode\\resource_lib\\src"
+    },
+    "env": {
+        "PYTHONPATH": "c:\\Users\\raysm\\vscode\\resource_lib\\src"
+    }
 }

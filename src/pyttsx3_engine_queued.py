@@ -1,6 +1,6 @@
-#pyttsx3_engine.py  07Jul2023  crs, from text_to_speech.py
+#pyttsxN_engine.py  07Jul2023  crs, from text_to_speech.py
 """
-Encapusulation of pyttsx3 including queued requests
+Encapusulation of pyttsxN including queued requests
 
 """
 import time
@@ -8,15 +8,15 @@ import threading
 import queue
 
 from text_to_speech_cmd import TextToSpeechCmd
-from pyttsx3_engine import Pyttsx3Engine
+from pyttsxN_engine import pyttsxNEngine
 
 from select_trace import SlTrace
 from format_exception import format_exception
 
     
-class Pyttsx3EngineQueued:
+class pyttsxNEngineQueued:
     def __init__(self):
-        self.pyt = Pyttsx3Engine()
+        self.pyt = pyttsxNEngine()
         self.pyts3_que_size = 20      # queue size, till blocking
         self.running = True
         self.text_cmd = None            # Current cmd
@@ -38,7 +38,7 @@ class Pyttsx3EngineQueued:
         """
         if msg_type is None:
             msg_type = "REPORT"
-        SlTrace.lg(f"""pyttsx3_engine.speak_text:  speak_text(msg={msg}, msg_type={msg_type},"""
+        SlTrace.lg(f"""pyttsxN_engine.speak_text:  speak_text(msg={msg}, msg_type={msg_type},"""
                    f""" rate={rate}, volume={volume})""")
         tts_cmd = TextToSpeechCmd(msg=msg, rate=rate, volume=volume, wait=wait)
         self.pyt_queue.put(tts_cmd)
@@ -109,7 +109,7 @@ class Pyttsx3EngineQueued:
     def wait_while_busy(self):
         """ Wait while busy
         """
-        SlTrace.lg("Pyttsx3EngineQueued.wait_while_busy"
+        SlTrace.lg("pyttsxNEngineQueued.wait_while_busy"
                    f" queue:{self.pyt_queue.qsize()}")
     
         while self.is_busy():
@@ -118,7 +118,7 @@ class Pyttsx3EngineQueued:
 if __name__ == "__main__":
     SlTrace.setFlags("speech,sound_queue")
     SlTrace.lg("\nStart Test")
-    tts = Pyttsx3EngineQueued()    
+    tts = pyttsxNEngineQueued()    
     tts.speak_text("Hello World!")
     tts.speak_text("How are you?")
     tts.wait_while_busy()

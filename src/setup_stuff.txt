@@ -6,7 +6,7 @@ Install extra modules from terminal using python -m pip Install
 python -m pip install sounddevice
 python -m pip install numpy
 python -m pip install pysinewave
-python -m pip install pyttsx3
+python -m pip install pyttsxN
 
 wxPython support
 python -m pip install wxPython

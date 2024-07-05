@@ -1,7 +1,7 @@
 # wx_speaker_control.py    24Oct2023  crs, Author
 """
 Support thread safe non-blocking speaker control:
-    1. text to speech encapsulation of pyttsx3 facilitating
+    1. text to speech encapsulation of pyttsxN facilitating
      talk from multiple AudioDrawWindow sources
     2. tone playing using SineWaveNumPy, audio-sounddevice
     3. Using wxPython utilities for time control
@@ -349,11 +349,11 @@ class SpeakerControl(Singleton):
         sd.stop()                   # Stop waveform
         self.forced_clear = True        # stoping waits...
 
-        #if self.pyttsx3_engine.isBusy():
-        #self.pyttsx3_engine.stop()
-        #if self.pyttsx3_engine._inLoop:
-        #    self.pyttsx3_engine.endLoop()
-        #self.pyttsx3_engine = pyttsx3.init()
+        #if self.pyttsxN_engine.isBusy():
+        #self.pyttsxN_engine.stop()
+        #if self.pyttsxN_engine._inLoop:
+        #    self.pyttsxN_engine.endLoop()
+        #self.pyttsxN_engine = pyttsxN.init()
 
         #self.sound_lock.release()
         self.sc_speech_busy = False 
@@ -646,11 +646,9 @@ class SpeakerControlLocal:
         SlTrace.lg("force_clear")
         self.sc.force_clear()
         rwait = 2000
-        SlTrace.lg(f"Waiting {rwait} msec")
-        wx.CallAfter(rwait)
         if restart:
-            SlTrace.lg("Restarting Speaker control")
-            self.sc.start_control()
+            SlTrace.lg(f"Waiting {rwait} msec")
+            wx.CallLater(rwait, self.sc.start_control)
 
     def get_cmd_queue_size(self):
         """ Get current number of entries

@@ -1,6 +1,6 @@
 # speech_maker.py    19Feb2023  crs, Author
 """
-Support thread safe non-blocking text to speach encapsulation of pyttsx3
+Support thread safe non-blocking text to speach encapsulation of pyttsxN
 facilitating talk from multiple AudioDrawWindow sources
 """
 import threading
@@ -10,12 +10,12 @@ import time
 
 from select_trace import SlTrace, SelectError
 
-got_pyttsx3 = False
+got_pyttsxN = False
 try:
-    import pyttsx3
-    got_pyttsx3 = True
+    import pyttsx4 as pyttsxN
+    got_pyttsxN = True
 except:
-    SlTrace.lg("No pyttsx3 to be had")
+    SlTrace.lg("No pyttsxN to be had")
 
 
 
@@ -79,10 +79,10 @@ class SpeechMaker(Singleton):
         self.speech_size = speech_size
         self._running = True        # Thread functions exit when cleared
 
-        if got_pyttsx3:
-            self.pyttsx3_engine = pyttsx3.init()
+        if got_pyttsxN:
+            self.pyttsxN_engine = pyttsxN.init()
         else:
-            SlTrace.lg("Can't init pyttsx3")
+            SlTrace.lg("Can't init pyttsxN")
 
         self.speech_lock = threading.Lock()
         self.sm_cmd_queue = queue.Queue(cmds_size)  # Command queue of SpeechMakerCmd
@@ -154,11 +154,11 @@ class SpeechMaker(Singleton):
         self.clear_speech_queue()
         SlTrace.lg(f"self.sm_speech_queue.qsize(): {self.sm_speech_queue.qsize()}")
         
-        #if self.pyttsx3_engine.isBusy():
-        #self.pyttsx3_engine.stop()
-        #if self.pyttsx3_engine._inLoop:
-        #    self.pyttsx3_engine.endLoop()
-        #self.pyttsx3_engine = pyttsx3.init()
+        #if self.pyttsxN_engine.isBusy():
+        #self.pyttsxN_engine.stop()
+        #if self.pyttsxN_engine._inLoop:
+        #    self.pyttsxN_engine.endLoop()
+        #self.pyttsxN_engine = pyttsxN.init()
 
         #self.speech_lock.release()
         
@@ -188,7 +188,7 @@ class SpeechMaker(Singleton):
             if cmd.cmd_type == "CLEAR":
                 continue
             elif cmd.cmd_type == "QUIT":
-                self.pyttsx3_engine.stop()
+                self.pyttsxN_engine.stop()
                 break
             
             msg = cmd.msg
@@ -215,27 +215,27 @@ class SpeechMaker(Singleton):
                     "speech")
         try:                
             with self.speech_lock:
-                if self.pyttsx3_engine._inLoop:
+                if self.pyttsxN_engine._inLoop:
                     SlTrace.lg("speak_text - in run loop - ignored")
-                    self.pyttsx3_engine.endLoop()
+                    self.pyttsxN_engine.endLoop()
                     return
                 
                 if msg_type == 'REPORT':
-                    self.pyttsx3_engine.say(msg)
-                    self.pyttsx3_engine.setProperty('rate', 240)
-                    self.pyttsx3_engine.setProperty('volume', 0.9)
-                    self.pyttsx3_engine.runAndWait()
+                    self.pyttsxN_engine.say(msg)
+                    self.pyttsxN_engine.setProperty('rate', 240)
+                    self.pyttsxN_engine.setProperty('volume', 0.9)
+                    self.pyttsxN_engine.runAndWait()
                     SlTrace.lg(f"speak_text  msg: {msg} AFTER runAndWait", "speech")
                 elif msg_type == "ECHO":
-                    if self.pyttsx3_engine._inLoop:
+                    if self.pyttsxN_engine._inLoop:
                         SlTrace.lg("speak_text ECHO - in run loop - ignored")
-                        self.pyttsx3_engine.endLoop()
+                        self.pyttsxN_engine.endLoop()
                         return
                     
-                    self.pyttsx3_engine.say(msg)
-                    self.pyttsx3_engine.setProperty('rate', 240)
-                    self.pyttsx3_engine.setProperty('volume', 0.9)
-                    self.pyttsx3_engine.runAndWait()
+                    self.pyttsxN_engine.say(msg)
+                    self.pyttsxN_engine.setProperty('rate', 240)
+                    self.pyttsxN_engine.setProperty('volume', 0.9)
+                    self.pyttsxN_engine.runAndWait()
                 else:
                     raise SpeechMakerError(f"Unrecognized speech_type"
                                     f" {msg_type} {msg}")

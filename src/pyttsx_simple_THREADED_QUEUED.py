@@ -5,7 +5,7 @@ import time
 import threading
 import queue
 
-import pyttsx3
+import pyttsx4 as pyttsxN
 
 class PyttsxSimple:
     def __init__(self):
@@ -47,7 +47,7 @@ class PyttsxSimple:
     def pyt_thread_proc(self, text):
         self.is_talking = True
         print(f"pyt_thread_proc({text})")
-        engine = pyttsx3.init()
+        engine = pyttsxN.init()
         engine.say(text)
         engine.runAndWait()
         print(f"AFTER pyt_thread_proc({text})")

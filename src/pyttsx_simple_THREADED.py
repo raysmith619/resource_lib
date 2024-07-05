@@ -4,7 +4,7 @@
 import time
 import threading
 
-import pyttsx3
+import pyttsx4 as pyttsxN
 
 class PyttsxSimple:
     def __init__(self):
@@ -21,7 +21,7 @@ class PyttsxSimple:
         self.pyt_thread.join()
         
     def talk_thread_proc(self, text):
-        engine = pyttsx3.init()
+        engine = pyttsxN.init()
         engine.say(text)
         engine.runAndWait()
     

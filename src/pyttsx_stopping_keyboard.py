@@ -1,12 +1,12 @@
 # pyttsx_stopping_keyboard.py   25Aug2023 crs
-""" Stopping pyttsx3 using keyboard
+""" Stopping pyttsxN using keyboard
 """
 import multiprocessing
-import pyttsx3
+import pyttsx4 as pyttsxN
 import keyboard
 
 def sayFunc(phrase):
-    engine = pyttsx3.init()
+    engine = pyttsxN.init()
     engine.setProperty('rate', 160)
     engine.say(phrase)
     engine.runAndWait()

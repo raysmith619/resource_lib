@@ -1,7 +1,7 @@
 # speaker_control.py    19Feb2023  crs, Author
 """
 Support thread safe non-blocking speaker control:
-    1. text to speech encapsulation of pyttsx3 facilitating
+    1. text to speech encapsulation of pyttsxN facilitating
      talk from multiple AudioDrawWindow sources
     2. tone playing using SineWaveNumPy, audio-sounddevice
     
@@ -16,12 +16,12 @@ from select_trace import SlTrace, SelectError
 from play_sound_control import PlaySoundControl
 from sinewave_numpy import SineWaveNumPy
 
-got_pyttsx3 = False
+got_pyttsx = False
 try:
-    import pyttsx3
-    got_pyttsx3 = True
+    import pyttsx4 as pyttsx
+    got_pyttsx = True
 except:
-    SlTrace.lg("No pyttsx3 to be had")
+    SlTrace.lg("No pyttsx4 to be had")
 
 
 
@@ -235,10 +235,10 @@ class SpeakerControl(Singleton):
         self._running = True        # Thread functions exit when cleared
         self.forced_clear = False   # set on force_clear, checked on waiting...
 
-        if got_pyttsx3:
-            self.pyttsx3_engine = pyttsx3.init()
+        if got_pyttsx:
+            self.pyttsxN_engine = pyttsx.init()
         else:
-            SlTrace.lg("Can't init pyttsx3")
+            SlTrace.lg("Can't init pyttsx")
 
         self.psc = PlaySoundControl()
         self.sound_lock = threading.Lock()
@@ -337,11 +337,11 @@ class SpeakerControl(Singleton):
         sd.stop()                   # Stop waveform
         self.forced_clear = True        # stoping waits...
 
-        #if self.pyttsx3_engine.isBusy():
-        #self.pyttsx3_engine.stop()
-        #if self.pyttsx3_engine._inLoop:
-        #    self.pyttsx3_engine.endLoop()
-        #self.pyttsx3_engine = pyttsx3.init()
+        #if self.pyttsxN_engine.isBusy():
+        #self.pyttsxN_engine.stop()
+        #if self.pyttsxN_engine._inLoop:
+        #    self.pyttsxN_engine.endLoop()
+        #self.pyttsxN_engine = pyttsxN.init()
 
         #self.sound_lock.release()
         self.sc_speech_busy = False
@@ -403,7 +403,7 @@ class SpeakerControl(Singleton):
             if cmd.cmd_type == "CLEAR":
                 continue
             elif cmd.cmd_type == "QUIT":
-                self.pyttsx3_engine.stop()
+                self.pyttsxN_engine.stop()
                 break
 
             elif cmd.cmd_type == "CMD_MSG":
@@ -540,31 +540,31 @@ class SpeakerControl(Singleton):
                    "speech")
         try:
             with self.sound_lock:
-                if self.pyttsx3_engine._inLoop:
+                if self.pyttsxN_engine._inLoop:
                     SlTrace.lg("speak_text - in run loop - ignored")
                     return
 
-                    self.pyttsx3_engine.endLoop()
+                    self.pyttsxN_engine.endLoop()
                     self.sc_speech_busy = False
                     return
 
                 if msg_type == 'REPORT':
-                    self.pyttsx3_engine.say(msg)
-                    self.pyttsx3_engine.setProperty('rate', rate)
-                    self.pyttsx3_engine.setProperty('volume', volume)
-                    self.pyttsx3_engine.runAndWait()
+                    self.pyttsxN_engine.say(msg)
+                    self.pyttsxN_engine.setProperty('rate', rate)
+                    self.pyttsxN_engine.setProperty('volume', volume)
+                    self.pyttsxN_engine.runAndWait()
                     SlTrace.lg(f"speak_text  msg: {msg} AFTER runAndWait", "speech")
                 elif msg_type == "ECHO":
-                    if self.pyttsx3_engine._inLoop:
+                    if self.pyttsxN_engine._inLoop:
                         SlTrace.lg("speak_text ECHO - in run loop - ignored")
-                        self.pyttsx3_engine.endLoop()
+                        self.pyttsxN_engine.endLoop()
                         self.sc_speech_busy = False
                         return
 
-                    self.pyttsx3_engine.say(msg)
-                    self.pyttsx3_engine.setProperty('rate', 240)
-                    self.pyttsx3_engine.setProperty('volume', 0.9)
-                    self.pyttsx3_engine.runAndWait()
+                    self.pyttsxN_engine.say(msg)
+                    self.pyttsxN_engine.setProperty('rate', 240)
+                    self.pyttsxN_engine.setProperty('volume', 0.9)
+                    self.pyttsxN_engine.runAndWait()
                 else:
                     raise SpeakerControlError(f"Unrecognized msg_type"
                                               f" {msg_type} {msg}")
