@@ -608,6 +608,45 @@ class FteFake:
         SlTrace.lg("mag_view")    
 
     """ nav support"""
+
+    def nav_audio_beep(self, _=None):
+        SlTrace.lg("fte.nav_audio_beep")
+
+    def nav_no_audio_beep(self, _=None):
+        SlTrace.lg("fte.nav_no_audio_beep")
+
+    def nav_make_visible(self, _=None):
+        SlTrace.lg("fte.nav_make_visible")
+
+    def nav_make_invisible(self, _=None):
+        SlTrace.lg("fte.nav_make_invisible")
+
+    def set_enable_mouse(self, _=None,val=None):
+        SlTrace.lg("fte.set_enable_mouse")
+
+    def nav_show_marked(self, _=None):
+        SlTrace.lg("fte.nav_show_marked")
+
+    def nav_redraw(self, _=None):
+        SlTrace.lg("fte.nav_redraw")
+
+    def nav_say_position(self, _=None):
+        SlTrace.lg("fte.nav_say_position")
+
+    def nav_make_talk(self, _=None):
+        SlTrace.lg("fte.nav_make_talk")
+
+    def nav_logt(self, _=None):
+        SlTrace.lg("fte.nav_logt")
+
+    def nav_no_logt(self, _=None):
+        SlTrace.lg("fte.nav_no_logt")
+
+    def make_noisy(self, _=None):
+        SlTrace.lg("fte.make_noisy")
+
+    def make_silent(self, _=None):
+        SlTrace.lg("fte.make_silent")
     
     def nav_add_loc(self):
         SlTrace.lg("fte.nav_add_loc()")

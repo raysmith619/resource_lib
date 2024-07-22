@@ -5,7 +5,7 @@ pyttsxN ecapuslated in a Process
 """
 import multiprocessing as mp
 
-import pyttsx4 as pyttsxN
+import pyttsx3 as pyttsxN
 
 #from select_trace import SlTrace
 class SlTrace:

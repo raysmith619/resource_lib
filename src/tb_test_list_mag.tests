@@ -1,0 +1,5 @@
+#tb_test__mag_list.tests	09Mar2023  crs, Author
+# TurtleBraille test file list
+tb_test_magnify.py ; 360
+tb_test_scanning.py ; 360
+tb_test_scanning_timing.py ; 720

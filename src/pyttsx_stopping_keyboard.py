@@ -2,7 +2,7 @@
 """ Stopping pyttsxN using keyboard
 """
 import multiprocessing
-import pyttsx4 as pyttsxN
+import pyttsx3 as pyttsxN
 import keyboard
 
 def sayFunc(phrase):

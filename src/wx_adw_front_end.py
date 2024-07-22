@@ -740,7 +740,7 @@ class AdwFrontEnd:
         self._multi_key_progress = False
         self._multi_key_cmd = False
         self.flush_rep_queue()
-        self.speak_text_stop()
+        self.stop_speak_text()
         self.escape_pressed = False
 
     def key_escape(self):
@@ -1969,10 +1969,10 @@ class AdwFrontEnd:
             shift_to_edge = self.shift_to_edge
         self.adw.print_braille(title=title, shift_to_edge=shift_to_edge)
 
-    def speak_text_stop(self):
+    def stop_speak_text(self):
         """ Stop ongoing speach, flushing queue
         """
-        self.adw.speak_text_stop()
+        self.adw.stop_speak_text()
 
     def create_cell(self, cell_ixy=None, color=None,
                     show=True):
@@ -2193,98 +2193,35 @@ class AdwFrontEnd:
 
 
 if __name__ == '__main__':
-    class AdwFake(wx.Frame):
-        def __init__(self, title=""):
-            super().__init__(None, title=title)
-            self.win_print_entry = None
-            from wx_speaker_control import SpeakerControl
-            self.speaker_control = SpeakerControl()
-
+    '''
+    from unittest.mock import MagicMock
+    
+    class AdwFake(MagicMock):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            
         def exit(self):
             SlTrace.lg("adw.exit()")
             sys.exit()
-                    
-        def is_at_cell(self,*args,**kwargs):
-            SlTrace.lg("is_at_cell()")
-            return None
-            
-        def speak_text(self,*args,**kwargs):
-            SlTrace.lg(f"{args} {kwargs}")
-            
-        def Show(self):
-            SlTrace.lg("adw.Show()")
-
-        def pgm_exit(self):
-            SlTrace.lg("adw.pgm_exit()")
-            
-        def speak_text(self, msg, msg_type=None,
-                       dup_stdout=True, rate=None,
-                       volume=None):
-            SlTrace.lg(f"adw.speak_text({msg},"
-                       f"msg_type={msg_type}msg)"
-                       f")")
-
-        """ mag support"""
-        def erase_pos_history(self):
-            SlTrace.lg("adw.erase_pos_history")
-        def mag_select(self):
-            SlTrace.lg("mag_select")    
-        def mag_expand_to_fill(self):
-            SlTrace.lg("mag_exapnd_right")    
-        def mag_exapnd_top(self):
-            SlTrace.lg("mag_exapnd_top")    
-        def mag_view(self, cells=None):
-            SlTrace.lg("mag_view")    
-
-        """ nav support"""
         
-        def nav_add_loc(self):
-            SlTrace.lg("adw.nav_add_loc()")
+        def get_ix_min(self):
+            return 100
         
-        def nav_no_add_loc(self):
-            SlTrace.lg("adw.nav_no_add_loc()")
+        def get_ix_max(self):
+            return 0
         
-        def nav_echo_on(self):
-            SlTrace.lg("adw.nav_echo_on()")
-        
-        def nav_echo_off(self):
-            SlTrace.lg("adw.nav_echo_off()")
-            
-        def start_drawing(self):
-            SlTrace.lg(f"adw.start_drawing()")
-
-        def stop_drawing(self):
-            SlTrace.lg(f"adw.stop_drawing() is this in fte?")
-        
-        def set_combine_wave(self, val=True):
-            SlTrace.lg("adw.set_combine_wave")
-        
-        def  flip_skip_space(self):
-            SlTrace.lg("adw.flip_skip_space")
-        
-        def  flip_skip_run(self):
-            SlTrace.lg("adw.flip_skip_run")
-        
-        def start_scanning(self):
-            SlTrace.lg("adw.start_scanning")
-                                                                                                                                            
-        def stop_scanning(self):
-            SlTrace.lg("adw.stop_scanning") 
-
-        def set_no_item_wait(self, val=True):
-            SlTrace.lg(f"adw.set_no_item_wait(val={val})") 
-
-        def get_speaker_control(self):
-            """ Get speech control
-            """
-            SlTrace.lg("get_speaker_control")
+        def bounding_box_ci(self, cells):
+            return (100,100, 0, 0)                
+    '''
+    from wx_audio_draw_window import AudioDrawWindow
+    from wx_adw_menus import AdwMenus
+    from wx_tk_rem_user import TkRemUser
                   
     app = wx.App()
     frame = wx.Frame(None)
-    adw = AdwFake()
-    
-    
-    
+    tkr = TkRemUser(simulated=True)
+    adw = AudioDrawWindow(tkr)
+   
     fte = AdwFrontEnd(adw)
     menus = AdwMenus(fte, frame=frame)
     fte.do_key_str("c;g")

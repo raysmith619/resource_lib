@@ -5,9 +5,10 @@
         2. clearing pending and current requests
 """
 import multiprocessing as mp
+import time
 
 from speech_maker_cmd import SpeechMakerCmd
-import pyttsx4 as pyttsxN    # Can use pyttsx4 instead
+import pyttsx3 as pyttsxN    # Can use pyttsx3 instead
 
 from select_trace import SlTrace
 
@@ -38,7 +39,8 @@ class PyttsxProc:
         self.pyt_proc = mp.Process(target=self.pyt_proc_proc)
         self.pyt_queue = mp.Queue(self.qlen)  # speech queue of SpeakerControlCmd
         self.pyt_out_queue = mp.Queue(2*self.qlen)
-        self.pyt_engine_busy = False   # Updated with status 
+        self.pyt_engine_busy = False   # Updated with status
+        time.sleep(1) 
         self.pyt_proc.start()
         
     def clear(self):
@@ -150,6 +152,7 @@ class PyttsxProc:
 if __name__ == "__main__":
     import time
     
+    mp.freeze_support()
     SlTrace.clearFlags()
     #SlTrace.setFlags("talk_cmd")
     

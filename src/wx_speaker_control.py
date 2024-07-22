@@ -142,6 +142,7 @@ class SpeakerControlCmd:
         """ Setup command
         :cmd_type: command to execute
                 "CMD_MSG" - speak message - msg REQUIRED
+                "CMD_SPEAK_TEXT_STOP" - stop current/pending text speech
                 "CMD_TONE" - make tone - tone REQUIRED
                 "CMD_WAVEFORM - make wf waveform REQUIRED
                 "CLEAR" - clear pending speech/tone
@@ -220,6 +221,9 @@ class SpeakerControl(Singleton):
         :sounc_size: pending sounds queue size
         :sample_rate: waveform presentation sample_rate
                     default: 44100 per second
+        :simple_speaker: For Debugging/Test
+                True - avoid multiprocessing/threading to aboid freeze problems
+                default: False
         """
         self.pyttsx_proc  = PyttsxProc()
         self.cmds_size = cmds_size
@@ -259,6 +263,8 @@ class SpeakerControl(Singleton):
             if cmd.cmd_type == "CMD_MSG":
                 SlTrace.lg(f"CMD_MSG: {cmd}", "CMD_MSG")
                 self.sc_sound_queue.put(cmd)
+            elif cmd.cmd_type == "CMD_STOP_SPEAK_TEXT":
+                self.stop_speak_text()            
             elif cmd.cmd_type == "CMD_TONE":
                 self.sc_sound_queue.put(cmd)
             elif cmd.cmd_type == "CMD_WAVEFORM":
@@ -325,6 +331,11 @@ class SpeakerControl(Singleton):
         """ Stop current scan
         """
         self.clear()
+    
+    def stop_speak_text(self):
+        """ Stop current and pending text speach
+        """
+        self.pyttsx_proc.clear()
         
 
     def clear_cmd_queue(self):
@@ -606,18 +617,67 @@ class SpeakerControl(Singleton):
         self.sc_cmd_queue.put(cmd)
         return cmd
 
+class SimpleSpeakerControl():
+    """ Simple speaker control for distributed operation
+    Mostly for debugging/testing
+    """
+
+    def __init__(self):
+        self.simple_speaker = True
+
+    def get_cmd_queue_size(self):
+        return 0
+        
+    def is_busy(self):
+        return False
+    
+    def quit(self):
+        return
+    
+    def clear(self):
+        return
+    
+    def send_cmd(self, cmd_type='speak', msg=None, msg_type=None,
+                 rate=None, volume=None, tone=None,
+                 waveform=None, fr=None, after=None):
+        """ Stub out major cmd processing
+        """
+
+    def get_sound_queue_size(self):
+        return 0
+        
+    def get_vol_adj(self):
+        return 0
+    
+    def busy_parts(self):
+        return False
+
+    def get_sound_queue_size(self):
+        """ Get current number of entries
+        :returns: number of entries
+        """
+        return self.sc.get_sound_queue_size()
+    
+    
+
+            
             
 class SpeakerControlLocal:
     """ Localinstance of SpeakerControl
     """
 
-    def __init__(self, logging_sound=False):
+    def __init__(self, logging_sound=False, simple_speaker=False):
+        self.make_silent(False)
+        self.logging_sound = logging_sound
+        self.simple_speaker = simple_speaker
+        if simple_speaker:
+            self.sc = SimpleSpeakerControl()
+            return
+        
         self.cmds_awaiting_after = {} # dictionary by cmd_id awaiting after
         self.awaiting_loop_ms = 1      # Awaiting loop
         self.awaiting_loop_going = False    # Checking loop in progress
-        self.sc = SpeakerControl()
-        self.logging_sound = logging_sound
-        self.make_silent(False)
+        self.sc = SpeakerControl()      # NOTE: no simple_speaker arg
 
     def get_sound_queue_max(self):
         """ Get maximum number of entries
@@ -739,6 +799,9 @@ class SpeakerControlLocal:
         """ Clear out awaiting, calling all awaiting
         """
         self.awaiting_loop_going = False
+        if self.simple_speaker:
+            return
+        
         cmd_ids  = sorted(list(self.cmds_awaiting_after))   # So we can delete in loop
         for cmd_id in cmd_ids:
             if cmd_id in self.cmds_awaiting_after:
@@ -775,58 +838,60 @@ class SpeakerControlLocal:
         if dup_stdout and not self.logging_sound:
             SlTrace.lg(msg)
 
-    def speak_text_stop(self):
+    def stop_speak_text(self):
         """ Stop pending speech
         """
-        self.force_clear(restart=True)
+        self.sc.send_cmd(cmd_type="CMD_STOP_SPEAK_TEXT")
 
     def stop_scan(self):
         """ Stop current scan
         """
         self.sc.stop_scan()
-        self.speak_text_stop()    
+        self.stop_speak_text()    
 
 if __name__ == "__main__":
     import os
     import time
-    
+    import multiprocessing
+    multiprocessing.freeze_support()
     from wx_win import WxWin
     adw = None
     wx_win = WxWin(adw, "wx_speaker_control Self Test")
-    
-    SlTrace.setFlags("speech,sound_queue")
-    scl = SpeakerControlLocal()
-    scl.wait_while_busy()
-    long_msg = """
-    line one
-    line two
-    line three
-    line four
-    line five
-    line six
-    line seven
-    line eight
-    line nine
-    line ten
-    """
-    long_msg_group = long_msg.split("\n")
-    for msg in long_msg_group:
-        scl.speak_text(msg)
-        time.sleep(1)
-    scl.wait_while_busy()
+    for simple_speaker in [True, False]:
+        SlTrace.lg(f"simple_speaker: {simple_speaker}")
+        SlTrace.setFlags("speech,sound_queue")
+        scl = SpeakerControlLocal(simple_speaker=simple_speaker)
+        scl.wait_while_busy()
+        long_msg = """
+        line one
+        line two
+        line three
+        line four
+        line five
+        line six
+        line seven
+        line eight
+        line nine
+        line ten
+        """
+        long_msg_group = long_msg.split("\n")
+        for msg in ["one"]:
+            scl.speak_text(msg)
+            time.sleep(1)
+            scl.wait_while_busy()
 
-    scl.speak_text(long_msg)
-    scl.wait_while_busy()
-    
-    scl.speak_text("Hello World!")
-    scl.wait_while_busy()
-    scl.speak_text("How are you?")
-    scl.wait_while_busy()
-    scl.speak_text("Hows the weather?")
-    scl.wait_while_busy()
-    scl.speak_text("What's up?")
-    time.sleep(3)
-    scl.clear()
-    scl.speak_text("Just cleared")
-    time.sleep(2)
-    scl.wait_while_busy()
+            scl.speak_text(long_msg)
+            scl.wait_while_busy()
+            
+            scl.speak_text("Hello World!")
+            scl.wait_while_busy()
+            scl.speak_text("How are you?")
+            scl.wait_while_busy()
+            scl.speak_text("Hows the weather?")
+            scl.wait_while_busy()
+            scl.speak_text("What's up?")
+            time.sleep(3)
+            scl.clear()
+            scl.speak_text("Just cleared")
+            time.sleep(2)
+            scl.wait_while_busy()

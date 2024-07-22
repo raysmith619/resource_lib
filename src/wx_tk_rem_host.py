@@ -1,4 +1,4 @@
-#tk_rem_host.py   24Jan2024  crs, renamed from wx_tk_rem_access.py
+#wx_tk_rem_host.py   24Jan2024  crs, renamed from wx_tk_rem_access.py
 """ Remote access to tk canvas information
 tkinter canvas resides in host process
 wxPython AudioDrawWindow instance(s) reside in client
@@ -162,6 +162,7 @@ if __name__ == '__main__':
 
     cvg = CanvasGrid(root, height=450, width=450)
     cvg.create_line(0,0,200,300, width=10, fill="blue", tags="blue_tag")
+    cvg.show_canvas()
     cvg.create_line(200,300,400,400, width=10, fill="green", tags=["green1","green2"])
     cvg.create_rectangle(200,200,300,300, fill="red")
     cvg.create_oval(100,200,250,300, fill="orange", tags="orange_tag")

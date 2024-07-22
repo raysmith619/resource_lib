@@ -90,6 +90,7 @@ class AdwScanner:
         :n_combine_wave: number of sections combined wave 
                         default: 4
         """
+        self.scan_item_refresh_rect = None      # Support early call
         #space_time = 1      # TFD
         #cell_time = 2      # TFD
         self.fte = fte
@@ -755,7 +756,8 @@ class AdwScanner:
         if  self._display_item_id is not None:
             self.canv_pan.delete(self._display_item_id)
         self._display_item_id = None
-        self.canv_pan.RefreshRect(self.scan_item_refresh_rect)
+        if self.scan_item_refresh_rect is not None:
+            self.canv_pan.RefreshRect(self.scan_item_refresh_rect)
 
 
     def remove_report_item(self):

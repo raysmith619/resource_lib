@@ -1,7 +1,7 @@
 #pyttsx_voices.py   06Aug2023  crs
 """ Test voices
 """
-import pyttsx4 as pyttsxN
+import pyttsx3 as pyttsxN
 
 engine = pyttsxN.init()
 voices = engine.getProperty('voices')

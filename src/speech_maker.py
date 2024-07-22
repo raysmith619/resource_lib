@@ -12,7 +12,7 @@ from select_trace import SlTrace, SelectError
 
 got_pyttsxN = False
 try:
-    import pyttsx4 as pyttsxN
+    import pyttsx3 as pyttsxN
     got_pyttsxN = True
 except:
     SlTrace.lg("No pyttsxN to be had")

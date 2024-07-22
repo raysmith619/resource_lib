@@ -59,7 +59,7 @@ class BrailleDisplayLink:
         :wx_cmd: command such as canvas contents        
         """
         if wx_cmd.cmd == WxCommand.GET_DISPLAY_CELLS:
-            display_cells = self.get_display_cells(**wx_cmd.kwargs)
+            display_cells = self.tk_get_display_cells(**wx_cmd.kwargs)
             wx_cmd_resp = WxCommandResp(cmd=wx_cmd.cmd,
                                         display_cells=display_cells)
             self.wx_cmd_resp_queue.put(wx_cmd_resp)

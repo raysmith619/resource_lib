@@ -5,7 +5,7 @@ import time
 import queue
 import threading
 
-import pyttsx4 as pyttsxN
+import pyttsx3 as pyttsxN
 
 from select_trace import SlTrace
 

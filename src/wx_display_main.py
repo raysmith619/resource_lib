@@ -7,6 +7,8 @@ import wx
 from select_trace import SlTrace
 from wx_braille_display import BrailleDisplay
 from wx_tk_rem_user import TkRemUser
+from wx_rem_host import WxRemHost
+
 
 if __name__ == '__main__':      # Required because we use multiprocessing
                                 # in some modules e.g. pyttsx_proc.py
@@ -25,6 +27,7 @@ if __name__ == '__main__':      # Required because we use multiprocessing
     
     #tkh = TkRemHost()
     tkr = TkRemUser()
+    wxr = WxRemHost()
     app = wx.App()
     bd = BrailleDisplay(tkr,display_list=args.bdlist)
     bd.display()

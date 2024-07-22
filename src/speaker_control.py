@@ -18,10 +18,10 @@ from sinewave_numpy import SineWaveNumPy
 
 got_pyttsx = False
 try:
-    import pyttsx4 as pyttsx
+    import pyttsx3 as pyttsx
     got_pyttsx = True
 except:
-    SlTrace.lg("No pyttsx4 to be had")
+    SlTrace.lg("No pyttsx3 to be had")
 
 
 

@@ -51,7 +51,7 @@ class SineWaveBeep:
             dur = self.dur_base
         self.dur = dur
         self._silence_checker = silence_checker
-        self.speaker_control = SpeakerControlLocal()
+        self.speaker_control = self.awin.speaker_control
         
 
     def announce(self, msg, val=None):

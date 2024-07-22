@@ -31,7 +31,9 @@ class BrailleDisplay:
     """
     
 
-    def __init__(self, tkr=None,
+    def __init__(self,
+                 wxr=None,
+                 tkr=None,
                  title="Braille Display",
                  display_list=None,
                  win_width=800, win_height=800,
@@ -50,8 +52,10 @@ class BrailleDisplay:
                  tk_items=False,
                  canvas_items=False,
                  silent=False,
+                 speaker_control=None
                  ):
         """ Setup display
+        :wxr
         :tkr: Access to tkinter from remote user
         :title: display screen title
         :display_list: list of (ix,iy,color) to display
@@ -99,8 +103,13 @@ class BrailleDisplay:
         :tk_items: Print list of tkinter canvas items default: False
         :canvas_items: print whole canvas item info default: False
         :silent: starting val default: False
+        :speaker_control: unified sound speach and text control
+                default: create
         """
         self.display_depth = 0
+        if speaker_control is None:
+            speaker_control = SpeakerControlLocal()   # access to sound/speech engine
+        self.speaker_control = speaker_control
         if tkr is None:
             SlTrace.lg("No link to remote")
             tkr =  TkRemUser(remote=False)
@@ -224,8 +233,6 @@ class BrailleDisplay:
         tib = title
         if tib is not None and tib.endswith("-"):
             tib += " Braille Window"
-
-        self.speaker_control = SpeakerControlLocal()   # local access to speech engine
         self.adw = AudioDrawWindow(
                             self.tkr,
                             display_list=self.display_list,
@@ -288,6 +295,7 @@ if __name__ == "__main__":
     import argparse
     from braille_cell_text import BrailleCellText
     from wx_braille_cell_list import BrailleCellList
+    from wx_tk_rem_user import TkRemUser
     
     spokes_picture="""
     ,,,,,,,,,,,iii
@@ -321,9 +329,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     args = parser.parse_args()             # or die "Illegal options"
     SlTrace.lg(f"args: {args}\n")
+    tkr = TkRemUser(simulated=True)
 
-
-    bd = BrailleDisplay(display_list=spokes_bcs)
+    bd = BrailleDisplay(tkr=tkr, display_list=spokes_bcs)
     bd.display(title="Selftest")
     bd.MainLoop()
 

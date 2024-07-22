@@ -7,7 +7,7 @@ import time
 import threading
 import queue
 
-import pyttsx4 as pyttsxN
+import pyttsx3 as pyttsxN
 
 from select_trace import SlTrace
 from format_exception import format_exception
@@ -19,7 +19,7 @@ class pyttsxNEngine:
         self.eng_talking = False
         self.eng_queue_size = 3
         try:
-            import pyttsx4 as pyttsxN
+            import pyttsx3 as pyttsxN
             self.got_pyttsxN = True
             SlTrace.lg("pyttsxN installed")
 

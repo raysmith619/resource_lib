@@ -11,9 +11,37 @@ import subprocess
 import re
 import os
 import time
+import tempfile
 
 from select_trace import SlTrace
 
+tmp_dir = tempfile.TemporaryDirectory(prefix="tb_test")
+
+def cvt_pgm_file(pgm_file, type_run=None):
+    """ Convert program, if necessary, to desired type
+    :pgm_file: program file name
+    :type_run: type run wxpython if we are using wxpython
+    :returns: file name, temp file's name if file created
+    """
+    if type_run != "wxpython":
+        return pgm_file
+    
+    """
+    replace lines of "from braille_display import BrailleDisplay"
+    with "from wx_braille_display import BrailleDisplay"
+    Storing results in a temp file, returning the temp file path
+    """
+    base_name = os.path.basename(pgm_file)
+    
+    tf_name = os.path.join(tmp_dir.name, base_name)
+    SlTrace.lg(f"Creating temp file: {tf_name}")
+    with open (pgm_file) as f:
+        with open(tf_name, mode='w') as tf:
+            for line in f:
+                if re.match(r"from\s+braille_display\s+import\s+BrailleDisplay", line):
+                    line = "from wx_braille_display import BrailleDisplay\n"
+                print(line, file=tf, end="")
+    return tf_name
 
 """
 test list files
@@ -23,9 +51,16 @@ test list files
         is ignored
 """
 
+type_run = ""   # Default  old - pre wxPython
+type_run = "wxpython" # Use wxPython (wx_braille_display instead of braille_display)
+
 test_list_file = "tb_test_list.tests"
 test_out_dir = "../tests"
 test_out_dir = os.path.abspath(test_out_dir)
+SlTrace.lg(f"Test output directory: {test_out_dir}")
+if not os.path.exists(test_out_dir):
+    SlTrace.lg(f"Creating test output directory")
+    os.mkdir(test_out_dir)
 SlTrace.setLogToStd(False)      # Clean display
 SlTrace.setLogStdTs(on=False)      # No Ts on printed linesw
 SlTrace.clearFlags()
@@ -45,6 +80,7 @@ if SlTrace.trace("stdOutHasTs"):
 tsp = SlTrace.getTs()
 out_base_name = re.sub(r'\.[^.]+$', '_' + tsp +'.out', test_list_file)
 out_file = os.path.join(test_out_dir, out_base_name)
+SlTrace.lg(f"Test output file: {out_file}")
 
 timeout = 160
 #timeout = 20
@@ -76,6 +112,8 @@ with open(out_file, "w") as outfp:
         pgm_file = file_time[0]
         pgm_time = file_time[1] if len(file_time) > 1 else None
         pgm_file = pgm_file.strip()
+        if type_run == "wxpython":
+            pgm_file = cvt_pgm_file(pgm_file, type_run)
         if pgm_time is None:
             pgm_time = timeout
         else:

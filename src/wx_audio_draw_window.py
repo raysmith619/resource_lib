@@ -16,7 +16,7 @@ import wx
 
 from select_trace import SlTrace
 from wx_speaker_control import SpeakerControlLocal
-from grid_path import GridPath
+from wx_grid_path import GridPath
 from braille_cell import BrailleCell
 from magnify_info import MagnifyInfo, MagnifyDisplayRegion
 from wx_stuff import *
@@ -327,10 +327,10 @@ class AudioDrawWindow(wx.Frame):
                              dup_stdout=dup_stdout,
                              rate=rate, volume=volume)
 
-    def speak_text_stop(self):
+    def stop_speak_text(self):
         """ Stop ongoing speach, flushing queue
         """
-        self.speaker_control.speak_text_stop()
+        self.speaker_control.stop_speak_text()
         
     def trav_len(self, ix, iy, dir_x, dir_y, require_cell=True):
         """ Find the travel length
@@ -1577,7 +1577,6 @@ class AudioDrawWindow(wx.Frame):
     """
     Links to canvas_grid
     """
-
         
     def get_cell_rect_tur(self, ix, iy):
         """ Get cell's turtle rectangle x, y  upper left, x,  y lower right
@@ -1613,6 +1612,14 @@ class AudioDrawWindow(wx.Frame):
     """
          Links to front end functions
     """
+
+    def is_inbounds(self,ix=None, iy=None):
+        """ Test if inbounds
+        :ix: x index - default: don't test
+        :iy: y index - default: don't test
+        :returns: True iff in bounds
+        """
+        return self.fte.is_inbounds(ix=ix, iy=iy)
 
     def remove_mag_selection(self):
         """ Remove magnify selection and marker
@@ -1825,6 +1832,6 @@ if __name__ == "__main__":
         #SlTrace.setFlags("refresh,draw_rect,draw_oval,mouse_cell")
         aw.MainLoop()
     
-    #test_window_ops()
+    test_window_ops()
     #test_tk_track(figure=1)
-    test_tk_track(figure=2)
+    #test_tk_track(figure=2)

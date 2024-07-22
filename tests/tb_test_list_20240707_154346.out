@@ -1,0 +1,8 @@
+tb_test_goto.py
+tb_test_keyboard.py ; 360
+tb_test_placement.py
+tb_test_audio_1.py
+tb_test_audio.py ; 360
+tb_test_magnify.py ; 360
+tb_test_scanning.py ; 360
+tb_test_scanning_timing.py ; 720

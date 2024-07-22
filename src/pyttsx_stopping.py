@@ -2,7 +2,7 @@
 """ Stopping current talking
 """
 import multiprocessing
-import pyttsx4 as pyttsxN
+import pyttsx3 as pyttsxN
 import time
 from threading import Thread
 

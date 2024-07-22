@@ -15,7 +15,7 @@ class TkRemUser:
     """
     def __init__(self, host='localhost', port=50007,
                  max_recv=2**16, simulated=False,
-                 figure=1):
+                 figure=1, remote=True):
         """ Handle user (wxPython) side of communications
         :host: host address default: localhost - same machine
         :port: port number default: 50007
@@ -24,6 +24,7 @@ class TkRemUser:
         :simulated: True: simulate tk input default: False
         :figure: simulated figure 1 - spokes, 2 - square
                 default=1 spokes
+        :remote: unused
         """
         SlTrace.lg("TkRemUser() __init__() BEGIN")
         self.host = host
@@ -104,6 +105,39 @@ class TkRemUser:
                         x_min=x_min, y_min=y_min,
                         x_max=x_max, y_max=y_max,
                     n_cols=ncols, n_rows=nrows)
+
+
+    def is_inbounds_ixy(self, *ixy):
+        """ Check if ixy pair is in bounds
+        :ixy: if tuple ix,iy pair default: current location
+              else ix,iy indexes
+            ix: cell x index default current location
+            iy: cell y index default current location
+        :returns: True iff in bounds else False
+        """
+        if self.simulated:
+            return self.is_inbounds_ixy_simulated(self, *ixy)
+                        
+        args = locals()
+        del(args['self'])
+        args['cmd_name'] = 'is_inbounds_ixy'
+        SlTrace.lg(f"USER: args:{args}", "USER:data")
+        cmd_data = pickle.dumps(args)
+        self.send_cmd_data(cmd_data)
+        cmd_resp_data = self.get_resp_data()
+        SlTrace.lg(f"USER: cmd_resp_data: {cmd_resp_data}", "USER:data")
+        ret_dt = pickle.loads(cmd_resp_data)
+        SlTrace.lg(f"USER: ret_dt: {ret_dt}", "USER:data")
+        return ret_dt['ret_val']
+
+    def is_inbounds_ixy_simulated(self, *ixy):
+        """ Check if ixy pair is in bounds
+        :ixy: if tuple ix,iy pair default: current location
+              else ix,iy indexes
+            ix: cell x index default current location
+            iy: cell y index default current location
+        :returns: True iff in bounds else False
+        """
     
 
     def get_cell_rect_tur(self, ix, iy):

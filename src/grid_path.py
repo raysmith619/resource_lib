@@ -94,7 +94,7 @@ class GridPath:
             ix_new = ix_now + ix_chg
             iy_new = iy_now + iy_chg
             pos_new = (ix_new,iy_new)
-            if not self.awin.is_inbounds_ixy(pos_new):
+            if not self.awin.is_inbounds(ix=ix_new, iy=iy_new):
                 break
             nexts.append(pos_new)
             ix_now,iy_now = pos_new

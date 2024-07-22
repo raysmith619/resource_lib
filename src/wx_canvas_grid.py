@@ -91,6 +91,7 @@ class CanvasGrid(tk.Canvas):
         self.g_nrows = g_nrows
         self.g_ncols = g_ncols
         self.grid_tag = None        # Most recent grid paint tag
+        self.set_grid_lims()
         self.set_cell_lims()
 
     def get_canvas_lims(self, win_fract=True):
@@ -153,7 +154,7 @@ class CanvasGrid(tk.Canvas):
             if win_fract:
                 x = fg_xmin + i*fg_width/ncols
             else:
-                xmin + i*g_width/ncols                 
+                x = xmin + i*g_width/ncols                 
             grid_xs.append(x)
             
         fg_ymin = self.g_ymin + ymin*g_height
@@ -167,6 +168,17 @@ class CanvasGrid(tk.Canvas):
             grid_ys.append(x)
 
         return grid_xs,grid_ys
+        
+    def set_grid_lims(self):
+        """ create grid boundary values bottom through top
+         so:
+             grid_xs[0] == left edge
+             grid_xs[grid_width] == right edge
+             grid_ys[0] == top edge
+             grid_ys[grid_height] == bottom edge
+             cell(i,j): grid_xs[i], grid_xs[i+1], grid_ys[j], grid_ys[j+1]
+        """
+        self.grid_xs, self.grid_ys = self.get_grid_lims()
 
     def is_inbounds_ixy(self, *ixy):
         """ Check if ixy pair is in bounds
@@ -975,8 +987,8 @@ if __name__ == "__main__":
         SlTrace.lg("After create_audio_window() 2")
         root.mainloop()
         
-    test1()
-    #test2()
+    #test1()
+    test2()
     #test3()
     #test5()
     SlTrace.lg("End of Test")

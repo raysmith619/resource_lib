@@ -5,7 +5,7 @@ import time
 import threading
 import queue
 
-import pyttsx4 as pyttsxN as pyttsxN
+import pyttsx3 as pyttsxN as pyttsxN
 
 class PyttsxSimple:
     def __init__(self):

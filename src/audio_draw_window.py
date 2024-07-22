@@ -12,7 +12,7 @@ import tkinter as tk
 
 from select_trace import SlTrace
 from speaker_control import SpeakerControlLocal
-from grid_path import GridPath
+from wx_grid_path import GridPath
 from braille_cell import BrailleCell
 from magnify_info import MagnifyInfo, MagnifyDisplayRegion
 from adw_front_end import AdwFrontEnd
@@ -1144,6 +1144,14 @@ class AudioDrawWindow:
     """
          Links to front end functions
     """
+
+    def is_inbounds(self,ix=None, iy=None):
+        """ Test if inbounds
+        :ix: x index - default: don't test
+        :iy: y index - default: don't test
+        :returns: True iff in bounds
+        """
+        return self.fte.is_in_bounds(ix=ix, iy=iy)
 
     def set_show_marked(self,val=True):
         """ Show marked "invisible" cells
