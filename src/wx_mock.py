@@ -29,8 +29,7 @@ mm.say("Hi")
 mm.b()
 mm.c()
 
-canv = mm.canv_pan
-print(f"canv:{canv} mm.canv_pan:{mm.canv_pan}")
+print(f"mm.data_member:{mm.data_member}")
 print(f"Extended members: mm.say:{mm.say}")
 print(f"generated: mm.a:{mm.a}, mm.b:{mm.b}, mm.c:{mm.c}")
 print(f"mm.i() > mm.j(): {mm.i() > mm.j()}")

@@ -232,10 +232,13 @@ class TkRemUser:
             get_canvas_specs
             get_canvas_lims
         :figure: simulated tk figure
+                0 - empty 
                 1 - spokes ( like wx_spokes.py)
                 2 - square ( like wx_square_colors.py)
         """
-        if figure  == 1:
+        if figure == 0:
+            self.make_simulated_empty()
+        elif figure  == 1:
             self.make_simulated_spokes()
         elif figure == 2:
             self.make_simulated_square()
@@ -267,6 +270,20 @@ class TkRemUser:
         canvas = tur.getcanvas()
         self.sim_cg = CanvasGrid(base=canvas)
 
+    def make_simulated_empty(self):
+        """ simulate empty screen
+        """
+        import turtle as tur
+        from wx_canvas_grid import CanvasGrid
+        sc_width = 800
+        sc_height = 900
+        self.sc_width = sc_width
+        self.sc_height = sc_height
+        screen = tur.Screen()
+        screen.setup(sc_width, sc_height)
+        canvas = tur.getcanvas()
+        self.sim_cg = CanvasGrid(base=canvas)
+
     def make_simulated_square(self):
         """ simulate wx_square_colors.py
         """
@@ -292,7 +309,7 @@ class TkRemUser:
 if __name__ == '__main__':
     import sys
     
-    tkr = TkRemUser()
+    tkr = TkRemUser(simulated=True)
     for msg in ["t1","t2","t3"]:
         SlTrace.lg(f"test_command({msg})")
         res = tkr.test_command(msg)

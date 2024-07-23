@@ -39,7 +39,7 @@ if __name__ == '__main__':
         a_bit = 1
         bd.display()        # So we get control
         fte = bd.adw.fte
-        pt_time = 20
+        pt_time = 10
         adwPlay = AdwPlay(bd=bd, time_inc=0,
                         trace=1,
                         globals={'bd':bd, 'fte':fte, 'a_bit':a_bit,
@@ -73,4 +73,4 @@ if __name__ == '__main__':
 
     finally:
         SlTrace.lg("Test End", to_stdout=True)
-        #fte.pgm_exit()
+        fte.pgm_exit()
