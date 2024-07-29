@@ -1,0 +1,4 @@
+python script parts
+
+import re,os;[f for f in os.listdir(os.getenv('TURBO_BRAILLE_PATH')) if re.match("canvas",f)]
+['canvas_grid.py', 'canvas_item.py', 'canvas_view.py']

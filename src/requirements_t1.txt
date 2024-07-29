@@ -1,0 +1,15 @@
+missing_module_a==1
+cffi==1.17.0
+missing_module_b==1.2.3
+comtypes==1.4.4
+numpy==2.0.0
+pillow==10.4.0
+pycparser==2.22
+pypiwin32==223
+pysinewave==0.0.7
+pyttsx3==2.90
+pyttsx4==3.0.15
+pywin32==306
+six==1.16.0
+sounddevice==0.4.7
+wxPython==4.2.1
