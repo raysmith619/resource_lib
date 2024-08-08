@@ -404,7 +404,19 @@ class CanvasPanel(wx.Panel):
             wx.CallLater(10, self.my_app_kill, my_app=my_app)
             my_app.MainLoop()
             pass
-            
+
+    def clear(self):
+        """ Clear panel
+        """
+        self.items_by_id = {}   # Items stored by item.canv_id
+                                # Augmented by CanvasPanelItem.__init__()
+        self.items = []         # Items in order drawn
+        self.prev_reg = None    # Previously displayed
+        self.adw_dp.clear()
+        self.Refresh()
+        
+                
+                    
     def itemconfig(self, tags, **kwargs):
         """ Adjust items with tags with kwargs
         :tags: tag or tag list of items to change

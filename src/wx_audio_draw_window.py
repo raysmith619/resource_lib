@@ -822,40 +822,40 @@ class AudioDrawWindow(wx.Frame):
                                                 fill=color)
                 cell.canv_items.append(canv_id)
                 SlTrace.lg(f"canv_pan.create_oval({x0},{y0},{x1},{y1}, fill={color})", "aud_create")
-            return
-            
-        dots = cell.dots
-        cell_width = cx2-cx1
-        cell_height = cy2-cy1       # y increases down
-        # Fractional offsets from lower left corner
-        # of cell rectangle
-        ll_x = cx1      # Lower left corner
-        ll_y = cy1
-        ox1 = ox2 = ox3 = .3 
-        ox4 = ox5 = ox6 = .7
-        oy1 = oy4 = .15
-        oy2 = oy5 = .45
-        oy3 = oy6 = .73
-        dot_size = .25*cell_width   # dot size fraction
-        dot_radius = dot_size//2
-        dot_offset = {1: (ox1,oy1), 4: (ox4,oy4),
-                      2: (ox2,oy2), 5: (ox5,oy5),
-                      3: (ox3,oy3), 6: (ox6,oy6),
-                      }
-        for dot in dots:
-            offsets = dot_offset[dot]
-            off_x_f, off_y_f = offsets
-            dx = ll_x + off_x_f*cell_width
-            dy = ll_y + off_y_f*cell_height
-            x0 = dx-dot_radius
-            y0 = dy+dot_size 
-            x1 = dx+dot_radius 
-            y1 = dy
-            canv_id = self.canv_pan.create_oval(x0,y0,x1,y1,
-                                            fill=color)
-            comp_item.add(canv_id) 
-            SlTrace.lg(f"canv_pan.create_oval({x0},{y0},{x1},{y1}, fill={color})", "aud_create")
-        
+        else:            
+            dots = cell.dots
+            cell_width = cx2-cx1
+            cell_height = cy2-cy1       # y increases down
+            # Fractional offsets from lower left corner
+            # of cell rectangle
+            ll_x = cx1      # Lower left corner
+            ll_y = cy1
+            ox1 = ox2 = ox3 = .3 
+            ox4 = ox5 = ox6 = .7
+            oy1 = oy4 = .15
+            oy2 = oy5 = .45
+            oy3 = oy6 = .73
+            dot_size = .25*cell_width   # dot size fraction
+            dot_radius = dot_size//2
+            dot_offset = {1: (ox1,oy1), 4: (ox4,oy4),
+                        2: (ox2,oy2), 5: (ox5,oy5),
+                        3: (ox3,oy3), 6: (ox6,oy6),
+                        }
+            for dot in dots:
+                offsets = dot_offset[dot]
+                off_x_f, off_y_f = offsets
+                dx = ll_x + off_x_f*cell_width
+                dy = ll_y + off_y_f*cell_height
+                x0 = dx-dot_radius
+                y0 = dy+dot_size 
+                x1 = dx+dot_radius 
+                y1 = dy
+                canv_id = self.canv_pan.create_oval(x0,y0,x1,y1,
+                                                fill=color)
+                comp_item.add(canv_id) 
+                SlTrace.lg(f"canv_pan.create_oval({x0},{y0},{x1},{y1}, fill={color})", "aud_create")
+        self.refresh_cell(cell) 
+    
     def display_cell_end(self, cell):
         """ Complete cell display
         :cell: BrailleCell to display
@@ -1017,7 +1017,7 @@ class AudioDrawWindow(wx.Frame):
         :returns: list of overlapping items (CanvasPanelItem)
         """
         item_d = {}     # dictionary by (id)
-        if type(item) == int:
+        if type(item) == int and item in self.canv_pan.items_by_id:
             item = self.canv_pan.items_by_id[item]
         displayed_items = self.get_displayed_items()
         
@@ -1294,10 +1294,10 @@ class AudioDrawWindow(wx.Frame):
         cells = self.get_cells()
         for cell in list(cells.values()):
             self.erase_cell(cell)
+        self.draw_cells(cells=self.cells)
         del self.cells
         self.cells = {}
-        self.draw_cells(cells=self.cells)
-
+        self.clear()
         
         
         
@@ -1589,6 +1589,13 @@ class AudioDrawWindow(wx.Frame):
     """
     Links to canvas panel - most are direct
     """
+    
+    def clear(self):
+        """ Clear panel
+        """
+        self.canv_pan.clear()
+        self.set_cursor_pos_win()
+        
     def redraw(self):
         """ Redraw screen
         """
@@ -1612,6 +1619,13 @@ class AudioDrawWindow(wx.Frame):
     """
          Links to front end functions
     """
+
+
+    def set_initial_location(self):
+        """ Set/Reset initial location of cursor
+        """
+        self.fte.set_initial_location()
+
 
     def is_inbounds(self,ix=None, iy=None):
         """ Test if inbounds

@@ -105,7 +105,7 @@ class AdwFrontEnd:
         self._loc_list_original = None
         self._loc_list_first = None     # a,b horiz/vert move targets
         self._loc_list_second = None
-        self.x,self.y = (0,0)
+        self.set_initial_location()
         self._silent = silent           # So prev=self._silent  doesn't fail
         self.set_silent(silent) # Start with speaking
         self.set_using_audio_beep(False)
@@ -136,6 +136,11 @@ class AdwFrontEnd:
 
     def get_goto_cell_list(self):
         return self.goto_cell_list
+
+    def set_initial_location(self):
+        """ Set/Reset initial location of cursor
+        """
+        self.x,self.y = (0,0)
 
     def silence(self):
         """ Function to check for silent mode

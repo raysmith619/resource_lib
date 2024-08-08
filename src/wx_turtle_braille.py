@@ -29,7 +29,7 @@ from wx_braille_cell_list import BrailleCellList
 External functions 
 Some day may model after turtle's _make_global_funcs
 """
-
+SlTrace.clearFlags()    # Start quiet
 canvas = None
 def mainloop():
     global canvas

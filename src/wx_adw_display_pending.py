@@ -22,11 +22,16 @@ class AdwDisplayPending:
         :canv_pan: canvas panel (CanvPanel)
         """
         self.canv_pan = canv_pan
+        self.disp_fun = None    # Set as user's item displaying function
+        self.clear()
+
+    def clear(self):
+        """ Clear/initialize pending
+        """
         self.items = []         # one-time list for update
         self.perm_items = {}    # permanent dictionary, by id, for redrawing
-        self.disp_fun = None    # Set as user's item displaying function
         self.prev_npending = None   # Track changes
-        
+                
     
     def add_item(self, item):
         """ Add display item
