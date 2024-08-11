@@ -183,14 +183,14 @@ class CanvasPanelItem:
         parts = item.get_parts()
         if len(parts) == 0:
             return wx.Rect(wx.Point(0,0), wx.Point(0,0))    # Empty
-        brect  = self.bounding_rect(parts[0])
-        ul_x, ul_y = brect.getLeft(),brect.getTop()
-        lr_x, lr_y = brect.getRight(),brect.getBottom()
+        brect  = parts[0].bounding_rect()
+        ul_x, ul_y = brect.GetLeft(),brect.GetTop()
+        lr_x, lr_y = brect.GetRight(),brect.GetBottom()
         
         for part in parts[1:]:
-            br = self.bounding_rect(part)
-            br_ul_x, br_ul_y = br.getLeft(),br.getTop()
-            br_lr_x, br_lr_y = br.getRight(),br.getBottom()
+            br = part.bounding_rect()
+            br_ul_x, br_ul_y = br.GetLeft(),br.GetTop()
+            br_lr_x, br_lr_y = br.GetRight(),br.GetBottom()
             ul_x = min(ul_x,br_ul_x)
             ul_y = min(ul_y, br_ul_y)
             lr_x = max(lr_x,br_lr_x)
@@ -359,6 +359,9 @@ class CanvasPanelItem:
     def delete(self):
         """ delete item
         """
+        if self.create_composite_draw:
+            for part in self.comp_parts:
+                part.delete()
         self.deleted = True
     """
     ------------------------ link to canvas_panel

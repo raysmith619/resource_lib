@@ -144,6 +144,7 @@ class BrailleCell:
         self.canv_items = []        # canvas items
         self.pi_number = None       # perimeter traverse number, if one 
         self.pi_type = ""           # o-outside, s-surrounding, i-inside
+        self.comp_item = None       # graphics item, if one
 
     def __str__(self):
         st = f"BCell: [{self.ix},{self.iy}]"

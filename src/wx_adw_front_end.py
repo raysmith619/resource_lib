@@ -639,15 +639,14 @@ class AdwFrontEnd:
                        f" ixy:{(ix,iy)}  cell: {cell}")
             ###???mag_info.base_canvas.show_mag_info_items(mag_info, ix=ix, iy=iy)
 
-        if self.is_drawing():
-            if cell is None:
-                new_cell = self.create_cell()
-                self.display_cell(new_cell)
+        if cell is None:
+            if self.is_pendown():
+                if cell is None:
+                    new_cell = self.create_cell()
+                    self.display_cell(new_cell)
         else:
-            if cell is not None:
-                self.set_visible_cell(cell)
-            self.pos_check()
-        ###self.update()
+            self.set_visible_cell(cell)
+        self.pos_check()
 
     def on_button_1_motion(self, x, y):
         """ Motion with button down is
@@ -803,6 +802,11 @@ class AdwFrontEnd:
         else:
             self.speak_text("Unrecognized multi-key process")
             self.key_escape()
+
+    def is_pendown(self):
+        """ Test if pen is down (marking)
+        """
+        return self._pendown
 
     def key_pendown(self, val=True):
         """ Lower/raise pen (starting,stopping) drawing
@@ -1548,8 +1552,8 @@ class AdwFrontEnd:
         :val: True - mark location default: True
                 False - erase location
         """
-        if not self._drawing:
-            self.announce_can_not_do("Not drawing", val)
+        #if not self._drawing:
+        #    self.announce_can_not_do("Not drawing", val)
 
         if val:
             cell = self.get_cell_at()
@@ -1561,6 +1565,10 @@ class AdwFrontEnd:
             self.display_cell(cell)
         else:
             cell = self.get_cell_at()
+            if cell is None:
+                return
+            
+            self.refresh_cell(cell)      # Mark as dirty
             self.delete_cell(cell)
 
 

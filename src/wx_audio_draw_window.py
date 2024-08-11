@@ -443,7 +443,7 @@ class AudioDrawWindow(wx.Frame):
         braille_text = ""
         for iy in range(top_edge, bottom_edge):
             line = ""
-            for ix in range(left_edge, right_edge):
+            for ix in range(left_edge, right_edge+1):
                 cell_ixy = (ix,iy)
                 if cell_ixy in self.cells:
                     cell = self.cells[cell_ixy]
@@ -688,7 +688,7 @@ class AudioDrawWindow(wx.Frame):
             
 
 
-    def erase_cell(self, cell, force_refresh=False):
+    def erase_cell(self, cell, force_refresh=True):
         """ Erase cell
         :cell: BrailleCell
         """
@@ -788,7 +788,9 @@ class AudioDrawWindow(wx.Frame):
         iy = cell.iy
         comp_id = self.canv_pan.create_composite(disp_type=CanvasPanelItem.DT_CELL,
                                                  desc=str(cell))
+        cell.canv_items.append(comp_id)
         comp_item = self.canv_pan.id_to_item(comp_id)
+        cell.comp_item = comp_item
         self.canv_pan.add_cell(comp_item)   
         cx1,cy1,cx2,cy2 = self.get_win_ullr_at_ixy_canvas((ix,iy))
         SlTrace.lg(f"{ix},{iy}: {cell} :{cx1},{cy1}, {cx2},{cy2} ", "display_cell")
@@ -855,7 +857,8 @@ class AudioDrawWindow(wx.Frame):
                 comp_item.add(canv_id) 
                 SlTrace.lg(f"canv_pan.create_oval({x0},{y0},{x1},{y1}, fill={color})", "aud_create")
         self.refresh_cell(cell) 
-    
+        self.cursor_update()
+        
     def display_cell_end(self, cell):
         """ Complete cell display
         :cell: BrailleCell to display
@@ -1298,6 +1301,7 @@ class AudioDrawWindow(wx.Frame):
         del self.cells
         self.cells = {}
         self.clear()
+        self.key_pendown(False) # Raise pen off paper
         
         
         
@@ -1619,6 +1623,17 @@ class AudioDrawWindow(wx.Frame):
     """
          Links to front end functions
     """
+    def is_pendown(self):
+        """ Test if pen is down (marking)
+        """
+        return self.fte.is_pendown()
+    
+    
+    def key_pendown(self, val=True):
+        """ Lower/raise pen (starting,stopping) drawing
+        :val: lower pen, if True else raise pen
+        """
+        self.fte.key_pendown(val)
 
 
     def set_initial_location(self):
