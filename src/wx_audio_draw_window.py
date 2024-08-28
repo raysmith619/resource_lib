@@ -1833,6 +1833,8 @@ if __name__ == "__main__":
                     ";w"
                 )
         
+        key_str = ""
+        
         tkr = TkRemUser(simulated=True)
         aw = AudioDrawWindow(tkr=tkr,
                             title="AudioDrawWindow Self-Test",

@@ -30,22 +30,42 @@ External functions
 Some day may model after turtle's _make_global_funcs
 """
 SlTrace.clearFlags()    # Start quiet
+tkh = None
 canvas = None
-def mainloop():
+pdisplay = None
+
+def setup_main(port=None):
+    global tkh
     global canvas
+    global pdisplay
     
-    canvas = tur.getcanvas()
+    if canvas is None:
+        canvas = tur.getcanvas()
     cg = CanvasGrid(base=canvas)
     #root.withdraw()
     cells = cg.get_cell_specs()  # gets (ix,iy,color)*
     cell_list = BrailleCellList(cells)  # converts either to BrailleCell
     bdlist = cell_list.to_string()
-    tkh = TkRemHost(canvas_grid=cg)
+    if tkh is None:
+        tkh = TkRemHost(canvas_grid=cg, port=port)
     src_dir = os.path.dirname(__file__)
     pdisplay = subprocess.Popen(f"python wx_display_main.py --bdlist {bdlist}"
+                                f" --port_in={tkh.port_out}" # Reversed for user
+                                f" --port_out={tkh.port_in}" # Reversed for user
                                  " --subprocess",
                     cwd=src_dir,
                     shell=True)
+
+def mainloop(port=None):
+    """ tk's mainloop
+    :port: host socket port
+    """
+
+    global tkh
+    global canvas
+    
+    if pdisplay is None:
+        setup_main(port=port)
              
     def check_display():
         """ Check if display process exited
@@ -62,17 +82,36 @@ def mainloop():
     check_display()
     tur.mainloop()
     sys.exit(0)
+
+snap_inc = 0        # Augment port
+def snapshot(title, port=None):
+    """ Create a TurtleBraille window with a "snapshot" of current turtle display
+    :title: Title description default: generated
+    """
+    if pdisplay is None:
+        setup_main(port=port)                # Create first window with current display
+        return
     
-def done():
-    mainloop()
+    cg = CanvasGrid(base=canvas)
+    cells = cg.get_cell_specs()  # gets (ix,iy,color)*
+    cell_list = BrailleCellList(cells)  # converts either to BrailleCell
+    bdlist = cell_list.to_string()
+    tkh.snapshot(title=title, bdlist=bdlist)
+
+    
+def done(port=None):
+    mainloop(port=port)
 
 if __name__ ==  '__main__':
     colors = ["red","orange","yellow","green"]
-
+    n = 0
     for colr in colors:
+        n += 1
         width(40)
         color(colr)
         forward(200)
         right(90)
-    done()		    # Complete drawings
+        if n == 1:
+            snapshot(f"{n}: {colr}")
+    #done()		    # Complete drawings
     

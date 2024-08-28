@@ -24,7 +24,6 @@ from is_installed import is_installed
 # Program options
 interactive = True
 update = True
-update = False
 verbose = False
 
 ppath_ev = "PYTHONPATH"    # Import path
@@ -174,10 +173,13 @@ def add_change_tbp():
         set_env(ppath_ev, new_path)
 
 parser = argparse.ArgumentParser()
+parser.add_argument('-c', '--check', action='store_false', dest='update',
+                    help=("Just check system (no update)"
+                            " (default:Do full setup)"))
 parser.add_argument('-i', '--interactive', action='store_true', default=interactive,
                     help=("Prompt user before action"
                             " (default:automatic)"))
-parser.add_argument('-j', '--update', action='store_true', default=update,
+parser.add_argument('-u', '--update', action='store_true', default=update,
                     help=("Update system"
                             " (default:Do full setup)"))
 parser.add_argument('-v', '--verbose', action='store_true', default=verbose,
@@ -188,6 +190,9 @@ args = parser.parse_args()             # or die "Illegal options"
 interactive = args.interactive
 update = args.update
 verbose = args.verbose
+if verbose:
+    print(f"args: {args}")
+
 
 if update:
     if not req_update(update=update, verbose=verbose):

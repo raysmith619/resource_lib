@@ -32,7 +32,6 @@ class BrailleDisplay:
     
 
     def __init__(self,
-                 wxr=None,
                  tkr=None,
                  title="Braille Display",
                  display_list=None,
@@ -112,7 +111,7 @@ class BrailleDisplay:
         self.speaker_control = speaker_control
         if tkr is None:
             SlTrace.lg("No link to remote")
-            tkr =  TkRemUser(remote=False)
+            tkr =  TkRemUser()
         self.tkr = tkr
         self.display_list = display_list
         if title is None:

@@ -20,6 +20,10 @@ class PyttsxQueued:
         self.running = True
         self.pyt_thread.start()
 
+    def pending(self):
+        """ Return number pending requests
+        """
+        return self.pyt_queue.qsize()
             
     def pyt_proc_thread(self):
         """ Process pending speech requests (SpeakerControlCmd)

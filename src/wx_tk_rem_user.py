@@ -4,6 +4,7 @@ Supporting communication betw
 """
 import socket as sk
 import threading as th
+import queue
 import pickle
 import time
 
@@ -13,56 +14,131 @@ class TkRemUser:
     """User (remote) control requesting canvas information
     Using socket client
     """
-    def __init__(self, host='localhost', port=50007,
+    def __init__(self, host='localhost',
+                 port=None,
+                 port_in=None,
+                 port_out=None,
+                 port_diff=20,
+                 port_inc=None,
                  max_recv=2**16, simulated=False,
-                 figure=1, remote=True):
+                 cmd_time_ms= 500,
+                 figure=1):
         """ Handle user (wxPython) side of communications
         :host: host address default: localhost - same machine
-        :port: port number default: 50007
+        :port: shorthand for port_in
+        :port_in: port for incoming requests/responses
+        :port_out: port for outgoing request/responses
+                default: port_in+port_diff
+        :port_diff:  diff between port_in and port_out
+                default: 20
+        :port_inc: port increment default: no increment
         :max_recv: maximum data recieved length in bytes
                     default: 2**16
+        :cmd_time_ms: maximum between cmd check in seconds
+                    default: .5 sec
         :simulated: True: simulate tk input default: False
         :figure: simulated figure 1 - spokes, 2 - square
                 default=1 spokes
-        :remote: unused
         """
         SlTrace.lg("TkRemUser() __init__() BEGIN")
         self.host = host
-        self.port = port
+        if port is not None:
+            port_in = port
+        if port_in is None:
+            port_in = 50040
+        if port_out is None:
+            port_out = port_in+port_diff
+        if port_inc is not None:
+            port_in += port_inc
+            port_out += port_inc
+        self.port_in = port_in
+        self.port_out = port_out
+        
         self.max_recv = max_recv
+        self.cmd_time_ms = cmd_time_ms
         self.simulated = simulated
+        self.host_req_queue = queue.Queue()  # Command queue
+        self.host_resp_queue = queue.Queue()  # response queue
         SlTrace.lg("TkRemUser() __init__()")
         if simulated:
             self.make_simulated(figure=figure)
-    
-    def send_cmd_data(self, data):
+            return
+
+        
+        self.max_recv = max_recv
+        self.cmd_time_ms = cmd_time_ms
+        self.cmd_in_queue = queue.Queue()
+        self.sock_in = sk.socket(sk.AF_INET, sk.SOCK_STREAM)
+        SlTrace.lg(f"USER: self.sock_in.bind((host={host}, port_in={port_in}))")
+        self.sock_in.bind((host, port_in))
+        self.sock_in.listen(5)
+        
+        self.sock_out = sk.socket(sk.AF_INET, sk.SOCK_STREAM)
+        self.sock_out.connect((self.host,self.port_out))
+
+        cmd_in_th = th.Thread(target=self.cmd_in_th_proc)
+        cmd_in_th.start()
+        
+    def cmd_in_th_proc(self):
+        """ Process msgs from host
+        """
+        while True:
+            SlTrace.lg(f"USER: cmd_in_th_proc", "USER")
+            self.connection, self.address = self.sock_in.accept()
+            SlTrace.lg(f"USER:Got connection: address:{self.address}", "USER")
+            data = self.connection.recv(self.max_recv)
+            if len(data) > 0:
+                data_dt = pickle.loads(data)
+                SlTrace.lg(f"USER: data_dt: {data_dt}", "USER")
+                if "__host_req__" in data_dt:
+                    self.cmd_proc(data_dt)
+                else:
+                    self.host_resp_queue.put(data_dt)
+            else:
+                SlTrace.lg("USER: No data length == 0", "USER")
+                continue
+
+    def cmd_proc(cmd_dt):
+        """ Process command
+        :cmd_dt: command dictionary
+        """
+        SlTrace.lg(f"cmd_proc: {cmd_dt}")
+        SlTrace.lg("TBD implement commands from server")              
+        
+    def send_cmd(self, args):
         """ Send command(request) to host
 
-        :data: command as byte string
+        :args: command argument dictionary
         """
         if self.simulated:
+            self.simulated_cmd = args
             return
-        self.sockobj = sk.socket(sk.AF_INET, sk.SOCK_STREAM)
-        try:
-            SlTrace.lg(f"sockobj.connect(({self.host},{self.port}))")
-            self.sockobj.connect((self.host,self.port))
-        except:
-            SlTrace.lg(f"connect(({self.host},{self.port}) failed")
+
         totalsent = 0
+        #SlTrace.lg(f"USER: args:{args}", "USER:")
+        SlTrace.lg(f"USER: args:{args}")
+        data = pickle.dumps(args)
         while totalsent < len(data):
-            sent = self.sockobj.send(data)
-            SlTrace.lg(f"sent:{sent} data:{data}", "data")
+            sent = self.sock_out.send(data)
+            SlTrace.lg(f"USER: sent:{sent} data:{data}", "data")
             if sent == 0:
-                raise RuntimeError("socket connection broken")
-            totalsent += sent
+                totalsent += sent
+            
             
         
     
-    def get_resp_data(self):
+    def get_resp_args(self):
         """ Get command response from host
-        :returns: response byte data
+        :returns: response args dictionary
         """
-        data = self.sockobj.recv(self.max_recv)
+        if self.simulated:
+            ret_dt = {}
+            ret = "Simulated Response"
+            ret_dt['ret_val'] = ret
+            self.host_resp_queue.put(ret_dt)
+            return self.host_resp_queue.get()
+        
+        data = self.host_resp_queue.get()
         return data
     
     def get_cell_specs(self, 
@@ -83,13 +159,9 @@ class TkRemUser:
         args = locals()
         del(args['self'])
         args['cmd_name'] = 'get_cell_specs'
-        SlTrace.lg(f"USER: args:{args}", "USER:")
-        cmd_data = pickle.dumps(args)
-        self.send_cmd_data(cmd_data)
-        cmd_resp_data = self.get_resp_data()
-        SlTrace.lg(f"USER: cmd_resp_data: {cmd_resp_data}", "USER:data")
-        ret_dt = pickle.loads(cmd_resp_data)
-        SlTrace.lg(f"USER: ret_dt: {ret_dt}", "USER:data")
+        self.send_cmd(args)
+        ret_dt = self.get_resp_args()
+        SlTrace.lg(f"USER: cmd_resp_data: {ret_dt}", "USER:data")
         return ret_dt['ret_val']
     
     def get_cell_specs_simulated(self, 
@@ -121,13 +193,8 @@ class TkRemUser:
         args = locals()
         del(args['self'])
         args['cmd_name'] = 'is_inbounds_ixy'
-        SlTrace.lg(f"USER: args:{args}", "USER:data")
-        cmd_data = pickle.dumps(args)
-        self.send_cmd_data(cmd_data)
-        cmd_resp_data = self.get_resp_data()
-        SlTrace.lg(f"USER: cmd_resp_data: {cmd_resp_data}", "USER:data")
-        ret_dt = pickle.loads(cmd_resp_data)
-        SlTrace.lg(f"USER: ret_dt: {ret_dt}", "USER:data")
+        self.send_cmd(args)
+        ret_dt = self.get_resp_args()
         return ret_dt['ret_val']
 
     def is_inbounds_ixy_simulated(self, *ixy):
@@ -153,12 +220,8 @@ class TkRemUser:
         args = locals()
         del(args['self'])
         args['cmd_name'] = 'get_cell_rect_tur'
-        SlTrace.lg(f"USER: args:{args}", "USER:data")
-        cmd_data = pickle.dumps(args)
-        self.send_cmd_data(cmd_data)
-        cmd_resp_data = self.get_resp_data()
-        SlTrace.lg(f"USER: cmd_resp_data: {cmd_resp_data}", "USER:data")
-        ret_dt = pickle.loads(cmd_resp_data)
+        self.send_cmd(args)
+        ret_dt = self.get_resp_args()
         SlTrace.lg(f"USER: ret_dt: {ret_dt}", "USER:data")
         return ret_dt['ret_val']
     
@@ -186,12 +249,8 @@ class TkRemUser:
         args = locals()
         del(args['self'])
         args['cmd_name'] = 'get_canvas_lims'
-        SlTrace.lg(f"USER: args:{args}", "USER:data")
-        cmd_data = pickle.dumps(args)
-        self.send_cmd_data(cmd_data)
-        cmd_resp_data = self.get_resp_data()
-        SlTrace.lg(f"USER: cmd_resp_data: {cmd_resp_data}", "USER:data")
-        ret_dt = pickle.loads(cmd_resp_data)
+        self.send_cmd(args)
+        ret_dt = self.get_resp_args()
         SlTrace.lg(f"USER: ret_dt: {ret_dt}", "USER:data")
         return ret_dt['ret_val']
     
@@ -220,10 +279,8 @@ class TkRemUser:
         args = {}        
         args['cmd_name'] = "test_command"
         args['message'] = message
-        cmd_data = pickle.dumps(args)
-        self.send_cmd_data(cmd_data)
-        cmd_resp_data = self.get_resp_data()
-        ret_dt = pickle.loads(cmd_resp_data)
+        self.send_cmd(args)
+        ret_dt = self.get_resp_args()
         return ret_dt['ret_val']
 
     def make_simulated(self, figure=1):

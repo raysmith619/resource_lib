@@ -19,13 +19,26 @@ class TkRemHost:
     using socket TCP/IP
     """
     
-    def __init__(self, canvas_grid, host='', port=50007,
+    def __init__(self, canvas_grid, host='',
+                 port=None,
+                 port_in=None,
+                 port_out=None,
+                 port_diff=20,
+                 port_inc=None,
                  cmd_time_ms= 500,
                  max_recv=2**16):
         """ Setup cmd interface
         :canvas_grid: tkinter CanvasGrid
         :host: name/id default: '' this machine
-        :port: port number default: 50007
+        :port_diff:  diff between port_in and port_out
+                default: 20
+        :port: shorthand for port_in
+        :port_in: port number where we accept unsolicited input
+                        default: 50020
+        :port_out: port number we send unsolicited output
+                        default: port_in+port_diff
+        :port_inc: increment to port_in, port_out
+                        default: no change
         :max_recv: maximum data received length in bytes
                     default: 2**16
         :cmd_time_ms: maximum between cmd check in seconds
@@ -33,78 +46,102 @@ class TkRemHost:
         """
         self.canvas_grid = canvas_grid
         self.host = host
-        self.port = port
+        if port is not None:
+            port_in = port
+        if port_in is None:
+            port_in = 50020
+        if port_out is None:
+            port_out = port_in+port_diff
+        if port_inc is not None:
+            port_in += port_inc
+            port_out += port_inc
+        self.port_in = port_in
+        self.port_out = port_out
+        
         self.max_recv = max_recv
         self.cmd_time_ms = cmd_time_ms
-        self.cmd_queue = queue.Queue()
-        self.sockobj = sk.socket(sk.AF_INET, sk.SOCK_STREAM)
-        self.sockobj.bind((host, port))
-        self.sockobj.listen(5)
-        SlTrace.lg("TkRemHost __init__()")            
-        data_th = th.Thread(target=self.serv_th_proc)
-        data_th.start()
-        canvas_grid.base.after(0, self.data_proc)
+        self.cmd_in_queue = queue.Queue()
+        self.sock_in = sk.socket(sk.AF_INET, sk.SOCK_STREAM)
+        SlTrace.lg(f"HOST: self.sock_in.bind((host={host}, port_in={port_in}))")
+        self.sock_in.bind((host, port_in))
+        self.sock_in.listen(5)
         
-    def serv_th_proc(self):
+        self.sock_out = sk.socket(sk.AF_INET, sk.SOCK_STREAM)
+        
+        cmd_in_th = th.Thread(target=self.cmd_in_th_proc)
+        cmd_in_th.start()
+        SlTrace.lg("TkRemHost __init__()")            
+        
+    def cmd_in_th_proc(self):
         while True:
             SlTrace.lg(f"HOST: serv_th_proc", "HOST")
-            self.connection, self.address = self.sockobj.accept()
+            self.connection, self.address = self.sock_in.accept()
             SlTrace.lg(f"HOST:Got connection: address:{self.address}", "HOST")
             data = self.connection.recv(self.max_recv)
             if len(data) > 0:
+                cmd_dt = pickle.loads(data)
                 SlTrace.lg(f"HOST: data: {data}", "data", "HOST")
-                self.cmd_queue.put(data)
+                self.cmd_proc(cmd_dt)
             else:
                 SlTrace.lg("HOST: No data length == 0", "HOST")
-                break
-
-    def data_proc(self, data=None):
-        """ Process client data/command
-        :data: command byte string - pickled command dictionary
-            default: look at self.cmd_queue
-                cmd dict:
-                    'cmd_name' : command name string
+                continue
+            
+    def cmd_proc(self, cmd_dt):
+        """ Process command from client 
+        :cmd_dt: command dictionary
+                'cmd_name' : command name string
                                 'get_cell_specs'
                     
         """
-        SlTrace.lg(f"HOST: data_proc: {data} queue.empty: {self.cmd_queue.empty()}", "HOSTdata_proc")
-        if data is None:
-            if not self.cmd_queue.empty():
-                data = self.cmd_queue.get()
-        if data is not None:
-            cmd_dt = pickle.loads(data)
-            SlTrace.lg(f"HOST: cmd_dt: {cmd_dt}", "HOSTcmds")
-            SlTrace.lg(f"HOST: cmd_dt: {cmd_dt}", "HOSTcmds")
-            cmd_name = cmd_dt['cmd_name']
-            ret_dt = cmd_dt     # return an augmented dictionary
-            if cmd_name == 'get_cell_specs':
-                ret = self.get_cell_specs(
-                    win_fract = self.if_attr(cmd_dt, 'win_fract'),
-                    x_min = self.if_attr(cmd_dt, 'x_min'),
-                    y_min = self.if_attr(cmd_dt, 'y_min'),
-                    x_max = self.if_attr(cmd_dt, 'x_max'),
-                    y_max = self.if_attr(cmd_dt, 'y_max'),
-                    n_cols = self.if_attr(cmd_dt, 'n_cols'),
-                    n_rows = self.if_attr(cmd_dt, 'n_rows'))
-            elif cmd_name == 'get_canvas_lims':
-                ret = self.get_canvas_lims()
-            elif cmd_name == 'get_cell_rect_tur':
-                ret = self.get_cell_rect_tur(
-                    ix = self.if_attr(cmd_dt, 'ix'),
-                    iy = self.if_attr(cmd_dt, 'iy'))
-            elif cmd_name == 'test_command':
-                ret = self.test_command(message=cmd_dt['message'])
-            else:
-                raise NameError(f"HOST: Unrecognized cmd: {cmd_name} in {cmd_dt}", "HOSTcmds")
+        SlTrace.lg(f"HOST: {cmd_dt}", "cmd_proc")
+        cmd_name = cmd_dt['cmd_name']
+        ret_dt = cmd_dt     # return an augmented dictionary
+        if cmd_name == 'get_cell_specs':
+            ret = self.get_cell_specs(
+                win_fract = self.if_attr(cmd_dt, 'win_fract'),
+                x_min = self.if_attr(cmd_dt, 'x_min'),
+                y_min = self.if_attr(cmd_dt, 'y_min'),
+                x_max = self.if_attr(cmd_dt, 'x_max'),
+                y_max = self.if_attr(cmd_dt, 'y_max'),
+                n_cols = self.if_attr(cmd_dt, 'n_cols'),
+                n_rows = self.if_attr(cmd_dt, 'n_rows'))
+        elif cmd_name == 'get_canvas_lims':
+            ret = self.get_canvas_lims()
+        elif cmd_name == 'get_cell_rect_tur':
+            ret = self.get_cell_rect_tur(
+                ix = self.if_attr(cmd_dt, 'ix'),
+                iy = self.if_attr(cmd_dt, 'iy'))
+        elif cmd_name == 'test_command':
+            ret = self.test_command(message=cmd_dt['message'])
+        else:
+            SlTrace.lg(f"HOST: Unrecognized cmd: {cmd_name} in {cmd_dt}")
+            SlTrace.lg("Ignored")
+            return
         
             ret_dt['ret_val'] = ret
             SlTrace.lg(f"HOST: ret_dt:{ret_dt}", "HOSTcmds")
             ret_data = pickle.dumps(ret_dt)
             self.connection.send(ret_data)
-        if not self.cmd_queue.empty():
-            self.canvas_grid.base.after(0, self.data_proc)
-        else:
-            self.canvas_grid.base.after(self.cmd_time_ms, self.data_proc)
+
+    def host_req(self, req_dict):
+        """ Request from host, e.g. snapshot
+        :req_dict: request dictionary
+        """
+        req_dict["__host_request__"] = "HOST_REQUEST"
+        req_data = pickle.dumps(req_dict)
+        self.sock_out.connect((self.host, self.port_out))
+        self.sock_out.send(req_data)
+        req_resp_data = self.sock_out.recv(self.max_recv)
+        #TBD
+
+    def snapshot(self, title=None, bdlist=None):
+        """ Create display snapshot
+        :title: display title
+        :bdlist: braill display list text string
+        """
+        host_req_dict = {"title": title,
+                         "bdlist":bdlist}
+        self.host_req(req_dict=host_req_dict)
 
         
     def if_attr(self, cmd_dt, attr_name):
@@ -166,8 +203,11 @@ if __name__ == '__main__':
     cvg.create_line(200,300,400,400, width=10, fill="green", tags=["green1","green2"])
     cvg.create_rectangle(200,200,300,300, fill="red")
     cvg.create_oval(100,200,250,300, fill="orange", tags="orange_tag")
-    tkh = TkRemHost(cvg)
+    port = 50007+2
+    tkh = TkRemHost(cvg, port=port)
     cell_specs = tkh.get_cell_specs()
     SlTrace.lg(f"cell_specs: {cell_specs}")
+    '''
+    '''
     root.mainloop()
     
