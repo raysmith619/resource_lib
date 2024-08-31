@@ -7,7 +7,7 @@ if __name__ == '__main__':
 
     from format_exception import format_exception
     from select_trace import SlTrace
-    from wx_tk_rem_user import TkRemUser
+    from wx_tk_rpc_user import TkRPCUser
     from wx_braille_display import BrailleDisplay
 
     from wx_turtle_braille import *
@@ -32,7 +32,7 @@ if __name__ == '__main__':
             right(90)
         #done()            # Complete drawing
             
-        tkr = TkRemUser(simulated=True, figure=2)
+        tkr = TkRPCUser(simulated=True, figure=2)
 
         bd = BrailleDisplay(tkr=tkr)
         a_bit = 1

@@ -2228,11 +2228,11 @@ if __name__ == '__main__':
     '''
     from wx_audio_draw_window import AudioDrawWindow
     from wx_adw_menus import AdwMenus
-    from wx_tk_rem_user import TkRemUser
+    from wx_tk_rpc_user import TkRPCUser
                   
     app = wx.App()
     frame = wx.Frame(None)
-    tkr = TkRemUser(simulated=True)
+    tkr = TkRPCUser(simulated=True)
     adw = AudioDrawWindow(tkr)
    
     fte = AdwFrontEnd(adw)

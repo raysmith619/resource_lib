@@ -10,7 +10,7 @@ from select_trace import SlTrace
 
 from wx_braille_display import BrailleDisplay
 from wx_speaker_control import SpeakerControlLocal
-from wx_tk_rem_user import TkRemUser
+from wx_tk_rpc_user import TkRemUser
 
 SlTrace.clearFlags()
 SlTrace.setFlags("sound_queue")

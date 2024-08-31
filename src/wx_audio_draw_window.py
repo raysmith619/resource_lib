@@ -24,7 +24,7 @@ from wx_adw_front_end import AdwFrontEnd
 from wx_adw_menus import AdwMenus
 from wx_canvas_panel import CanvasPanel
 from wx_braille_cell_list import BrailleCellList
-from wx_tk_rem_user import TkRemUser
+from wx_tk_rpc_user import TkRPCUser
 from wx_canvas_panel_item import CanvasPanelItem
 
 class AudioDrawWindow(wx.Frame):
@@ -145,7 +145,7 @@ class AudioDrawWindow(wx.Frame):
         self.cells_comps = {}   # Dictionary of cell composite items by (ix,iy)
         self._cursor_item = None    # position cursor tag
         if tkr is None:
-            tkr = TkRemUser(simulated=True)
+            tkr = TkRPCUser(simulated=True)
         self.tkr = tkr
         self.display_list = display_list
         if title is None:
@@ -1059,7 +1059,7 @@ class AudioDrawWindow(wx.Frame):
                         win_fract=self.win_fract,
                         x_min=x_min, y_min=y_min,
                         x_max=x_max, y_max=y_max,
-                        ncols=ncols, nrows=ncols)
+                        n_cols=ncols, n_rows=nrows)
 
         braille_cells = []
         for spec in specs:
@@ -1072,7 +1072,7 @@ class AudioDrawWindow(wx.Frame):
                        win_fract=True, 
                         x_min=None, y_min=None,
                         x_max=None, y_max=None,
-                        ncols=None, nrows=None):
+                        n_cols=None, n_rows=None):
         """ Get cell specs from remote tk canvas
         :returns: list of cell specs (ix,iy,color)
         """        
@@ -1080,7 +1080,7 @@ class AudioDrawWindow(wx.Frame):
                         win_fract=win_fract,
                         x_min=x_min, y_min=y_min,
                         x_max=x_max, y_max=y_max,
-                        ncols=ncols, nrows=nrows)
+                        n_cols=n_cols, n_rows=n_rows)
 
 
     def get_canvas_lims(self, win_fract=True):
@@ -1408,7 +1408,7 @@ class AudioDrawWindow(wx.Frame):
         cell_specs = self.get_cell_specs(win_fract=win_fract,
                                           x_min=xmin, y_min=ymin,
                                           x_max=xmax, y_max=ymax,
-                                          ncols=ncols, nrows=nrows)    
+                                          n_cols=ncols, n_rows=nrows)    
         self.n_cells_created = len(cell_specs)
         if self.n_cells_created == 0:
             if require_cells:
@@ -1835,7 +1835,7 @@ if __name__ == "__main__":
         
         key_str = ""
         
-        tkr = TkRemUser(simulated=True)
+        tkr = TkRPCUser(simulated=True)
         aw = AudioDrawWindow(tkr=tkr,
                             title="AudioDrawWindow Self-Test",
                             app=app,
@@ -1854,7 +1854,7 @@ if __name__ == "__main__":
         app = wx.App()
         SlTrace.lg("After clearFlags")
         SlTrace.lg("Checking talk_cmd", "talk_cmd")
-        tkr = TkRemUser(simulated=True, figure=figure)
+        tkr = TkRPCUser(simulated=True, figure=figure)
         aw = AudioDrawWindow(tkr=tkr,
                             title="AudioDrawWindow Self-Test",
                             app=app,

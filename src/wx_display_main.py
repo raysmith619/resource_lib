@@ -6,7 +6,7 @@ import wx
 
 from select_trace import SlTrace
 from wx_braille_display import BrailleDisplay
-from wx_tk_rem_user import TkRemUser
+from wx_tk_rpc_user import TkRPCUser
 
 
 if __name__ == '__main__':      # Required because we use multiprocessing
@@ -32,8 +32,8 @@ if __name__ == '__main__':      # Required because we use multiprocessing
     port_out = args.port_out
     port_inc = args.port_inc
     
-    #tkh = TkRemHost()
-    tkr = TkRemUser(port_in=port_in, port_out=port_out, port_inc=port_inc)
+    #tkh = TkRPCHost()
+    tkr = TkRPCUser(port_in=port_in, port_out=port_out, port_inc=port_inc)
     app = wx.App()
     bd = BrailleDisplay(tkr, display_list=bdlist)
     bd.display()

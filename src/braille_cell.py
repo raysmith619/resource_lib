@@ -1,4 +1,6 @@
 #braille_cell.py    27Nov2022
+from select_trace import SlTrace
+
 """
 Basis for Braille cell (6 dot pattern)
 """
@@ -97,6 +99,9 @@ class BrailleCell:
         if isinstance(tp, BrailleCell):
             return tp
         
+        if len(tp) < 3:
+            SlTrace.lg(f"tuple_to_braille_cell({tp})")
+            tp = (0,0,"red")
         ix,iy,color = tp
         bc = BrailleCell(ix=ix, iy=iy, color=color)
         return bc

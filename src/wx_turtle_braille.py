@@ -21,7 +21,7 @@ import subprocess
 import turtle as tur
 from turtle import *
 
-from wx_tk_rem_host import TkRemHost
+from wx_tk_rpc_host import TkRPCHost
 from select_trace import SlTrace
 from wx_canvas_grid import CanvasGrid
 from wx_braille_cell_list import BrailleCellList
@@ -47,7 +47,7 @@ def setup_main(port=None):
     cell_list = BrailleCellList(cells)  # converts either to BrailleCell
     bdlist = cell_list.to_string()
     if tkh is None:
-        tkh = TkRemHost(canvas_grid=cg, port=port)
+        tkh = TkRPCHost(canvas_grid=cg, port=port)
     src_dir = os.path.dirname(__file__)
     pdisplay = subprocess.Popen(f"python wx_display_main.py --bdlist {bdlist}"
                                 f" --port_in={tkh.port_out}" # Reversed for user

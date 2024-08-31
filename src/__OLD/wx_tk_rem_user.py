@@ -59,7 +59,7 @@ class TkRemUser:
         self.simulated = simulated
         self.host_req_queue = queue.Queue()  # Command queue
         self.host_resp_queue = queue.Queue()  # response queue
-        SlTrace.lg("TkRemUser() __init__()")
+        SlTrace.lg("TkRPCUser() __init__()")
         if simulated:
             self.make_simulated(figure=figure)
             return
@@ -83,9 +83,9 @@ class TkRemUser:
         """ Process msgs from host
         """
         while True:
-            SlTrace.lg(f"USER: cmd_in_th_proc", "USER")
+            SlTrace.lg(f"USER: cmd_in_th_proc")
             self.connection, self.address = self.sock_in.accept()
-            SlTrace.lg(f"USER:Got connection: address:{self.address}", "USER")
+            SlTrace.lg(f"USER:Got connection: address:{self.address}")
             data = self.connection.recv(self.max_recv)
             if len(data) > 0:
                 data_dt = pickle.loads(data)
@@ -115,13 +115,12 @@ class TkRemUser:
             return
 
         totalsent = 0
-        #SlTrace.lg(f"USER: args:{args}", "USER:")
-        SlTrace.lg(f"USER: args:{args}")
+        SlTrace.lg(f"USER: send_cmd: args:{args}")
         data = pickle.dumps(args)
         while totalsent < len(data):
             sent = self.sock_out.send(data)
-            SlTrace.lg(f"USER: sent:{sent} data:{data}", "data")
-            if sent == 0:
+            SlTrace.lg(f"USER: sent:{sent} data:{data}")
+            if sent > 0:
                 totalsent += sent
             
             

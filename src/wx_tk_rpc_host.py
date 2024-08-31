@@ -1,4 +1,4 @@
-#wx_tk_rem_host.py   24Jan2024  crs, renamed from wx_tk_rem_access.py
+#wx_tk_rpc_host.py   24Jan2024  crs, renamed from wx_tk_rem_access.py
 """ Remote access to tk canvas information
 tkinter canvas resides in host process
 wxPython AudioDrawWindow instance(s) reside in client
@@ -11,10 +11,12 @@ import queue
 import pickle
 import time
 
+from wx_rpc import RPCServer
+
 from wx_canvas_grid import CanvasGrid
 
 from select_trace import SlTrace
-class TkRemHost:
+class TkRPCHost:
     """Host control containing tkinter canvas
     using socket TCP/IP
     """
@@ -44,6 +46,7 @@ class TkRemHost:
         :cmd_time_ms: maximum between cmd check in seconds
                     default: .5 sec
         """
+        self.sock_out = None    #  setup once connection is establised 
         self.canvas_grid = canvas_grid
         self.host = host
         if port is not None:
@@ -60,69 +63,21 @@ class TkRemHost:
         
         self.max_recv = max_recv
         self.cmd_time_ms = cmd_time_ms
-        self.cmd_in_queue = queue.Queue()
-        self.sock_in = sk.socket(sk.AF_INET, sk.SOCK_STREAM)
-        SlTrace.lg(f"HOST: self.sock_in.bind((host={host}, port_in={port_in}))")
-        self.sock_in.bind((host, port_in))
-        self.sock_in.listen(5)
         
-        self.sock_out = sk.socket(sk.AF_INET, sk.SOCK_STREAM)
-        
-        cmd_in_th = th.Thread(target=self.cmd_in_th_proc)
-        cmd_in_th.start()
-        SlTrace.lg("TkRemHost __init__()")            
+        self.to_host_server = RPCServer(self.host, self.port_in)
+
+        self.to_host_server.registerMethod(self.get_canvas_lims)
+        self.to_host_server.registerMethod(self.get_cell_rect_tur)
+        self.to_host_server.registerMethod(self.get_cell_specs)
+
+        server_host_th = th.Thread(target=self.cmd_in_th_proc)
+        server_host_th.start()
+        SlTrace.lg("TkRPCHost __init__()")            
         
     def cmd_in_th_proc(self):
-        while True:
-            SlTrace.lg(f"HOST: serv_th_proc", "HOST")
-            self.connection, self.address = self.sock_in.accept()
-            SlTrace.lg(f"HOST:Got connection: address:{self.address}", "HOST")
-            data = self.connection.recv(self.max_recv)
-            if len(data) > 0:
-                cmd_dt = pickle.loads(data)
-                SlTrace.lg(f"HOST: data: {data}", "data", "HOST")
-                self.cmd_proc(cmd_dt)
-            else:
-                SlTrace.lg("HOST: No data length == 0", "HOST")
-                continue
-            
-    def cmd_proc(self, cmd_dt):
-        """ Process command from client 
-        :cmd_dt: command dictionary
-                'cmd_name' : command name string
-                                'get_cell_specs'
-                    
-        """
-        SlTrace.lg(f"HOST: {cmd_dt}", "cmd_proc")
-        cmd_name = cmd_dt['cmd_name']
-        ret_dt = cmd_dt     # return an augmented dictionary
-        if cmd_name == 'get_cell_specs':
-            ret = self.get_cell_specs(
-                win_fract = self.if_attr(cmd_dt, 'win_fract'),
-                x_min = self.if_attr(cmd_dt, 'x_min'),
-                y_min = self.if_attr(cmd_dt, 'y_min'),
-                x_max = self.if_attr(cmd_dt, 'x_max'),
-                y_max = self.if_attr(cmd_dt, 'y_max'),
-                n_cols = self.if_attr(cmd_dt, 'n_cols'),
-                n_rows = self.if_attr(cmd_dt, 'n_rows'))
-        elif cmd_name == 'get_canvas_lims':
-            ret = self.get_canvas_lims()
-        elif cmd_name == 'get_cell_rect_tur':
-            ret = self.get_cell_rect_tur(
-                ix = self.if_attr(cmd_dt, 'ix'),
-                iy = self.if_attr(cmd_dt, 'iy'))
-        elif cmd_name == 'test_command':
-            ret = self.test_command(message=cmd_dt['message'])
-        else:
-            SlTrace.lg(f"HOST: Unrecognized cmd: {cmd_name} in {cmd_dt}")
-            SlTrace.lg("Ignored")
-            return
-        
-            ret_dt['ret_val'] = ret
-            SlTrace.lg(f"HOST: ret_dt:{ret_dt}", "HOSTcmds")
-            ret_data = pickle.dumps(ret_dt)
-            self.connection.send(ret_data)
-
+        SlTrace.lg(f"HOST: server_host_th_proc", "HOST")
+        self.to_host_server.run()
+ 
     def host_req(self, req_dict):
         """ Request from host, e.g. snapshot
         :req_dict: request dictionary
@@ -204,7 +159,7 @@ if __name__ == '__main__':
     cvg.create_rectangle(200,200,300,300, fill="red")
     cvg.create_oval(100,200,250,300, fill="orange", tags="orange_tag")
     port = 50007+2
-    tkh = TkRemHost(cvg, port=port)
+    tkh = TkRPCHost(cvg, port=port)
     cell_specs = tkh.get_cell_specs()
     SlTrace.lg(f"cell_specs: {cell_specs}")
     '''

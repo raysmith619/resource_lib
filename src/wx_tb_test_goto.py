@@ -10,7 +10,7 @@ from select_trace import SlTrace
 
 from wx_braille_display import BrailleDisplay
 from wx_speaker_control import SpeakerControlLocal
-from wx_tk_rem_user import TkRemUser
+from wx_tk_rpc_user import TkRPCUser
 
 SlTrace.clearFlags()
 test_desc = "No test running"
@@ -18,7 +18,7 @@ fte = None        # Initialize incase of early exception
 simulated = True
 test = os.path.basename(__file__)
 try:
-    tkr = TkRemUser(simulated=simulated)
+    tkr = TkRPCUser(simulated=simulated)
     # suppress speach to avoid multiprocessing
     speaker_control = SpeakerControlLocal(simple_speaker=True)
     bd = BrailleDisplay(tkr=tkr, title=f"Test: {test}",

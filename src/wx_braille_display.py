@@ -24,7 +24,7 @@ from tk_canvas_grid import TkCanvasGrid
 from magnify_info import MagnifyInfo
 from wx_audio_draw_window import AudioDrawWindow
 from braille_error import BrailleError
-from wx_tk_rem_user import TkRemUser
+from wx_tk_rpc_user import TkRPCUser
         
 class BrailleDisplay:
     """ Create and display graphics using Braille
@@ -111,7 +111,7 @@ class BrailleDisplay:
         self.speaker_control = speaker_control
         if tkr is None:
             SlTrace.lg("No link to remote")
-            tkr =  TkRemUser()
+            tkr =  TkRPCUser()
         self.tkr = tkr
         self.display_list = display_list
         if title is None:
@@ -294,7 +294,7 @@ if __name__ == "__main__":
     import argparse
     from braille_cell_text import BrailleCellText
     from wx_braille_cell_list import BrailleCellList
-    from wx_tk_rem_user import TkRemUser
+    from wx_tk_rpc_user import TkRPCUser
     
     spokes_picture="""
     ,,,,,,,,,,,iii
@@ -328,7 +328,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     args = parser.parse_args()             # or die "Illegal options"
     SlTrace.lg(f"args: {args}\n")
-    tkr = TkRemUser(simulated=True)
+    tkr = TkRPCUser(simulated=True)
 
     bd = BrailleDisplay(tkr=tkr, display_list=spokes_bcs)
     bd.display(title="Selftest")
