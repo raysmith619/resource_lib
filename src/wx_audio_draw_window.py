@@ -147,6 +147,9 @@ class AudioDrawWindow(wx.Frame):
         if tkr is None:
             tkr = TkRPCUser(simulated=True)
         self.tkr = tkr
+        SlTrace.lg("USER: Linking AudioDrawWindow to tkr")
+        tkr.set_adw(self)   # Support access, only first
+
         self.display_list = display_list
         if title is None:
             title = "AudioDrawWindow"
@@ -1365,7 +1368,8 @@ class AudioDrawWindow(wx.Frame):
                  xmin=None, xmax=None, ymin=None, ymax=None,
                  nrows=None, ncols=None, mag_info=None, pgmExit=None,
                  require_cells=False,
-                 silent=False):
+                 silent=False,
+                 cell_specs=None):
         """ Create new AudioDrawWindow to navigate canvas from the section
         :title: optinal title
                 region (xmin,ymin, xmax,ymax) with nrows, ncols
@@ -1384,6 +1388,7 @@ class AudioDrawWindow(wx.Frame):
                     create window
                     default: False - allow empty picture
         :silent: quiet mode default: False
+        :cell_specs: cells to display default: check for cells
         :returns: AudioDrawWindow instance or None if no cells
                 Stores number of cells found in self.n_cells_created
         """
@@ -1405,10 +1410,11 @@ class AudioDrawWindow(wx.Frame):
             nrows = mag_info.mag_nrows
         if ncols is None:
             ncols = mag_info.mag_ncols
-        cell_specs = self.get_cell_specs(win_fract=win_fract,
-                                          x_min=xmin, y_min=ymin,
-                                          x_max=xmax, y_max=ymax,
-                                          n_cols=ncols, n_rows=nrows)    
+        if cell_specs is None:        
+            cell_specs = self.get_cell_specs(win_fract=win_fract,
+                                            x_min=xmin, y_min=ymin,
+                                            x_max=xmax, y_max=ymax,
+                                            n_cols=ncols, n_rows=nrows)    
         self.n_cells_created = len(cell_specs)
         if self.n_cells_created == 0:
             if require_cells:

@@ -113,9 +113,11 @@ class RPCClient:
     def connect(self):
         try:
             self.__sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            SlTrace.lg(f"connect({self.__address})")
             self.__sock.connect(self.__address)
         except EOFError as e:
             SlTrace.lg(e)
+            SlTrace.lg(f"connect({self.__address})")
             raise Exception('Client was not able to connect.')
     
     def disconnect(self):

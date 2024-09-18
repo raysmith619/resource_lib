@@ -42,16 +42,16 @@ def setup_main(port=None):
     if canvas is None:
         canvas = tur.getcanvas()
     cg = CanvasGrid(base=canvas)
+    root = canvas.winfo_toplevel()
     #root.withdraw()
     cells = cg.get_cell_specs()  # gets (ix,iy,color)*
     cell_list = BrailleCellList(cells)  # converts either to BrailleCell
     bdlist = cell_list.to_string()
     if tkh is None:
-        tkh = TkRPCHost(canvas_grid=cg, port=port)
+        tkh = TkRPCHost(canvas_grid=cg, root=root,host_port=port)
     src_dir = os.path.dirname(__file__)
     pdisplay = subprocess.Popen(f"python wx_display_main.py --bdlist {bdlist}"
-                                f" --port_in={tkh.port_out}" # Reversed for user
-                                f" --port_out={tkh.port_in}" # Reversed for user
+                                f" --host_port={tkh.host_port}"
                                  " --subprocess",
                     cwd=src_dir,
                     shell=True)
@@ -66,6 +66,7 @@ def mainloop(port=None):
     
     if pdisplay is None:
         setup_main(port=port)
+    tur.mainloop()
              
     def check_display():
         """ Check if display process exited
@@ -84,7 +85,7 @@ def mainloop(port=None):
     sys.exit(0)
 
 snap_inc = 0        # Augment port
-def snapshot(title, port=None):
+def snapshot(title=None, port=None):
     """ Create a TurtleBraille window with a "snapshot" of current turtle display
     :title: Title description default: generated
     """
@@ -92,11 +93,7 @@ def snapshot(title, port=None):
         setup_main(port=port)                # Create first window with current display
         return
     
-    cg = CanvasGrid(base=canvas)
-    cells = cg.get_cell_specs()  # gets (ix,iy,color)*
-    cell_list = BrailleCellList(cells)  # converts either to BrailleCell
-    bdlist = cell_list.to_string()
-    tkh.snapshot(title=title, bdlist=bdlist)
+    tkh.snapshot(title=title)
 
     
 def done(port=None):
@@ -111,7 +108,6 @@ if __name__ ==  '__main__':
         color(colr)
         forward(200)
         right(90)
-        if n == 1:
-            snapshot(f"{n}: {colr}")
+        snapshot(f"{n}: {colr}")
     #done()		    # Complete drawings
     

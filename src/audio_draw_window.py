@@ -1151,7 +1151,7 @@ class AudioDrawWindow:
         :iy: y index - default: don't test
         :returns: True iff in bounds
         """
-        return self.fte.is_in_bounds(ix=ix, iy=iy)
+        return self.fte.is_inbounds(ix=ix, iy=iy)
 
     def set_show_marked(self,val=True):
         """ Show marked "invisible" cells

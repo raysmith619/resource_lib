@@ -1,0 +1,13 @@
+{
+	"folders": [
+		{
+			"name": "src",
+			"path": "."
+		}
+	],
+	"settings": {
+		"terminal.integrated.env.windows": {
+			"PYTHONPATH": "c:\\Users\\raysm\\vscode\\resource_lib\\src"
+		}
+	}
+}

@@ -232,6 +232,7 @@ class BrailleDisplay:
         tib = title
         if tib is not None and tib.endswith("-"):
             tib += " Braille Window"
+        SlTrace.lg("display - create AudioDrawWindow")
         self.adw = AudioDrawWindow(
                             self.tkr,
                             display_list=self.display_list,
@@ -243,7 +244,7 @@ class BrailleDisplay:
                             ###x_min=self.x_min, y_min=self.y_min,
                             ###x_max=self.x_max, y_max=self.y_max,
                             silent=silent)
-
+        self.tkr.set_adw(self.adw)  # Link adw to tkr
         
         if braille_print:
             if self.braille_title is not None:

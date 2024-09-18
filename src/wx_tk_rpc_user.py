@@ -7,32 +7,26 @@ import threading as th
 import queue
 import pickle
 import time
+import wx
+
 from wx_rpc import RPCClient
+from wx_rpc import RPCServer
 
 from select_trace import SlTrace
+
         
 class TkRPCUser:
     """User (remote) control requesting canvas information
     Using socket client
     """
-    def __init__(self, host='localhost',
-                 port=None,
-                 port_in=None,
-                 port_out=None,
-                 port_diff=20,
-                 port_inc=None,
+    def __init__(self, host_name='localhost',
+                 host_port=None,
                  max_recv=2**16, simulated=False,
                  cmd_time_ms= 500,
                  figure=1):
         """ Handle user (wxPython) side of communications
-        :host: host address default: localhost - same machine
-        :port: shorthand for port_in
-        :port_in: port for incoming requests/responses
-        :port_out: port for outgoing request/responses
-                default: port_in+port_diff
-        :port_diff:  diff between port_in and port_out
-                default: 20
-        :port_inc: port increment default: no increment
+        :host_name: servere host name default: localhost - same machine
+        :host_port: port to send server requests
         :max_recv: maximum data recieved length in bytes
                     default: 2**16
         :cmd_time_ms: maximum between cmd check in seconds
@@ -42,18 +36,14 @@ class TkRPCUser:
                 default=1 spokes
         """
         SlTrace.lg("TkRPCUser() __init__() BEGIN")
-        self.host = host
-        if port is not None:
-            port_in = port
-        if port_in is None:
-            port_in = 50040
-        if port_out is None:
-            port_out = port_in+port_diff
-        if port_inc is not None:
-            port_in += port_inc
-            port_out += port_inc
-        self.port_in = port_in
-        self.port_out = port_out
+        self.adw = None         # Set when ready
+        
+
+        self.host_name = host_name
+        if host_port is None:
+           raise Exception("server port is not specified") 
+        self.host_port = host_port
+        self.user_port = host_port+1        # ??? better choice?
         
         self.max_recv = max_recv
         self.cmd_time_ms = cmd_time_ms
@@ -62,13 +52,55 @@ class TkRPCUser:
         if simulated:
             self.make_simulated(figure=figure)
             return
-        
-        self.max_recv = max_recv
-        self.cmd_time_ms = cmd_time_ms
 
-        self.from_user_client = RPCClient(self.host, self.port_out)
-        self.from_user_client.connect()
+        self.to_host = RPCClient(self.host_name, self.host_port)
+        self.to_host.connect()
+
+        self.setup_from_host_requests()
+        
+    def setup_from_host_requests(self):           
+        self.from_host_server = RPCServer(self.host_name, self.user_port)
+
+        self.from_host_server.registerMethod(self.snapshot)
+
+        th.Thread(target=self.cmd_in_th_proc).start()
+        self.to_host.setup_calling_user()  # enable req from host
+        
+    def cmd_in_th_proc(self):
+        SlTrace.lg(f"USER: server_host_th_proc")
+        self.from_host_server.run()
+
+    """
+    User based functions
+    remotely requested from the host  
+    """
     
+    def snapshot(self, title=None, direct=False):
+        """ Create display snapshot
+        :title: display title
+        :direct: do work in current process default: False -> delay
+                else call after pending pending events
+                through event hanler
+                places call in event handler process
+        """
+    
+        SlTrace.lg(f"USER: snapshot(self, title={title})")
+        SlTrace.lg(f"wx.CallAfter(self.snapshot_direct, title={title}")
+        #wx.CallAfter(self.snapshot_direct, title=title)
+        self.snapshot_direct(title=title)
+
+    def snapshot_direct(self, title=None):
+        """ Direct call, from event processor
+        :title: display title
+        """
+        
+        SlTrace.lg(f"USER: snapshot(self, title={title}) direct call")
+        if self.adw is None:
+            SlTrace.lg("USER: AudioDrawWindow not set - snapshot ignored")
+            return
+        
+        adw = self.adw.create_audio_window(title=title)
+            
     def get_cell_specs(self, 
                         win_fract=True, 
                         x_min=None, y_min=None,
@@ -84,7 +116,7 @@ class TkRPCUser:
                         x_max=x_max, y_max=y_max,
                         n_cols=n_cols, n_rows=n_rows)
         
-        return self.from_user_client.get_cell_specs(
+        return self.to_host.get_cell_specs(
                     win_fract=win_fract, 
                     x_min=x_min, y_min=y_min,
                     x_max=x_max, y_max=y_max,
@@ -117,7 +149,7 @@ class TkRPCUser:
         if self.simulated:
             return self.is_inbounds_ixy_simulated(self, *ixy)
         
-        return self.from_user_client.is_inbounds_ixy(*ixy)
+        return self.to_host.is_inbounds_ixy(*ixy)
 
     def is_inbounds_ixy_simulated(self, *ixy):
         """ Check if ixy pair is in bounds
@@ -139,7 +171,7 @@ class TkRPCUser:
             return self.get_cell_rect_tur_simulated(
                         ix=ix,iy=iy)
         
-        return self.from_user_client.get_cell_rect_tur(ix, iy)
+        return self.to_host.get_cell_rect_tur(ix, iy)
     
     def get_cell_rect_tur_simulated(self, 
                         ix,iy):
@@ -162,7 +194,7 @@ class TkRPCUser:
         if win_fract:
             return (0.,1., 0., 1.)
         
-        return self.from_user_client.get_canvas_lims(win_fract)
+        return self.to_host.get_canvas_lims(win_fract)
                         
     
     def get_canvas_lims_simulated(self, win_fract=True):
@@ -187,7 +219,7 @@ class TkRPCUser:
         :message: test message default:"Test message"
         :returns: "Answer: <message>
         """
-        return self.from_user_client.test_command(message)
+        return self.to_host.test_command(message)
 
     def make_simulated(self, figure=1):
         """ Setup local tkinter canvas + canvas_grid
@@ -269,6 +301,16 @@ class TkRPCUser:
         canvas = tur.getcanvas()
         self.sim_cg = CanvasGrid(base=canvas)
 
+    def set_adw(self, adw):
+        """ Setup AudioDrawWindow, to support snapshot
+            only first instance
+        :adw: AudioWindow reference
+        """
+        SlTrace.lg(f"set_adw:{adw}")
+        if self.adw is None:
+            SlTrace.lg(f"set_adw({adw} first)")
+            self.adw = adw
+        
 if __name__ == '__main__':
     import sys
     

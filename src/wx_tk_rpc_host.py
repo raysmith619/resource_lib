@@ -12,35 +12,27 @@ import pickle
 import time
 
 from wx_rpc import RPCServer
+from wx_rpc import RPCClient
 
 from wx_canvas_grid import CanvasGrid
 
 from select_trace import SlTrace
 class TkRPCHost:
+    HOST_PORT = 50010
     """Host control containing tkinter canvas
     using socket TCP/IP
     """
     
-    def __init__(self, canvas_grid, host='',
-                 port=None,
-                 port_in=None,
-                 port_out=None,
-                 port_diff=20,
-                 port_inc=None,
+    def __init__(self, canvas_grid, root=None, host_name='localhost',
+                 host_port=None,
                  cmd_time_ms= 500,
                  max_recv=2**16):
         """ Setup cmd interface
         :canvas_grid: tkinter CanvasGrid
-        :host: name/id default: '' this machine
-        :port_diff:  diff between port_in and port_out
-                default: 20
-        :port: shorthand for port_in
-        :port_in: port number where we accept unsolicited input
+        :root: tkinter main window, used for update() calls
+        :host_name: name/id default: '' this machine
+        :host_port: port number where we accept unsolicited input
                         default: 50020
-        :port_out: port number we send unsolicited output
-                        default: port_in+port_diff
-        :port_inc: increment to port_in, port_out
-                        default: no change
         :max_recv: maximum data received length in bytes
                     default: 2**16
         :cmd_time_ms: maximum between cmd check in seconds
@@ -48,55 +40,60 @@ class TkRPCHost:
         """
         self.sock_out = None    #  setup once connection is establised 
         self.canvas_grid = canvas_grid
-        self.host = host
-        if port is not None:
-            port_in = port
-        if port_in is None:
-            port_in = 50020
-        if port_out is None:
-            port_out = port_in+port_diff
-        if port_inc is not None:
-            port_in += port_inc
-            port_out += port_inc
-        self.port_in = port_in
-        self.port_out = port_out
-        
+        self.root = root
+        self.host_name = host_name
+        if host_port is None:
+            host_port = TkRPCHost.HOST_PORT
+        self.host_port = host_port
         self.max_recv = max_recv
         self.cmd_time_ms = cmd_time_ms
-        
-        self.to_host_server = RPCServer(self.host, self.port_in)
+        self.user_is_ready = False      # Set True when user is ready to accept calls
+        SlTrace.lg(f"self.to_host_server ="
+                   f" RPCServer({self.host_name}, {self.host_port})")
+        self.to_host_server = RPCServer(self.host_name, self.host_port)
 
+        self.to_host_server.registerMethod(self.setup_calling_user)
         self.to_host_server.registerMethod(self.get_canvas_lims)
         self.to_host_server.registerMethod(self.get_cell_rect_tur)
         self.to_host_server.registerMethod(self.get_cell_specs)
 
-        server_host_th = th.Thread(target=self.cmd_in_th_proc)
-        server_host_th.start()
+        th.Thread(target=self.cmd_in_th_proc).start()
+        
+        
         SlTrace.lg("TkRPCHost __init__()")            
         
     def cmd_in_th_proc(self):
         SlTrace.lg(f"HOST: server_host_th_proc", "HOST")
         self.to_host_server.run()
- 
-    def host_req(self, req_dict):
-        """ Request from host, e.g. snapshot
-        :req_dict: request dictionary
-        """
-        req_dict["__host_request__"] = "HOST_REQUEST"
-        req_data = pickle.dumps(req_dict)
-        self.sock_out.connect((self.host, self.port_out))
-        self.sock_out.send(req_data)
-        req_resp_data = self.sock_out.recv(self.max_recv)
-        #TBD
 
-    def snapshot(self, title=None, bdlist=None):
+    def setup_calling_user(self, user_name=None, user_port=None):
+        """ Setup calling user - indicate user is ready to be called
+        :user_name: user name default: our host name
+        :user_port: user port default: generated from input port
+        """
+        if user_name is None:
+            user_name = self.host_name
+        if user_port is None:
+            user_port = self.host_port+1
+        SlTrace.lg(f"self.from_host_client ="
+                   f" RPCClient({user_name}, {user_port})")
+        self.from_host_client = RPCClient(user_name, user_port)
+        self.from_host_client.connect()
+        self.user_is_ready = True
+        SlTrace.lg("User is ready to accept calls")
+    
+    def wait_for_user(self):
+        """ Wait till user is ready
+        """
+        while not self.user_is_ready:
+            self.root.update()
+                        
+    def snapshot(self, title=None):
         """ Create display snapshot
         :title: display title
-        :bdlist: braill display list text string
         """
-        host_req_dict = {"title": title,
-                         "bdlist":bdlist}
-        self.host_req(req_dict=host_req_dict)
+        self.wait_for_user()
+        self.from_host_client.snapshot(title=title)
 
         
     def if_attr(self, cmd_dt, attr_name):
@@ -158,7 +155,7 @@ if __name__ == '__main__':
     cvg.create_line(200,300,400,400, width=10, fill="green", tags=["green1","green2"])
     cvg.create_rectangle(200,200,300,300, fill="red")
     cvg.create_oval(100,200,250,300, fill="orange", tags="orange_tag")
-    port = 50007+2
+    port = None
     tkh = TkRPCHost(cvg, port=port)
     cell_specs = tkh.get_cell_specs()
     SlTrace.lg(f"cell_specs: {cell_specs}")

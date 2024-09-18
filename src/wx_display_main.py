@@ -15,12 +15,12 @@ if __name__ == '__main__':      # Required because we use multiprocessing
     SlTrace.clearFlags()
     subprocess = False
     bdlist = None
-    port_in = 50040
+    host_port = 50040
     port_out = 50020
     port_inc = None
     parser = argparse.ArgumentParser()
     parser.add_argument('--bdlist', type=str, dest='bdlist', default=bdlist)
-    parser.add_argument('--port_in', type=int, dest='port_in', default=port_in)
+    parser.add_argument('--host_port', type=int, dest='host_port', default=host_port)
     parser.add_argument('--port_out', type=int, dest='port_out', default=port_out)
     parser.add_argument('--port_inc', type=int, dest='port_inc', default=port_inc)
     parser.add_argument('--subprocess', action='store_true', dest='subprocess', default=subprocess)
@@ -28,12 +28,12 @@ if __name__ == '__main__':      # Required because we use multiprocessing
     args = parser.parse_args()             # or die "Illegal options"
     SlTrace.lg(f"args: {args}\n")
     bdlist = args.bdlist
-    port_in = args.port_in
+    host_port = args.host_port
     port_out = args.port_out
     port_inc = args.port_inc
     
     #tkh = TkRPCHost()
-    tkr = TkRPCUser(port_in=port_in, port_out=port_out, port_inc=port_inc)
+    tkr = TkRPCUser(host_port=host_port)
     app = wx.App()
     bd = BrailleDisplay(tkr, display_list=bdlist)
     bd.display()
