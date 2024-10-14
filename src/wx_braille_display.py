@@ -58,7 +58,7 @@ class BrailleDisplay:
         :tkr: Access to tkinter from remote user
         :title: display screen title
         :display_list: list of (ix,iy,color) to display
-            default: none
+            default: get display from tk
         :win_width: display window width in pixels
             default: 800
         :win_height: display window height in pixels
@@ -113,6 +113,9 @@ class BrailleDisplay:
             SlTrace.lg("No link to remote")
             tkr =  TkRPCUser()
         self.tkr = tkr
+        if display_list is None:
+            cells = tkr.get_cell_specs()
+            display_list = BrailleCellList(cells).to_string()
         self.display_list = display_list
         if title is None:
             title = "Braille Display"

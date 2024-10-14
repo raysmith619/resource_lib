@@ -31,11 +31,13 @@ Some day may model after turtle's _make_global_funcs
 """
 SlTrace.clearFlags()    # Start quiet
 tkh = None
+root = None
 canvas = None
 pdisplay = None
 
-def setup_main(port=None):
+def setup_main(title=None, port=None):
     global tkh
+    global root
     global canvas
     global pdisplay
     
@@ -44,19 +46,20 @@ def setup_main(port=None):
     cg = CanvasGrid(base=canvas)
     root = canvas.winfo_toplevel()
     #root.withdraw()
-    cells = cg.get_cell_specs()  # gets (ix,iy,color)*
-    cell_list = BrailleCellList(cells)  # converts either to BrailleCell
-    bdlist = cell_list.to_string()
     if tkh is None:
         tkh = TkRPCHost(canvas_grid=cg, root=root,host_port=port)
     src_dir = os.path.dirname(__file__)
-    pdisplay = subprocess.Popen(f"python wx_display_main.py --bdlist {bdlist}"
+    title = title.replace(" ", "_")
+    pdisplay = subprocess.Popen(f"python wx_display_main.py"
+                                f" --title {title}"
                                 f" --host_port={tkh.host_port}"
                                  " --subprocess",
                     cwd=src_dir,
                     shell=True)
+    check_display()
 
-def mainloop(port=None):
+n_check = 0
+def mainloop(title=None, port=None):
     """ tk's mainloop
     :port: host socket port
     """
@@ -65,24 +68,31 @@ def mainloop(port=None):
     global canvas
     
     if pdisplay is None:
-        setup_main(port=port)
+        setup_main(title=title, port=port)
     tur.mainloop()
              
-    def check_display():
-        """ Check if display process exited
-        Recheck after delay
-        """
-        rc = pdisplay.poll()
-        if rc != None:
-            SlTrace.lg(f"Subprocess exited with rc:{rc}")
-            SlTrace.onexit()    # Close log
-            os._exit(0)     # Stop all processes
-            return
-        tur.ontimer(check_display, 10)
+def check_display():
+    """ Check if display process exited
+    Recheck after delay
+    """
+    global n_check
+    if pdisplay is None:
+        return              # Start checking when launched
+    
+    n_check += 1
+    rc = pdisplay.poll()
+    #SlTrace.lg(f"check_display: {n_check}")
+    if rc != None:
+        SlTrace.lg(f"Subprocess exited with rc:{rc}")
+        root.destroy()
+        SlTrace.onexit()    # Close log
+        os._exit(0)     # Stop all processes
+        return
+    #tur.ontimer(check_display, 1000)
+    tur.ontimer(check_display, 10)
         
-    check_display()
-    tur.mainloop()
-    sys.exit(0)
+#tur.mainloop()
+#sys.exit(0)
 
 snap_inc = 0        # Augment port
 def snapshot(title=None, port=None):
@@ -90,14 +100,14 @@ def snapshot(title=None, port=None):
     :title: Title description default: generated
     """
     if pdisplay is None:
-        setup_main(port=port)                # Create first window with current display
+        setup_main(title=title, port=port)                # Create first window with current display
         return
     
     tkh.snapshot(title=title)
 
     
 def done(port=None):
-    mainloop(port=port)
+    mainloop(title="done", port=port)
 
 if __name__ ==  '__main__':
     colors = ["red","orange","yellow","green"]

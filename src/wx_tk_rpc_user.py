@@ -37,7 +37,7 @@ class TkRPCUser:
         """
         SlTrace.lg("TkRPCUser() __init__() BEGIN")
         self.adw = None         # Set when ready
-        
+        self.snapshots = []     # snapshot adw, if any
 
         self.host_name = host_name
         if host_port is None:
@@ -56,7 +56,7 @@ class TkRPCUser:
         self.to_host = RPCClient(self.host_name, self.host_port)
         self.to_host.connect()
 
-        self.setup_from_host_requests()
+        #self.setup_from_host_requests()
         
     def setup_from_host_requests(self):           
         self.from_host_server = RPCServer(self.host_name, self.user_port)
@@ -75,31 +75,28 @@ class TkRPCUser:
     remotely requested from the host  
     """
     
-    def snapshot(self, title=None, direct=False):
+    def snapshot(self, title=None):
         """ Create display snapshot
         :title: display title
-        :direct: do work in current process default: False -> delay
-                else call after pending pending events
-                through event hanler
-                places call in event handler process
         """
     
         SlTrace.lg(f"USER: snapshot(self, title={title})")
         SlTrace.lg(f"wx.CallAfter(self.snapshot_direct, title={title}")
-        #wx.CallAfter(self.snapshot_direct, title=title)
-        self.snapshot_direct(title=title)
+        wx.CallAfter(self.snapshot_direct, title=title)
+        #self.snapshot_direct(title=title)
 
     def snapshot_direct(self, title=None):
         """ Direct call, from event processor
         :title: display title
         """
         
-        SlTrace.lg(f"USER: snapshot(self, title={title}) direct call")
+        SlTrace.lg(f"USER: snapshot_direct(self, title={title}) direct call")
         if self.adw is None:
             SlTrace.lg("USER: AudioDrawWindow not set - snapshot ignored")
             return
         
         adw = self.adw.create_audio_window(title=title)
+        self.snapshots.append(adw)
             
     def get_cell_specs(self, 
                         win_fract=True, 

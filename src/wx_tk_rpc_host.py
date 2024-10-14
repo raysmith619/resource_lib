@@ -17,6 +17,8 @@ from wx_rpc import RPCClient
 from wx_canvas_grid import CanvasGrid
 
 from select_trace import SlTrace
+from tk_bg_call import TkBgCall
+
 class TkRPCHost:
     HOST_PORT = 50010
     """Host control containing tkinter canvas
@@ -93,7 +95,10 @@ class TkRPCHost:
         :title: display title
         """
         self.wait_for_user()
-        self.from_host_client.snapshot(title=title)
+        # must call from main thread
+        SlTrace.lg(f"self.root.after(0, self.from_host_client.snapshot, {title})")
+        self.root.after(0, self.from_host_client.snapshot, title)
+        
 
         
     def if_attr(self, cmd_dt, attr_name):
@@ -108,16 +113,26 @@ class TkRPCHost:
             ret = cmd_dt[attr_name]
         return ret
 
+    def make_bg_call(self, call_name):
+        """ Invoke call to be waited on
+        """
+        bg = TkBgCall(call_name)
+        
+        self.root.after(0, bg.args)
+        
     def get_cell_specs(self,
                         win_fract=None, 
                         x_min=None, y_min=None,
                         x_max=None, y_max=None,
                         n_cols=None, n_rows=None):
-        return self.canvas_grid.get_cell_specs(
-                        win_fract=win_fract,
+        bg = TkBgCall(self.root)
+        ret = bg.call(self.canvas_grid.get_cell_specs,
+                        win_fract=win_fract, 
                         x_min=x_min, y_min=y_min,
                         x_max=x_max, y_max=y_max,
                         n_cols=n_cols, n_rows=n_rows)
+        return ret
+        
 
     def get_cell_rect_tur(self,
                         ix=None, 
@@ -156,7 +171,7 @@ if __name__ == '__main__':
     cvg.create_rectangle(200,200,300,300, fill="red")
     cvg.create_oval(100,200,250,300, fill="orange", tags="orange_tag")
     port = None
-    tkh = TkRPCHost(cvg, port=port)
+    tkh = TkRPCHost(cvg)
     cell_specs = tkh.get_cell_specs()
     SlTrace.lg(f"cell_specs: {cell_specs}")
     '''

@@ -4,6 +4,7 @@
 import json
 import socket
 import inspect
+import traceback
 from threading import Thread
 from select_trace import SlTrace
 SIZE = 2**16
@@ -67,8 +68,15 @@ class RPCServer:
             try:
                 response = self._methods[functionName](*args, **kwargs)
             except Exception as e:
+                estr = "Exception:" + str(e)
+                tbstk = traceback.extract_stack()
+                tbstk_lst = traceback.format_list(tbstk)
+                tbstr = "\n".join(tbstk_lst)
+                SlTrace.lg(f"RPCServer Exception: {estr}")
+                SlTrace.lg(f"__handle__({functionName}, {args}, {kwargs})")
+                SlTrace.lg(f"{tbstr}\n")
                 # Send back exeption if function called by client is not registred 
-                client.sendall(json.dumps(str(e)).encode())
+                client.sendall(json.dumps(estr).encode())
             else:
                 client.sendall(json.dumps(response).encode())
 

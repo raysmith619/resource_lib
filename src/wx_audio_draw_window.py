@@ -13,6 +13,7 @@ as well as presentation.
 """
 import os
 import wx
+import traceback
 
 from select_trace import SlTrace
 from wx_speaker_control import SpeakerControlLocal
@@ -390,6 +391,13 @@ class AudioDrawWindow(wx.Frame):
         :show_points: instead of braille, show sample points
         """
         SlTrace.lg("draw_cells")
+        if type(cells) == str:
+            tbstk = traceback.extract_stack()
+            tbstk_lst = traceback.format_list(tbstk)
+            tbstr = "\n".join(tbstk_lst)
+            SlTrace.lg(f"draw_cells: {cells} - error?\n{tbstr}\n")
+            return
+        
         SlTrace.lg(f"x_min:{self.get_x_min()} y_min: {self.get_y_min()}")
         if cells is None:
             cells = self.get_cells()
@@ -1401,7 +1409,7 @@ class AudioDrawWindow(wx.Frame):
         if mag_info is not None:
             title = f"Magnification {mag_info.description}"
         else:
-            mag_info = self.create_magnify_info(win_fract=win_fract,
+            mag_info = self.create_magnify_info(
                                           x_min=xmin, y_min=ymin,
                                           x_max=xmax, y_max=ymax,
                                           ncols=ncols, nrows=nrows)
@@ -1416,6 +1424,7 @@ class AudioDrawWindow(wx.Frame):
                                             x_max=xmax, y_max=ymax,
                                             n_cols=ncols, n_rows=nrows)    
         self.n_cells_created = len(cell_specs)
+        SlTrace.lg(f"{self.n_cells_created}: {cell_specs}")
         if self.n_cells_created == 0:
             if require_cells:
                 return None
@@ -1450,17 +1459,17 @@ class AudioDrawWindow(wx.Frame):
         :nrows: number of grid rows
         """
         if x_min is None:
-            x_min = self.g_xmin
+            x_min = self.get_x_min()
         if y_min is None:
-            y_min = self.g_ymin
+            y_min = self.get_y_min()
         if x_max is None:
-            x_max = self.g_xmax
+            x_max = self.get_x_max()
         if y_max is None:
-            y_max = self.g_ymax
+            y_max = self.get_y_max()
         if ncols is None:
-            ncols = self.g_ncols
+            ncols = self.grid_width
         if nrows is None:
-            nrows = self.g_nrows
+            nrows = self.grid_width
         
         top_region = MagnifyDisplayRegion(x_min=x_min, y_min=y_min,
                                           x_max=x_max, y_max=y_max,
