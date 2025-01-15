@@ -98,11 +98,16 @@ class TkBgCall:
         SlTrace.lg(f"bg_caller calling {call_entry}")
         name = call_entry.get_name()
         retorig = call_entry.function(*call_entry.args, **call_entry.kwargs)
+        SlTrace.lg(f"""\n TkBgCall::bg_caller: call_entry: {call_entry}
+                       \n retorig: {retorig}
+                   """)
         if name == "get_cell_specs":
             cell_specs = self.canvas_grid.get_cell_specs()
             SlTrace.lg(f"\nTkBgCall:bg_caller cell_specs: {cell_specs}")
             SlTrace.lg()
-            retorig = cell_specs    # TFD - should already setup above
+            retorig = self.canvas_grid.get_cell_specs(*call_entry.args,
+                                                      **call_entry.kwargs)
+            ###retorig = cell_specs    # TFD - should already setup above
         elif name == "get_rect_tur":
             rect_tur = self.canvas_grid.get_cell_rect_tur()
             SlTrace.lg(f"\nTkBgCall:bg_caller rec_tur: {rect_tur}")
@@ -110,8 +115,8 @@ class TkBgCall:
             
         SlTrace.lg(f"TkBgCall.bg_caller: retorig:{retorig}")
         ret = copy.copy(retorig)
-        SlTrace.lg(f"ret:{ret}")
-        self.call_rets[call_entry.call_num]=ret
+        SlTrace.lg(f"TkBgCall:bg_caller ret: {ret}")
+        self.call_rets[call_entry.call_num] = ret
         call_entry.ret = ret     # Save function return for delayed return
         call_entry.done = True   # Set call completion indicator
         self.call_ret_queue.put(call_entry)

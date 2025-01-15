@@ -62,7 +62,7 @@ class TkRPCHost:
         self.to_host_server.registerMethod(self.get_canvas_lims)
         self.to_host_server.registerMethod(self.get_cell_rect_tur)
         self.to_host_server.registerMethod(self.get_cell_specs)
-        self.to_host_server.registerMethod(self.get_cell_specs_set)
+        #self.to_host_server.registerMethod(self.get_cell_specs_set)
         self.to_host_server.registerMethod(self.test_dummy)
         self.to_host_server.registerMethod(self.get_ret)
         th.Thread(target=self.cmd_in_th_proc).start()
@@ -147,17 +147,22 @@ class TkRPCHost:
                         n_cols=None, n_rows=None):
 
         cell_specs = self.canvas_grid.get_cell_specs()
-        SlTrace.lg(f"\nTkRPCHost:get_cell_specs cell_specs: {cell_specs}")
+        SlTrace.lg(f"\nTkRPCHost:canvas_grid.get_cell_specs cell_specs(): {cell_specs}")
 
         ret = self.canvas_grid.get_cell_specs(
                         win_fract=win_fract, 
                         x_min=x_min, y_min=y_min,
                         x_max=x_max, y_max=y_max,
                         n_cols=n_cols, n_rows=n_rows)
-        SlTrace.lg(f"\nTkRPCHost:get_cell_specs ret: {ret}")
+        SlTrace.lg(f"""nTkRPCHost:canvas_grid.get_cell_specs(win_fract={win_fract}, 
+                        x_min={x_min}, y_min={y_min},
+                        x_max={x_max}, y_max={y_max},
+                        n_cols={n_cols}, n_rows={n_rows})
+                    ret : {ret}
+                    """)        
         return ret
         #return cell_specs   # TFD return strait from grid
-            
+    '''        
     def get_cell_specs_set(self,
                         win_fract=None, 
                         x_min=None, y_min=None,
@@ -170,7 +175,7 @@ class TkRPCHost:
                         n_cols=n_cols, n_rows=n_rows)
         ret = self.get_ret(call_num)
         return ret
-        
+    '''    
 
     def get_cell_rect_tur(self,
                         ix=None, 
