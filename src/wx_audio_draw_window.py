@@ -59,6 +59,39 @@ class AudioDrawWindow(wx.Frame):
         setup_wx_win = True,
         iy0_is_top=True,        # OBSOLETE
                  ):
+        
+        SlTrace.lg(f"""\nAudioDrawWindow:
+        tkr={tkr},
+        canvas_grid={canvas_grid},       #NO LONGER USED
+        display_list={display_list},
+        app={app},
+        title={title},
+        speaker_control={speaker_control},
+        win_width={win_width}, win_height={win_height},
+        grid_width={grid_width}, grid_height={grid_height},
+        win_fract={win_fract},
+        x_min={x_min}, y_min={y_min},
+        x_max={x_max}, y_max={y_max},
+        line_width={line_width}, color={color},
+        pos_check_interval= {pos_check_interval},
+        pos_rep_interval = {pos_rep_interval},
+        pos_rep_queue_max = {pos_rep_queue_max},
+        visible = {visible},
+        enable_mouse = {enable_mouse},
+        pgmExit={pgmExit},
+        blank_char={blank_char},
+        drawing={drawing},
+        show_marked={show_marked},
+        shift_to_edge={shift_to_edge},
+        silent={silent},
+        look_dist={look_dist},
+        menu_str={menu_str},
+        key_str={key_str},
+        mag_info={mag_info},
+        setup_wx_win = {setup_wx_win},
+        iy0_is_top={iy0_is_top},        # OBSOLETE           
+                   """)
+        
         #frame = CanvasFrame(title=mytitle, size=wx.Size(width,height))
         """ Setup audio window
         :tkr: Access to remote tk information default: simulated access
@@ -634,6 +667,7 @@ class AudioDrawWindow(wx.Frame):
         
         min_x, max_y, _, _ = self.get_cell_rect_tur(min_ix,min_iy)
         _, _, max_x, min_y = self.get_cell_rect_tur(max_ix,max_iy)
+        SlTrace.lg(f"bounding_box: min_x,max_y, max_x, min_y {min_x,max_y, max_x, min_y}")
         return min_x,max_y, max_x, min_y
     
     def bounding_box_ci(self, cells=None, add_edge=None):
@@ -694,7 +728,7 @@ class AudioDrawWindow(wx.Frame):
             bd_iy_min = self.get_iy_min()
             if ext_iy_max < bd_iy_min: ext_ix_max = bd_iy_min
             iy_max = min(ext_iy_max, self.get_iy_max())
-            
+        SlTrace.lg(f"bounding_box_ci: ix_min,iy_min, ix_max,iy_max: {ix_min,iy_min, ix_max,iy_max}")    
         return ix_min,iy_min, ix_max,iy_max
             
 
@@ -1087,12 +1121,13 @@ class AudioDrawWindow(wx.Frame):
         """ Get cell specs from remote tk canvas
         :returns: list of cell specs (ix,iy,color)
         """        
-        return self.tkr.get_cell_specs(
+        cell_specs = self.tkr.get_cell_specs(
                         win_fract=win_fract,
                         x_min=x_min, y_min=y_min,
                         x_max=x_max, y_max=y_max,
                         n_cols=n_cols, n_rows=n_rows)
-
+        #SlTrace.lg(f"AudioDrawWindow.get_cell_specs: {cell_specs}")
+        return cell_specs
 
     def get_canvas_lims(self, win_fract=True):
         """ Get canvas limits - internal values, to which

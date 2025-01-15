@@ -12,6 +12,7 @@ import wx
 from wx_rpc import RPCClient
 from wx_rpc import RPCServer
 
+
 from select_trace import SlTrace
 
         
@@ -98,14 +99,19 @@ class TkRPCUser:
         adw = self.adw.create_audio_window(title=title)
         self.snapshots.append(adw)
             
-    def get_cell_specs(self, 
+    def get_cell_specs(self,
                         win_fract=True, 
                         x_min=None, y_min=None,
                         x_max=None, y_max=None,
                         n_cols=None, n_rows=None):
         """ Get cell specs from remote tk canvas
         :returns: list of cell specs (ix,iy,color)
-        """        
+        """
+        SlTrace.lg(f"""TkRPCUser:get_cell_specs(win_fract={win_fract}, 
+                        x_min={x_min}, y_min={y_min},
+                        x_max={x_max}, y_max={y_max},
+                        n_cols={n_cols}, n_rows={n_rows})
+                        """)        
         if self.simulated:
             return self.get_cell_specs_simulated(
                         x_min=x_min, y_min=y_min,
@@ -113,12 +119,18 @@ class TkRPCUser:
                         x_max=x_max, y_max=y_max,
                         n_cols=n_cols, n_rows=n_rows)
         
-        return self.to_host.get_cell_specs(
-                    win_fract=win_fract, 
+        call_num = self.to_host.get_cell_specs(
+                    TK_EXECUTE_IN_MAIN_THREAD=True,
                     x_min=x_min, y_min=y_min,
                     x_max=x_max, y_max=y_max,
                     n_cols=n_cols, n_rows=n_rows)
-            
+        SlTrace.lg(f"TkRPCUser:get_cell_specs call_num:{call_num}")
+        while True:
+            ret = self.to_host.get_ret(call_num)
+            if ret is not None:
+                break
+        SlTrace.lg(f"TkRPCUser:get_cell_specs[{call_num}] ret:{ret}")
+        return ret    
     
     def get_cell_specs_simulated(self, 
                         win_fract=True, 
@@ -168,7 +180,14 @@ class TkRPCUser:
             return self.get_cell_rect_tur_simulated(
                         ix=ix,iy=iy)
         
-        return self.to_host.get_cell_rect_tur(ix, iy)
+        call_num = self.to_host.get_cell_rect_tur(ix, iy,
+                    TK_EXECUTE_IN_MAIN_THREAD=True)
+        while True:
+            ret = self.to_host.get_ret(call_num)
+            if ret is not None:
+                break
+        SlTrace.lg(f"get_cell_rect_tur ret:{ret}")
+        return ret    
     
     def get_cell_rect_tur_simulated(self, 
                         ix,iy):
@@ -191,7 +210,16 @@ class TkRPCUser:
         if win_fract:
             return (0.,1., 0., 1.)
         
-        return self.to_host.get_canvas_lims(win_fract)
+        #return self.to_host.get_canvas_lims(win_fract)
+        
+        call_num = self.to_host.get_canvas_lims(win_fract,
+                    TK_EXECUTE_IN_MAIN_THREAD=True)
+        while True:
+            ret = self.to_host.get_canvas_lims(call_num)
+            if ret is not None:
+                break
+        SlTrace.lg(f"get_canvas_lims ret:{ret}")
+        return ret    
                         
     
     def get_canvas_lims_simulated(self, win_fract=True):

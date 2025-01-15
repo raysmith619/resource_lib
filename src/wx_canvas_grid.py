@@ -582,6 +582,7 @@ class CanvasGrid(tk.Canvas):
             if color is not None:
                 cell_spec = (ix, iy, color)
                 cell_specs.append(cell_spec)
+        SlTrace.lg(f"cell_specs: {cell_specs}")
         return cell_specs
 
     def show_canvas(self, title=None, types=None, ex_types=None,

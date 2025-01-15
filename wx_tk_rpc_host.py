@@ -155,8 +155,8 @@ class TkRPCHost:
                         x_max=x_max, y_max=y_max,
                         n_cols=n_cols, n_rows=n_rows)
         SlTrace.lg(f"\nTkRPCHost:get_cell_specs ret: {ret}")
-        return ret
-        #return cell_specs   # TFD return strait from grid
+        #return ret     # TFD
+        return cell_specs   # TFD return strait from grid
             
     def get_cell_specs_set(self,
                         win_fract=None, 

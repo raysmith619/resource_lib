@@ -34,9 +34,13 @@ if __name__ == '__main__':      # Required because we use multiprocessing
     port_inc = args.port_inc
     
     #tkh = TkRPCHost()
+    SlTrace.lg(f"wx_display_main.py setting up tk link")
     tkr = TkRPCUser(host_port=host_port)
+    SlTrace.lg(f"wx_display_main.py after tk link setup")
     app = wx.App()
+    SlTrace.lg(f"wx_display_main.py retrieve cell_specs")
     cells = tkr.get_cell_specs()  # gets (ix,iy,color)*
+    SlTrace.lg(f"wx_display_main.py tkr.get_cell_specs() cells: {cells}")
     cell_list = BrailleCellList(cells)  # converts either to BrailleCell
     bdlist = cell_list.to_string()
     bd = BrailleDisplay(tkr, display_list=bdlist)

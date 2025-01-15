@@ -18,6 +18,7 @@ import select
 import sys
 from threading import Thread
 import subprocess
+import tkinter as tk
 import turtle as tur
 from turtle import *
 
@@ -31,20 +32,20 @@ Some day may model after turtle's _make_global_funcs
 """
 SlTrace.clearFlags()    # Start quiet
 tkh = None
-root = None
+root = tk.Tk()
 canvas = None
 pdisplay = None
 
 def setup_main(title=None, port=None):
     global tkh
-    global root
     global canvas
     global pdisplay
     
     if canvas is None:
         canvas = tur.getcanvas()
     cg = CanvasGrid(base=canvas)
-    root = canvas.winfo_toplevel()
+    cells = cg.get_cell_specs()
+    SlTrace.lg(f"\nsetup_main: cells:{cells}")
     #root.withdraw()
     if tkh is None:
         tkh = TkRPCHost(canvas_grid=cg, root=root,host_port=port)
@@ -88,8 +89,8 @@ def check_display():
         SlTrace.onexit()    # Close log
         os._exit(0)     # Stop all processes
         return
-    #tur.ontimer(check_display, 1000)
-    tur.ontimer(check_display, 10)
+    tur.ontimer(check_display, 1000)
+    #tur.ontimer(check_display, 10)
         
 #tur.mainloop()
 #sys.exit(0)
@@ -118,6 +119,9 @@ if __name__ ==  '__main__':
         color(colr)
         forward(200)
         right(90)
-        snapshot(f"{n}: {colr}")
-    #done()		    # Complete drawings
+        #if n in [1,2,3,4]:
+        if n in []:
+            snapshot(f"{n}: {colr}")
+    done()		    # Complete drawings
+    
     

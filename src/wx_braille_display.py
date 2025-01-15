@@ -149,7 +149,7 @@ class BrailleDisplay:
         self.tk_items = tk_items
         self.canvas_items = canvas_items
         self.app = wx.App()
-
+        SlTrace.lg(f"\nBrailleDisplay: title: {title}\n display_list:{display_list}")
         """
         duplicates from AudioDrawWindow 
         """
@@ -207,6 +207,10 @@ class BrailleDisplay:
         :silent: quiet mode default: False
         """
         SlTrace.lg("self.display()")
+        SlTrace.lg(f"""
+                   BrailleDisplay.display: title: {title}
+                   display_list:{display_list}
+                   """)
         self.display_depth += 1
         if self.display_depth > 1:
             self.display_depth -= 1
