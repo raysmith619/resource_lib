@@ -42,7 +42,8 @@ class BgCallEntry:
         
 class TkBgCall:
     
-    def __init__(self, root, canvas_grid=None, check_queue_int=10):
+    def __init__(self, root, canvas_grid=None,
+                 canvas_grid_snapshots = [], check_queue_int=10):
         """ Setup for background call in which runctions are called
         :root: root (root) object
         :canvas_grid: base canvas
@@ -50,6 +51,7 @@ class TkBgCall:
         """
         self.root = root
         self.canvas_grid = canvas_grid
+        self.canvas_grid_snapshots = canvas_grid_snapshots
         self.check_queue_int = check_queue_int
         self.call_num = 0               # Unique call #
         self.call_entry_d = {}          # dictionary of pending calls
@@ -97,21 +99,31 @@ class TkBgCall:
         """
         SlTrace.lg(f"bg_caller calling {call_entry}")
         name = call_entry.get_name()
-        retorig = call_entry.function(*call_entry.args, **call_entry.kwargs)
-        SlTrace.lg(f"""\n TkBgCall::bg_caller: call_entry: {call_entry}
-                       \n retorig: {retorig}
-                   """)
         if name == "get_cell_specs":
             cell_specs = self.canvas_grid.get_cell_specs()
             SlTrace.lg(f"\nTkBgCall:bg_caller cell_specs: {cell_specs}")
             SlTrace.lg()
-            retorig = self.canvas_grid.get_cell_specs(*call_entry.args,
+            if "snapshot_num" in call_entry.kwargs:
+                snapshot_num = call_entry.kwargs["snapshot_num"]                
+                del call_entry.kwargs["snapshot_num"]
+                if snapshot_num is not None and snapshot_num > 0:
+                    canvas_grid = self.canvas_grid_snapshots[snapshot_num-1]
+                else:
+                    canvas_grid = self.canvas_grid
+            else:
+                canvas_grid = self.canvas_grid
+            retorig = canvas_grid.get_cell_specs(*call_entry.args,
                                                       **call_entry.kwargs)
-            ###retorig = cell_specs    # TFD - should already setup above
         elif name == "get_rect_tur":
             rect_tur = self.canvas_grid.get_cell_rect_tur()
             SlTrace.lg(f"\nTkBgCall:bg_caller rec_tur: {rect_tur}")
             SlTrace.lg()
+            retorig = rec_tur
+        else:
+            retorig = call_entry.function(*call_entry.args, **call_entry.kwargs)
+            SlTrace.lg(f"""\n TkBgCall::bg_caller: call_entry: {call_entry}
+                        \n retorig: {retorig}
+                    """)
             
         SlTrace.lg(f"TkBgCall.bg_caller: retorig:{retorig}")
         ret = copy.copy(retorig)

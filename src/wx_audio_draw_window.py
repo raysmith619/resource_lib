@@ -31,7 +31,7 @@ from wx_canvas_panel_item import CanvasPanelItem
 class AudioDrawWindow(wx.Frame):
     def __init__(self,
         tkr=None,
-        canvas_grid=None,       #NO LONGER USED
+        snapshot_num=None,
         display_list=None,
         app=None,
         title=None, speaker_control=None,
@@ -62,7 +62,7 @@ class AudioDrawWindow(wx.Frame):
         
         SlTrace.lg(f"""\nAudioDrawWindow:
         tkr={tkr},
-        canvas_grid={canvas_grid},       #NO LONGER USED
+        snapshot_num={snapshot_num},
         display_list={display_list},
         app={app},
         title={title},
@@ -95,6 +95,8 @@ class AudioDrawWindow(wx.Frame):
         #frame = CanvasFrame(title=mytitle, size=wx.Size(width,height))
         """ Setup audio window
         :tkr: Access to remote tk information default: simulated access
+        :make_snapshot: make a snapshot of current canvas
+                        default: False - use current window state 
         :app: wx application object
             default: create object
         :speaker_control: (SpeakerControlLocal) local access to centralized speech making
@@ -178,6 +180,7 @@ class AudioDrawWindow(wx.Frame):
         self.cells = {}         # Dictionary of cells by (ix,iy)
         self.cells_comps = {}   # Dictionary of cell composite items by (ix,iy)
         self._cursor_item = None    # position cursor tag
+        self.snapshot_num = snapshot_num
         if tkr is None:
             tkr = TkRPCUser(simulated=True)
         self.tkr = tkr
@@ -263,7 +266,8 @@ class AudioDrawWindow(wx.Frame):
                 nrows=nrows,
                 ncols=ncols)
             mag_info = MagnifyInfo(top_region=top_region, display_region=display_region)
-            self.cell_specs = self.get_cell_specs(win_fract=win_fract,
+            self.cell_specs = self.get_cell_specs(snapshot_num=None,
+                                            win_fract=win_fract,
                                             x_min=x_min,x_max=x_max,
                                             y_min=y_min,y_max=y_max)
         else:
@@ -1114,14 +1118,18 @@ class AudioDrawWindow(wx.Frame):
         return braille_cells
     
     def get_cell_specs(self,
+                       snapshot_num=None,
                        win_fract=True, 
                         x_min=None, y_min=None,
                         x_max=None, y_max=None,
                         n_cols=None, n_rows=None):
         """ Get cell specs from remote tk canvas
         :returns: list of cell specs (ix,iy,color)
-        """        
+        """
+        if snapshot_num is None:
+            snapshot_num = self.snapshot_num        
         cell_specs = self.tkr.get_cell_specs(
+                        snapshot_num=snapshot_num,
                         win_fract=win_fract,
                         x_min=x_min, y_min=y_min,
                         x_max=x_max, y_max=y_max,
@@ -1405,6 +1413,7 @@ class AudioDrawWindow(wx.Frame):
     """
 
     def create_audio_window(self, title=None,
+                 snapshot_num=None,
                  win_width=None,
                  win_height=None,
                  win_fract=True,
@@ -1416,6 +1425,8 @@ class AudioDrawWindow(wx.Frame):
         """ Create new AudioDrawWindow to navigate canvas from the section
         :title: optinal title
                 region (xmin,ymin, xmax,ymax) with nrows, ncols
+        :snapshot_num: create a snapshot of current window
+                default: track main window
         :win_width: window width default: self.win_width
         :win_height: window height default: self.draw_height()
         :speaker_control: (SpeakerControlLocal) local access to centralized speech facility
@@ -1465,6 +1476,7 @@ class AudioDrawWindow(wx.Frame):
                 return None
                 
         adw = AudioDrawWindow(tkr=self.tkr,
+                              snapshot_num=snapshot_num,
                               app=self.app,
                               title=title,
                               speaker_control=self.speaker_control,

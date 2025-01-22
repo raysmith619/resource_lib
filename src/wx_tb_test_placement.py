@@ -34,8 +34,10 @@ try:
     ixc,iyc = aw.grid_width//2, aw.grid_height//2
     SlTrace.lg(f"x:{x} y:{y} x_min:{fte.get_x_min()} y_min:{fte.get_y_min()}"
           f" ix:{ix}, iy:{iy}")
-    ###???assert ix == ixc, f"ix should be {ixc} was {ix}"
-    ###???assert iy == iyc,  f"iy should be {iyc} was {iy}"
+    ###???
+    assert ix == ixc, f"ix should be {ixc} was {ix}"
+    ###???
+    assert iy == iyc,  f"iy should be {iyc} was {iy}"
     cell = fte.create_cell(cell_ixy=(ix,iy), color="blue")
     fte.display_cell(cell=cell)
     

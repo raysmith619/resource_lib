@@ -42,9 +42,11 @@ class TkRPCUser:
 
         self.host_name = host_name
         if host_port is None:
-           raise Exception("server port is not specified") 
-        self.host_port = host_port
-        self.user_port = host_port+1        # ??? better choice?
+            if not simulated:
+                raise Exception("server port is not specified")
+        else: 
+            self.host_port = host_port
+            self.user_port = host_port+1        # ??? better choice?
         
         self.max_recv = max_recv
         self.cmd_time_ms = cmd_time_ms
@@ -76,17 +78,19 @@ class TkRPCUser:
     remotely requested from the host  
     """
     
-    def snapshot(self, title=None):
+    def snapshot(self, title=None, snapshot_num=None):
         """ Create display snapshot
         :title: display title
         """
     
-        SlTrace.lg(f"USER: snapshot(self, title={title})")
-        SlTrace.lg(f"wx.CallAfter(self.snapshot_direct, title={title}")
-        wx.CallAfter(self.snapshot_direct, title=title)
-        #self.snapshot_direct(title=title)
+        SlTrace.lg(f"""USER: snapshot(self, title={title},
+                   snapshot_num={snapshot_num})""")
+        SlTrace.lg(f"""wx.CallAfter(self.snapshot_direct,
+                   title={title}, snapshot_num={snapshot_num}""")
+        wx.CallAfter(self.snapshot_direct, title=title,
+                     snapshot_num=snapshot_num)
 
-    def snapshot_direct(self, title=None):
+    def snapshot_direct(self, title=None, snapshot_num=None):
         """ Direct call, from event processor
         :title: display title
         """
@@ -96,10 +100,22 @@ class TkRPCUser:
             SlTrace.lg("USER: AudioDrawWindow not set - snapshot ignored")
             return
         
-        adw = self.adw.create_audio_window(title=title)
+        adw = self.adw.create_audio_window(title=title,
+                                snapshot_num=snapshot_num)
         self.snapshots.append(adw)
-            
+        #adw.Refresh()
+        adw.Update()
+        #adw.Show()
+
+        self.snapshot_complete()
+
+    def snapshot_complete(self):
+        """ Signal snapshot competion
+        """
+        self.to_host.snapshot_complete()
+                    
     def get_cell_specs(self,
+                        snapshot_num=None,
                         win_fract=True, 
                         x_min=None, y_min=None,
                         x_max=None, y_max=None,
@@ -107,7 +123,9 @@ class TkRPCUser:
         """ Get cell specs from remote tk canvas
         :returns: list of cell specs (ix,iy,color)
         """
-        SlTrace.lg(f"""TkRPCUser:get_cell_specs(win_fract={win_fract}, 
+        SlTrace.lg(f"""TkRPCUser:get_cell_specs(
+                        snapshot_num={snapshot_num},
+                        win_fract={win_fract}, 
                         x_min={x_min}, y_min={y_min},
                         x_max={x_max}, y_max={y_max},
                         n_cols={n_cols}, n_rows={n_rows})
@@ -121,6 +139,7 @@ class TkRPCUser:
         
         call_num = self.to_host.get_cell_specs(
                     TK_EXECUTE_IN_MAIN_THREAD=True,
+                    snapshot_num=snapshot_num,
                     x_min=x_min, y_min=y_min,
                     x_max=x_max, y_max=y_max,
                     n_cols=n_cols, n_rows=n_rows)

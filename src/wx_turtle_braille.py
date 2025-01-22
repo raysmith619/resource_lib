@@ -58,6 +58,7 @@ def setup_main(title=None, port=None):
                     cwd=src_dir,
                     shell=True)
     check_display()
+    tkh.wait_for_user()     # Wait till setup, possibly snapshot is done
 
 n_check = 0
 def mainloop(title=None, port=None):

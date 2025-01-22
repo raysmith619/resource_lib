@@ -11,6 +11,7 @@ import queue
 import pickle
 import time
 import threading as th
+import copy
 
 #from wx_rpc import RPCServer
 from wx_bg_rpc import RPCServer
@@ -44,6 +45,7 @@ class TkRPCHost:
         """
         self.sock_out = None    #  setup once connection is establised 
         self.canvas_grid = canvas_grid
+        self.canvas_grid_snapshots = []     # Snapshots, if any
         self.root = root
         self.host_name = host_name
         if host_port is None:
@@ -52,8 +54,10 @@ class TkRPCHost:
         self.max_recv = max_recv
         self.cmd_time_ms = cmd_time_ms
         self.user_is_ready = False      # Set True when user is ready to accept calls
-        
-        self.bg = TkBgCall(root, canvas_grid=self.canvas_grid)
+        self.snapshot_is_complete = True    # Set if no waiting required
+
+        self.bg = TkBgCall(root, canvas_grid=self.canvas_grid,
+                canvas_grid_snapshots=self.canvas_grid_snapshots)
         SlTrace.lg(f"self.to_host_server ="
                    f" TkRPCServer({self.host_name}, {self.host_port})")
         self.to_host_server = RPCServer(self.bg, self.host_name, self.host_port)
@@ -62,7 +66,7 @@ class TkRPCHost:
         self.to_host_server.registerMethod(self.get_canvas_lims)
         self.to_host_server.registerMethod(self.get_cell_rect_tur)
         self.to_host_server.registerMethod(self.get_cell_specs)
-        #self.to_host_server.registerMethod(self.get_cell_specs_set)
+        self.to_host_server.registerMethod(self.snapshot_complete)
         self.to_host_server.registerMethod(self.test_dummy)
         self.to_host_server.registerMethod(self.get_ret)
         th.Thread(target=self.cmd_in_th_proc).start()
@@ -101,19 +105,41 @@ class TkRPCHost:
         """ Wait till user is ready
         """
         while not self.user_is_ready:
-            self.root.update_idletasks()
-            self.root.update()
-                        
+            self.tk_event_check()
+    
+    def wait_for_snapshot(self):
+        """ Wait till snapshot is ready
+        """
+        while not self.snapshot_complete:
+            self.tk_event_check()
+            
+    def tk_event_check(self):
+        """ Allow tk event processing
+        """                        
+        self.root.update_idletasks()
+        self.root.update()
+        
     def snapshot(self, title=None):
         """ Create display snapshot
         :title: display title
         """
         self.wait_for_user()
+        self.wait_for_snapshot()    # incase double snapshot
         # must call from main thread
+        self.snapshot_is_complete = False
         SlTrace.lg(f"self.from_host_client.snapshot({title})")
-        self.from_host_client.snapshot(title)
-        
+        ###snapshot = copy.deepcopy(self.canvas_grid)   # fails
+        snapshot = copy.copy(self.canvas_grid)
+        self.canvas_grid_snapshots.append(snapshot)
+        self.from_host_client.snapshot(title,
+                        snapshot_num=len(self.canvas_grid_snapshots))
+        self.wait_for_snapshot()    # Block till completed
 
+    def snapshot_complete(self):
+        """ Signal snapshot process has completed
+        """        
+        self.snapshot_is_complete = True
+        
         
     def if_attr(self, cmd_dt, attr_name):
         """ Return attr value from dict if present else None
@@ -141,6 +167,7 @@ class TkRPCHost:
         return self.bg.get_ret(call_num)
             
     def get_cell_specs(self,
+                        snapshot_num=None,
                         win_fract=None, 
                         x_min=None, y_min=None,
                         x_max=None, y_max=None,
@@ -148,13 +175,16 @@ class TkRPCHost:
 
         cell_specs = self.canvas_grid.get_cell_specs()
         SlTrace.lg(f"\nTkRPCHost:canvas_grid.get_cell_specs cell_specs(): {cell_specs}")
-
-        ret = self.canvas_grid.get_cell_specs(
+        if snapshot_num is None or snapshot_num == 0:
+            canvas_grid = self.canvas_grid
+        else:
+            canvas_grid = self.canvas_grid_snapshots
+        ret = canvas_grid.get_cell_specs(
                         win_fract=win_fract, 
                         x_min=x_min, y_min=y_min,
                         x_max=x_max, y_max=y_max,
                         n_cols=n_cols, n_rows=n_rows)
-        SlTrace.lg(f"""nTkRPCHost:canvas_grid.get_cell_specs(win_fract={win_fract}, 
+        SlTrace.lg(f"""nTkRPCHost: canvas_grid.get_cell_specs(win_fract={win_fract}, 
                         x_min={x_min}, y_min={y_min},
                         x_max={x_max}, y_max={y_max},
                         n_cols={n_cols}, n_rows={n_rows})

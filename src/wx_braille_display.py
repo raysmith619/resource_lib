@@ -25,6 +25,7 @@ from magnify_info import MagnifyInfo
 from wx_audio_draw_window import AudioDrawWindow
 from braille_error import BrailleError
 from wx_tk_rpc_user import TkRPCUser
+from wx_braille_cell_list import BrailleCellList
         
 class BrailleDisplay:
     """ Create and display graphics using Braille

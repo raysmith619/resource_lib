@@ -26,8 +26,8 @@ test list files
 type_run = ""   # Default  old - pre wxPython
 ### Do single run
 ### type_run = "wxpython" # Use wxPython (wx_braille_display instead of braille_display)
-max_n_fail = 1      # Maximum fail - quit at this number
-test_list_file = "wx_tb_test_list.tests"
+
+test_list_file = "wx_tb_test_list_1.tests"
 test_out_dir = "../tests"
 test_out_dir = os.path.abspath(test_out_dir)
 SlTrace.lg(f"Test output directory: {test_out_dir}")
@@ -112,13 +112,10 @@ with open(out_file, "w") as outfp:
             else:
                 n_fail += 1
                 SlTrace.lg(f"Failure returncode:{ret_code} fail:{n_fail}", to_stdout=True)
+                break
             time_end = time.time()
             SlTrace.lg(f"{pgm_file} run time: {time_end-time_start:.02f} seconds",
                        to_stdout=True)
-            if n_fail >= max_n_fail:
-                SlTrace.lg(f"Maximum n_fail({n_fail} reached - quitting)")
-                break
-            
         except subprocess.TimeoutExpired as e:
             n_timeout += 1
             SlTrace.lg(f"{line} time out: {n_timeout}", to_stdout=True)
