@@ -9,6 +9,7 @@ SlTrace.setFlags("user,host")
 colors = ["red","orange","yellow","green"]
 
 nside = 0
+snapshot(f"Begining - before square")
 for colr in colors:
     nside += 1
     width(40)

@@ -100,6 +100,8 @@ class TkRPCUser:
             SlTrace.lg("USER: AudioDrawWindow not set - snapshot ignored")
             return
         
+        SlTrace.lg(f"USER: adw.create_audio_window(title={title},)"
+                   f" snapshot_num={snapshot_num}")
         adw = self.adw.create_audio_window(title=title,
                                 snapshot_num=snapshot_num)
         self.snapshots.append(adw)

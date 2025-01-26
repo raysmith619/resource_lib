@@ -23,6 +23,7 @@ from braille_error import BrailleError
 from braille_cell import BrailleCell
 from magnify_info import MagnifySelect, MagnifyInfo, MagnifyDisplayRegion
 from wx_speaker_control import SpeakerControlLocal
+import canvas_copy  # To support snapshot copy
 
 """
 We now think explicit .base.fn_name is better
@@ -362,7 +363,7 @@ class CanvasGrid(tk.Canvas):
             x1,x2 = self.grid_xs[i],self.grid_xs[i]
             y1,y2 = self.grid_ys[0],self.grid_ys[len(self.grid_ys)-1]
             width_now = width_edge if i == 0 or i == len(self.grid_xs)-1 else width
-            self.create_line(x1,y1,x2,y2, fill=color, tag=grid_tag, width=width_now)
+            self.base.create_line(x1,y1,x2,y2, fill=color, tag=grid_tag, width=width_now)
             pass
         for i in range(len(self.grid_ys)):        # horizontal lines
             y1,y2 = self.grid_ys[i],self.grid_ys[i]
@@ -813,6 +814,26 @@ class CanvasGrid(tk.Canvas):
         SlTrace.lg("CanvasGrid.exit")
         SlTrace.onexit()    # Force logging quit
         os._exit(0)
+
+    def copy(self):
+        """ Copy ourselves enough for snapshot
+        We tried to use copy.deepcopy() which does not
+        support tkinter.Canvas
+        """
+        new_copy = copy.copy(self)
+        new_base = canvas_copy.deep_copy_canvas(self.base)
+        new_copy.base = new_base
+        return new_copy
+    
+    def canvas_show_items(self, exclude_types=None, show_coords=True,
+                      show_options=True,
+                      use_value_cache=True):
+        str = canvas_copy.canvas_show_items(self.base,
+                        exclude_types=exclude_types,
+                        show_coords=show_coords,
+                        show_options=show_options,
+                        use_value_cache=use_value_cache)
+        return str
         
 if __name__ == "__main__":
     import sys
@@ -833,7 +854,38 @@ if __name__ == "__main__":
             time.sleep(1)
             cvg.paint_grid()
             time.sleep(5)
-            
+    
+    def test1a():
+        
+        root = tk.Tk()
+        cvg = CanvasGrid(root, height=800, width=800)
+        cvg.paint_grid()
+        items = cvg.base.find_all()
+        SlTrace.lg(f"Items found in cvg:{len(items)}")
+        item_d = {}
+        for item in items:
+            item_type = cvg.base.type(item)
+            if item_type not in item_d:
+                item_d[item_type] = 0
+            item_d[item_type] += 1
+        for item_type in item_d:
+            SlTrace.lg(f"    {item_type}: {item_d[item_type]}")
+                
+        SlTrace.lg("\n\nCopying canvas grid")
+        cvg2 = cvg.copy()
+        items = cvg2.base.find_all()
+        SlTrace.lg(f"Items found in cvg2:{len(items)}")
+        item_d = {}
+        for item in items:
+            item_type = cvg2.base.type(item)
+            if item_type not in item_d:
+                item_d[item_type] = 0
+            item_d[item_type] += 1
+        for item_type in item_d:
+            SlTrace.lg(f"    {item_type}: {item_d[item_type]}")
+
+        SlTrace.lg(f"cvg2:{cvg2}")
+
     def test2():
         root = tk.Tk()
         cvg = CanvasGrid(root, height=450, width=450)
@@ -987,11 +1039,11 @@ if __name__ == "__main__":
                                        y_min=ymin, grid_height=grid_height)
         SlTrace.lg("After create_audio_window() 2")
         root.mainloop()
-        
-    #test1()
-    test2()
-    #test3()
-    #test5()
+    
+    tests = [test1,test2,test3,test5]
+    tests = [test1a]        # Just copy test
+    for test in tests:
+        test()    
     SlTrace.lg("End of Test")
     sys.exit()
         

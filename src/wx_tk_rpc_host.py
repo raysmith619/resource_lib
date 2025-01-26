@@ -129,7 +129,10 @@ class TkRPCHost:
         self.snapshot_is_complete = False
         SlTrace.lg(f"self.from_host_client.snapshot({title})")
         ###snapshot = copy.deepcopy(self.canvas_grid)   # fails
-        snapshot = copy.copy(self.canvas_grid)
+        snapshot = self.canvas_grid.copy()
+        snapshot_str = snapshot.canvas_show_items()
+        sno = len(self.canvas_grid_snapshots)+1
+        SlTrace.lg(f"\nsnapshot[{sno}]: {snapshot_str}")
         self.canvas_grid_snapshots.append(snapshot)
         self.from_host_client.snapshot(title,
                         snapshot_num=len(self.canvas_grid_snapshots))

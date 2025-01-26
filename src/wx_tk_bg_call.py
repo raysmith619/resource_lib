@@ -104,7 +104,8 @@ class TkBgCall:
             SlTrace.lg(f"\nTkBgCall:bg_caller cell_specs: {cell_specs}")
             SlTrace.lg()
             if "snapshot_num" in call_entry.kwargs:
-                snapshot_num = call_entry.kwargs["snapshot_num"]                
+                snapshot_num = call_entry.kwargs["snapshot_num"]
+                SlTrace.lg(f"bg_caller snapshot[{snapshot_num}]")                
                 del call_entry.kwargs["snapshot_num"]
                 if snapshot_num is not None and snapshot_num > 0:
                     canvas_grid = self.canvas_grid_snapshots[snapshot_num-1]
@@ -118,7 +119,7 @@ class TkBgCall:
             rect_tur = self.canvas_grid.get_cell_rect_tur()
             SlTrace.lg(f"\nTkBgCall:bg_caller rec_tur: {rect_tur}")
             SlTrace.lg()
-            retorig = rec_tur
+            retorig = rect_tur
         else:
             retorig = call_entry.function(*call_entry.args, **call_entry.kwargs)
             SlTrace.lg(f"""\n TkBgCall::bg_caller: call_entry: {call_entry}

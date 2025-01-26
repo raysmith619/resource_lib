@@ -265,11 +265,13 @@ class AudioDrawWindow(wx.Frame):
                 y_max=y_max,
                 nrows=nrows,
                 ncols=ncols)
-            mag_info = MagnifyInfo(top_region=top_region, display_region=display_region)
-            self.cell_specs = self.get_cell_specs(snapshot_num=None,
-                                            win_fract=win_fract,
-                                            x_min=x_min,x_max=x_max,
-                                            y_min=y_min,y_max=y_max)
+            mag_info = MagnifyInfo(top_region=top_region,
+                                   display_region=display_region)
+            self.cell_specs = self.get_cell_specs(
+                                        snapshot_num=self.snapshot_num,
+                                        win_fract=win_fract,
+                                        x_min=x_min,x_max=x_max,
+                                        y_min=y_min,y_max=y_max)
         else:
             if mag_info.description:
                 title = mag_info.description
@@ -1459,7 +1461,9 @@ class AudioDrawWindow(wx.Frame):
                                           x_min=xmin, y_min=ymin,
                                           x_max=xmax, y_max=ymax,
                                           ncols=ncols, nrows=nrows)
-            
+        if snapshot_num is None:
+            snapshot_num = self.snapshot_num
+                
         if nrows is None:
             nrows = mag_info.mag_nrows
         if ncols is None:
