@@ -101,7 +101,7 @@ class RPCServer:
             sock.bind(self.address)
             sock.listen()
 
-            SlTrace.lg(f'+ Server {self.address} running')
+            SlTrace.lg(f'+ Server {self.address} running', "rpc")
             while True:
                 try:
                     client, address = sock.accept()

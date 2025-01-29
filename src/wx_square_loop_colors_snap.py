@@ -5,13 +5,14 @@ from wx_turtle_braille import *    # Get our graphics
 ##from turtle import *		     # Get standard stuff
 from select_trace import SlTrace
 
-SlTrace.setFlags("user,host")
+#SlTrace.setFlags("user,host")
 colors = ["red","orange","yellow","green"]
 
 nside = 0
-snapshot(f"Begining - before square")
+SlTrace.lg(f"Begining - before square")
 for colr in colors:
     nside += 1
+    SlTrace.lg(f"before side {nside}")
     width(40)
     color(colr)
     forward(200)

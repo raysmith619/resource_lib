@@ -45,7 +45,7 @@ def setup_main(title=None, port=None):
         canvas = tur.getcanvas()
     cg = CanvasGrid(base=canvas)
     cells = cg.get_cell_specs()
-    SlTrace.lg(f"\nsetup_main: cells:{cells}")
+    SlTrace.lg(f"\nsetup_main: cells:{cells}", "cell_specs")
     #root.withdraw()
     if tkh is None:
         tkh = TkRPCHost(canvas_grid=cg, root=root,host_port=port)
@@ -101,6 +101,7 @@ def snapshot(title=None, port=None):
     """ Create a TurtleBraille window with a "snapshot" of current turtle display
     :title: Title description default: generated
     """
+    SlTrace.lg(f"snapshot title={title} port={port}")
     if pdisplay is None:
         setup_main(title=title, port=port)                # Create first window with current display
         return

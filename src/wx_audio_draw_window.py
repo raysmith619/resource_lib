@@ -90,7 +90,7 @@ class AudioDrawWindow(wx.Frame):
         mag_info={mag_info},
         setup_wx_win = {setup_wx_win},
         iy0_is_top={iy0_is_top},        # OBSOLETE           
-                   """)
+                   """, "adw")
         
         #frame = CanvasFrame(title=mytitle, size=wx.Size(width,height))
         """ Setup audio window
@@ -184,7 +184,7 @@ class AudioDrawWindow(wx.Frame):
         if tkr is None:
             tkr = TkRPCUser(simulated=True)
         self.tkr = tkr
-        SlTrace.lg("USER: Linking AudioDrawWindow to tkr")
+        SlTrace.lg("USER: Linking AudioDrawWindow to tkr", "adw")
         tkr.set_adw(self)   # Support access, only first
 
         self.display_list = display_list
@@ -282,7 +282,8 @@ class AudioDrawWindow(wx.Frame):
         if mag_info.parent_info is not None:
             mag_info.parent_info.child_infos.append(mag_info)
         self.mag_info = mag_info
-        SlTrace.lg(f"\nAudioDrawWindow() mag_info:\n{mag_info}\n")
+        SlTrace.lg(f"\nAudioDrawWindow() mag_info:\n{mag_info}\n",
+                   "audio_draw_window")
         self.mag_selection_id = None       # mag selection canvas tag, if one
         self.is_selected = False            # Flag as not yet selected
         self.pos_history = []       # position history (ix,iy)
@@ -314,14 +315,15 @@ class AudioDrawWindow(wx.Frame):
                 dcell = BrailleCell(ix=ix, iy=iy,
                                     color=color)
                 display_cells[(ix,iy)] = dcell
-            SlTrace.lg("from display_list - draw_cells")
-            self.draw_cells(cells=display_cells)
+            if SlTrace.trace("cell_spec"):
+                SlTrace.lg("from display_list - draw_cells")
         if self.from_initial_canvas:
-            SlTrace.lg("from_initial_canvas - draw_cells")
+            SlTrace.lg("from_initial_canvas - draw_cells", "adw")
             self.draw_cells(self.cell_specs)
         self.key_goto()      # Might as well go to figure
         self.find_edges()
-        self.get_cell_bounds("setup_cells")  # Show figure bounds
+        if True:
+            self.get_cell_bounds("setup_cells")  # Show figure bounds
 
     def exit(self, rc=None):
         """ Main exit if creating magnifications
@@ -331,7 +333,7 @@ class AudioDrawWindow(wx.Frame):
         if self.pgmExit is not None:
             self.pgmExit()      # Use supplied pgmExit
             
-        SlTrace.lg("AudoDrawWindow.exit")
+        SlTrace.lg("AudoDrawWindow.exit", "adw")
         SlTrace.onexit()    # Force logging quit
         os._exit(0)
 
@@ -429,7 +431,7 @@ class AudioDrawWindow(wx.Frame):
                 to draw
         :show_points: instead of braille, show sample points
         """
-        SlTrace.lg("draw_cells")
+        SlTrace.lg("draw_cells", "draw_cells")
         if type(cells) == str:
             tbstk = traceback.extract_stack()
             tbstk_lst = traceback.format_list(tbstk)
@@ -437,7 +439,7 @@ class AudioDrawWindow(wx.Frame):
             SlTrace.lg(f"draw_cells: {cells} - error?\n{tbstr}\n")
             return
         
-        SlTrace.lg(f"x_min:{self.get_x_min()} y_min: {self.get_y_min()}")
+        SlTrace.lg(f"x_min:{self.get_x_min()} y_min: {self.get_y_min()}", "draw_cells")
         if cells is None:
             cells = self.get_cells()
         else:
@@ -450,11 +452,11 @@ class AudioDrawWindow(wx.Frame):
             self.cells = cells      # Copy
         min_x, max_y, max_x,min_y = self.bounding_box(cells=cells)
         if min_x is not None:
-            SlTrace.lg(f"Drawn cells bounding box")            
-            SlTrace.lg(f"Upper left: min_x:{min_x} max_y:{max_y}")
-            SlTrace.lg(f"Lower Right: max_x:{max_x} min_y:{min_y}")
+            SlTrace.lg(f"Drawn cells bounding box", "draw_cells")            
+            SlTrace.lg(f"Upper left: min_x:{min_x} max_y:{max_y}", "draw_cells")
+            SlTrace.lg(f"Lower Right: max_x:{max_x} min_y:{min_y}", "draw_cells")
             self.get_cell_bounds("draw_cells", cells=cells)
-        SlTrace.lg(f"{len(cells)} cells")
+        SlTrace.lg(f"{len(cells)} cells", "draw_cells")
         for cell in cells.values():
             self.display_cell(cell)
             cell.mtype = cell.MARK_UNMARKED
@@ -673,7 +675,8 @@ class AudioDrawWindow(wx.Frame):
         
         min_x, max_y, _, _ = self.get_cell_rect_tur(min_ix,min_iy)
         _, _, max_x, min_y = self.get_cell_rect_tur(max_ix,max_iy)
-        SlTrace.lg(f"bounding_box: min_x,max_y, max_x, min_y {min_x,max_y, max_x, min_y}")
+        SlTrace.lg(f"bounding_box: min_x,max_y, max_x, min_y {min_x,max_y, max_x, min_y}",
+                   "bounding_box")
         return min_x,max_y, max_x, min_y
     
     def bounding_box_ci(self, cells=None, add_edge=None):
@@ -734,7 +737,8 @@ class AudioDrawWindow(wx.Frame):
             bd_iy_min = self.get_iy_min()
             if ext_iy_max < bd_iy_min: ext_ix_max = bd_iy_min
             iy_max = min(ext_iy_max, self.get_iy_max())
-        SlTrace.lg(f"bounding_box_ci: ix_min,iy_min, ix_max,iy_max: {ix_min,iy_min, ix_max,iy_max}")    
+        SlTrace.lg(f"bounding_box_ci: ix_min,iy_min, ix_max,iy_max: {ix_min,iy_min, ix_max,iy_max}",
+                   "adw")    
         return ix_min,iy_min, ix_max,iy_max
             
 
@@ -1474,7 +1478,7 @@ class AudioDrawWindow(wx.Frame):
                                             x_max=xmax, y_max=ymax,
                                             n_cols=ncols, n_rows=nrows)    
         self.n_cells_created = len(cell_specs)
-        SlTrace.lg(f"{self.n_cells_created}: {cell_specs}")
+        SlTrace.lg(f"{self.n_cells_created}: {cell_specs}", "cell_specs,adw")
         if self.n_cells_created == 0:
             if require_cells:
                 return None
@@ -1543,12 +1547,12 @@ class AudioDrawWindow(wx.Frame):
         :returns: xmin,ymin (upper left), xmax,ymax (lower right) display
         """
         if title is not None:
-            SlTrace.lg(f"\n{title}")
+            SlTrace.lg(f"\n{title}", "cell_bounds")
         if not special and cells is not None:
-            SlTrace.lg("Full display bounds")
+            SlTrace.lg("Full display bounds", "cell_bounds")
             self.get_cell_bounds(cells=[(0,0), (self.grid_width-1,self.grid_height-1)],
                                  special=True)
-            SlTrace.lg("\nFull figure bounds")
+            SlTrace.lg("\nFull figure bounds", "adw")
             self.get_cell_bounds(cells=None)
         ix_min, iy_min, ix_max, iy_max = self.bounding_box_ci(cells, add_edge)
         if display_region is None:
@@ -1565,10 +1569,10 @@ class AudioDrawWindow(wx.Frame):
         xmax = (ix_max+1)*disp_x_cell + dr.x_min
         ymax = (iy_max+1)*disp_y_cell + dr.y_min
         SlTrace.lg(f"bounding indexes: ix_min:{ix_min}, iy_min:{iy_min}"
-                   f", ix_max:{ix_max}, iy_max:{iy_max}")
+                   f", ix_max:{ix_max}, iy_max:{iy_max}", "cell_bounds")
         SlTrace.lg(f"cell bounds:"
                    f" xmin:{xmin} ymin:{ymin} xmax:{xmax} ymax:{ymax}"
-                   f" nrows:{dr.nrows} ncols:{dr.ncols}")
+                   f" nrows:{dr.nrows} ncols:{dr.ncols}", "cell_bounds")
                    
     def create_magnification_window(self, mag_info):
         """ Create magnification
@@ -1585,7 +1589,7 @@ class AudioDrawWindow(wx.Frame):
         ymax = (select.iy_max+1)*disp_y_cell + disp_region.y_min
         SlTrace.lg(f"create_magnification_window:"
                    f" xmin:{xmin} ymin:{ymin} xmax:{xmax} ymax:{ymax}"
-                   f" nrows:{disp_region.nrows} ncols:{disp_region.ncols}")
+                   f" nrows:{disp_region.nrows} ncols:{disp_region.ncols}", "adw")
         child_info = mag_info.make_child()
         child_info.display_region = MagnifyDisplayRegion(x_min=xmin, x_max=xmax,
                                         y_min=ymin, y_max=ymax)

@@ -200,7 +200,7 @@ class SlTrace:
 
     @classmethod
     def setupLogging(cls, logName=None,propName=None, dp=None,
-                     logToScreen=None,
+                     logToScreen=False,
                      stdOutHasTs=None):
         """
         Setup writing to log file ( via lg(string)) if not already setup
@@ -210,7 +210,7 @@ class SlTrace:
         :dp: number of decimal places in timestamp
                 Iff present, modify current setting
         :logToScreen: put log to screen in addition to log file
-            default: output goes to both
+            default: output only to file
             iff present, modify current setting
         :stdOutHasTs: put timestamp on STDOUT (screen)
             default: no timestamp on screen
@@ -872,7 +872,8 @@ class SlTrace:
         if cls.trace("trace_flags"):
             for flag in all_flags:
                 level = cls.getLevel(flag)
-                cls.lg(f"{flag} = {level}")
+                cls.lg(f"{flag} = {level}",
+                        to_stdout=False)
 
     
     @classmethod

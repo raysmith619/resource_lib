@@ -5,7 +5,7 @@ from wx_turtle_braille import *    # Get our graphics
 ##from turtle import *		     # Get standard stuff
 from select_trace import SlTrace
 import canvas_copy
-SlTrace.setFlags("user,host")
+SlTrace.setFlags("user,host,rpc")
 colors = ["red","orange","yellow","green"]
 canvas = getcanvas()
 cv_str = canvas_copy.canvas_show_items(canvas,
@@ -13,7 +13,7 @@ cv_str = canvas_copy.canvas_show_items(canvas,
                     show_options=True,
                     use_value_cache=True)
 
-SlTrace.lg(f"Beginning: cv_str:{cv_str}")
+SlTrace.lg(f"Beginning: cv_str:{cv_str}", "canvas_copy")
 nside = 0
 snapshot(f"Begining - before square")
 for colr in colors:
@@ -26,6 +26,6 @@ for colr in colors:
                     show_coords=False,
                     show_options=True,
                     use_value_cache=True)
-    SlTrace.lg(f"side{nside}: {colr}: cv_str:{cv_str}")
+    SlTrace.lg(f"side{nside}: {colr}: cv_str:{cv_str}", "canvas_copy")
     snapshot(f"side{nside}: {colr}")
 done()		    # Complete drawings

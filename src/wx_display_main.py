@@ -34,18 +34,18 @@ if __name__ == '__main__':      # Required because we use multiprocessing
     port_inc = args.port_inc
     
     #tkh = TkRPCHost()
-    SlTrace.lg(f"wx_display_main.py setting up tk link")
+    SlTrace.lg(f"wx_display_main.py setting up tk link", "tk_link")
     tkr = TkRPCUser(host_port=host_port)
-    SlTrace.lg(f"wx_display_main.py after tk link setup")
+    SlTrace.lg(f"wx_display_main.py after tk link setup", "tk_link")
     app = wx.App()
-    SlTrace.lg(f"wx_display_main.py retrieve cell_specs")
+    SlTrace.lg(f"wx_display_main.py retrieve cell_specs", "tk_link")
     cells = tkr.get_cell_specs()  # gets (ix,iy,color)*
-    SlTrace.lg(f"wx_display_main.py tkr.get_cell_specs() cells: {cells}")
+    SlTrace.lg(f"wx_display_main.py tkr.get_cell_specs() cells: {cells}", "cell_specs")
     cell_list = BrailleCellList(cells)  # converts either to BrailleCell
     bdlist = cell_list.to_string()
     bd = BrailleDisplay(tkr, display_list=bdlist)
     bd.display(title=title)
     tkr.setup_from_host_requests()      # Wait till after initial display
-    SlTrace.lg("wx_display_main.py after bd.display")
+    SlTrace.lg("wx_display_main.py after bd.display", "tk_link")
     app.MainLoop()
 

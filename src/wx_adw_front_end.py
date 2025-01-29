@@ -240,7 +240,7 @@ class AdwFrontEnd:
             SlTrace.lg("Magnification is not enabled")
             return False
 
-        ix_min, iy_min, ix_max, iy_max = self.adw.bounding_box_ci(cells=cells)
+        ix_min, iy_min, ix_max, iy_max = self.adw.bounding_box_ci(cells=cells, add_edge=1)
         if (ix_min is None or iy_min is None
                 or ix_max is None or   iy_max is None):
             self.speak_text(f"Bad selection:"
@@ -2055,6 +2055,24 @@ class AdwFrontEnd:
         """
         return self.adw.is_visible()
 
+    def count_cells(self, _=None):
+        """ report number of cells in figure
+        """
+        cells = self.adw.get_cell_specs()
+        ncells = len(cells)
+        self.speak_text(f"{ncells} cell"
+                            "s" if ncells != 1 else "")
+        color_counts = {}
+        for cell in cells:
+            color = cell[2]
+            if color not in color_counts:
+                color_counts[color] = 0
+            color_counts[color] += 1
+        for color in color_counts:
+            ncells = color_counts[color]
+            self.speak_text(f"{ncells} {color}"
+                            "s" if ncells != 1 else "")
+            
 
     def set_cell(self, pt=None, color=None):
         """ Set cell at pt, else current cell

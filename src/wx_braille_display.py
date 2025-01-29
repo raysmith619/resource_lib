@@ -150,7 +150,8 @@ class BrailleDisplay:
         self.tk_items = tk_items
         self.canvas_items = canvas_items
         self.app = wx.App()
-        SlTrace.lg(f"\nBrailleDisplay: title: {title}\n display_list:{display_list}")
+        SlTrace.lg(f"\nBrailleDisplay: title: {title}\n display_list:{display_list}",
+                   "cell_spec,braille_display")
         """
         duplicates from AudioDrawWindow 
         """
@@ -207,11 +208,11 @@ class BrailleDisplay:
                     default: self.canvas_items - False
         :silent: quiet mode default: False
         """
-        SlTrace.lg("self.display()")
+        SlTrace.lg("self.display()", "braille_display")
         SlTrace.lg(f"""
                    BrailleDisplay.display: title: {title}
                    display_list:{display_list}
-                   """)
+                   """, "braille_display")
         self.display_depth += 1
         if self.display_depth > 1:
             self.display_depth -= 1
@@ -232,7 +233,7 @@ class BrailleDisplay:
             self.braille_title += f"  Date: {current_time}"
             if username is not None and username != "":
                 self.braille_title += f"  User: {username}"
-            SlTrace.lg(f"braille_title: {self.braille_title}")
+            SlTrace.lg(f"braille_title: {self.braille_title}", "braille_display")
         if self.braille_title is not None:
             title = self.braille_title
         if title is None:
@@ -240,7 +241,7 @@ class BrailleDisplay:
         tib = title
         if tib is not None and tib.endswith("-"):
             tib += " Braille Window"
-        SlTrace.lg("display - create AudioDrawWindow")
+        SlTrace.lg("display - create AudioDrawWindow", "braille_display")
         self.adw = AudioDrawWindow(
                             self.tkr,
                             display_list=self.display_list,
@@ -279,7 +280,7 @@ class BrailleDisplay:
             if tib is not None and tib.endswith("-"):
                 tib += " Canvas items"
             self.canvas_grid.show_canvas(title=tib)
-        SlTrace.lg("End of display")
+        SlTrace.lg("End of display", "braille_display")
         self.display_depth -= 1
         
         

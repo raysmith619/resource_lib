@@ -55,7 +55,7 @@ class RPCServer:
         client -> 
     '''
     def __handle__(self, client:socket.socket, address:tuple):
-        SlTrace.lg(f'Managing requests from {address}.')
+        SlTrace.lg(f'Managing requests from {address}.', "rpc")
         while True:
             try:
                 functionName, args, kwargs = json.loads(client.recv(SIZE).decode())
@@ -63,7 +63,7 @@ class RPCServer:
                 SlTrace.lg(f'! Client {address} disconnected.')
                 break
             # Showing request Type
-            SlTrace.lg(f'> {address} : {functionName}({args})')
+            SlTrace.lg(f'> {address} : {functionName}({args})', "rpc")
             
             try:
                 response = self._methods[functionName](*args, **kwargs)
@@ -89,7 +89,7 @@ class RPCServer:
             sock.bind(self.address)
             sock.listen()
 
-            SlTrace.lg(f'+ Server {self.address} running')
+            SlTrace.lg(f'+ Server {self.address} running', "rpc")
             while True:
                 try:
                     client, address = sock.accept()
@@ -121,7 +121,7 @@ class RPCClient:
     def connect(self):
         try:
             self.__sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            SlTrace.lg(f"connect({self.__address})")
+            SlTrace.lg(f"connect({self.__address})", "rpc")
             self.__sock.connect(self.__address)
         except EOFError as e:
             SlTrace.lg(e)

@@ -24,8 +24,7 @@ class RPCServer:
         self.address = (host, port)
         self._methods = {}
         cell_specs = bg.canvas_grid.get_cell_specs()
-        SlTrace.lg(f"\nRPCServer: bg.canvas_grid: {cell_specs}")
-        SlTrace.lg()
+        SlTrace.lg(f"\nRPCServer: bg.canvas_grid: {cell_specs}", "cell_specs,rpc")
 
     def help(self) -> None:
         SlTrace.lg('REGISTERED METHODS:')
@@ -64,7 +63,7 @@ class RPCServer:
         client -> 
     '''
     def __handle__(self, client:socket.socket, address:tuple):
-        SlTrace.lg(f'Managing requests from {address}.')
+        SlTrace.lg(f'Managing requests from {address}.', "rpc")
         while True:
             try:
                 functionName, args, kwargs = json.loads(client.recv(SIZE).decode())
@@ -72,22 +71,24 @@ class RPCServer:
                 SlTrace.lg(f'! Client {address} disconnected.')
                 break
             # Showing request Type
-            SlTrace.lg(f'> {address} : {functionName}({args})')
+            SlTrace.lg(f'> {address} : {functionName}({args})', "server,rpc")
             
             try:
                 if "TK_EXECUTE_IN_MAIN_THREAD" in kwargs:
-                    SlTrace.lg(f"RPCServer.__handle__: TK_EXECUTE_IN_MAIN_THREAD:{functionName}")
+                    SlTrace.lg(f"RPCServer.__handle__: TK_EXECUTE_IN_MAIN_THREAD:{functionName}",
+                               "server,rpc")
                     del(kwargs["TK_EXECUTE_IN_MAIN_THREAD"])
                     call_num = self.bg.set_call(self._methods[functionName],
                                             *args, **kwargs)
-                    SlTrace.lg(f"RPCServer.__handle__: TK_EXECUTE_IN_MAIN_THREAD call_num:{call_num}")
+                    SlTrace.lg(f"RPCServer.__handle__: TK_EXECUTE_IN_MAIN_THREAD call_num:{call_num}",
+                               "server,rpc")
                     ret = call_num
                 else:
-                    SlTrace.lg(f"direct call: {self._methods[functionName]}, {args}, {kwargs}", "direct_call")
+                    SlTrace.lg(f"direct call: {self._methods[functionName]}, {args}, {kwargs}", "direct_call,rpc")
                     ret = self._methods[functionName](
                                             *args, **kwargs)
                     if ret is not None:
-                        SlTrace.lg(f"{functionName} ret: {ret}")
+                        SlTrace.lg(f"{functionName} ret: {ret}", "rpc")
             except Exception as e:
                 estr = "Exception:" + str(e)
                 tbstk = traceback.extract_stack()
@@ -102,7 +103,7 @@ class RPCServer:
                 client.sendall(json.dumps(ret).encode())
 
 
-        SlTrace.lg(f'Completed request from {address}.')
+        SlTrace.lg(f'Completed request from {address}.',"rpc")
         client.close()
     
     def run(self) -> None:
@@ -110,7 +111,7 @@ class RPCServer:
             sock.bind(self.address)
             sock.listen()
 
-            SlTrace.lg(f'+ Server {self.address} running')
+            SlTrace.lg(f'+ Server {self.address} running', "rpc")
             while True:
                 try:
                     client, address = sock.accept()

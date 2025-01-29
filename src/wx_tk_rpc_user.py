@@ -36,7 +36,7 @@ class TkRPCUser:
         :figure: simulated figure 1 - spokes, 2 - square
                 default=1 spokes
         """
-        SlTrace.lg("TkRPCUser() __init__() BEGIN")
+        SlTrace.lg("TkRPCUser() __init__() BEGIN", "tk_link")
         self.adw = None         # Set when ready
         self.snapshots = []     # snapshot adw, if any
 
@@ -51,7 +51,7 @@ class TkRPCUser:
         self.max_recv = max_recv
         self.cmd_time_ms = cmd_time_ms
         self.simulated = simulated
-        SlTrace.lg("TkRPCUser() __init__()")
+        SlTrace.lg("TkRPCUser() __init__()", "tk_link")
         if simulated:
             self.make_simulated(figure=figure)
             return
@@ -70,7 +70,7 @@ class TkRPCUser:
         self.to_host.setup_calling_user()  # enable req from host
         
     def cmd_in_th_proc(self):
-        SlTrace.lg(f"USER: server_host_th_proc")
+        SlTrace.lg(f"USER: server_host_th_proc", "tk_link")
         self.from_host_server.run()
 
     """
@@ -84,9 +84,9 @@ class TkRPCUser:
         """
     
         SlTrace.lg(f"""USER: snapshot(self, title={title},
-                   snapshot_num={snapshot_num})""")
+                   snapshot_num={snapshot_num})""", "snapshot")
         SlTrace.lg(f"""wx.CallAfter(self.snapshot_direct,
-                   title={title}, snapshot_num={snapshot_num}""")
+                   title={title}, snapshot_num={snapshot_num}""", "snapshot")
         wx.CallAfter(self.snapshot_direct, title=title,
                      snapshot_num=snapshot_num)
 
@@ -95,13 +95,13 @@ class TkRPCUser:
         :title: display title
         """
         
-        SlTrace.lg(f"USER: snapshot_direct(self, title={title}) direct call")
+        SlTrace.lg(f"USER: snapshot_direct(self, title={title}) direct call", "tk_link")
         if self.adw is None:
             SlTrace.lg("USER: AudioDrawWindow not set - snapshot ignored")
             return
         
         SlTrace.lg(f"USER: adw.create_audio_window(title={title},)"
-                   f" snapshot_num={snapshot_num}")
+                   f" snapshot_num={snapshot_num}", "tk_link")
         adw = self.adw.create_audio_window(title=title,
                                 snapshot_num=snapshot_num)
         self.snapshots.append(adw)
@@ -131,7 +131,7 @@ class TkRPCUser:
                         x_min={x_min}, y_min={y_min},
                         x_max={x_max}, y_max={y_max},
                         n_cols={n_cols}, n_rows={n_rows})
-                        """)        
+                        """, "tk_link")        
         if self.simulated:
             return self.get_cell_specs_simulated(
                         x_min=x_min, y_min=y_min,
@@ -145,12 +145,12 @@ class TkRPCUser:
                     x_min=x_min, y_min=y_min,
                     x_max=x_max, y_max=y_max,
                     n_cols=n_cols, n_rows=n_rows)
-        SlTrace.lg(f"TkRPCUser:get_cell_specs call_num:{call_num}")
+        SlTrace.lg(f"TkRPCUser:get_cell_specs call_num:{call_num}", "tk_link")
         while True:
             ret = self.to_host.get_ret(call_num)
             if ret is not None:
                 break
-        SlTrace.lg(f"TkRPCUser:get_cell_specs[{call_num}] ret:{ret}")
+        SlTrace.lg(f"TkRPCUser:get_cell_specs[{call_num}] ret:{ret}", "tk_link")
         return ret    
     
     def get_cell_specs_simulated(self, 
@@ -207,7 +207,7 @@ class TkRPCUser:
             ret = self.to_host.get_ret(call_num)
             if ret is not None:
                 break
-        SlTrace.lg(f"get_cell_rect_tur ret:{ret}")
+        SlTrace.lg(f"get_cell_rect_tur ret:{ret}", "rpc,tk_link")
         return ret    
     
     def get_cell_rect_tur_simulated(self, 
@@ -239,7 +239,7 @@ class TkRPCUser:
             ret = self.to_host.get_canvas_lims(call_num)
             if ret is not None:
                 break
-        SlTrace.lg(f"get_canvas_lims ret:{ret}")
+        SlTrace.lg(f"get_canvas_lims ret:{ret}", "tk_link")
         return ret    
                         
     
@@ -352,9 +352,9 @@ class TkRPCUser:
             only first instance
         :adw: AudioWindow reference
         """
-        SlTrace.lg(f"set_adw:{adw}")
+        SlTrace.lg(f"set_adw:{adw}", "adw")
         if self.adw is None:
-            SlTrace.lg(f"set_adw({adw} first)")
+            SlTrace.lg(f"set_adw({adw} first)", "tk_link")
             self.adw = adw
         
 if __name__ == '__main__':

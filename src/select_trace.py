@@ -68,7 +68,7 @@ class SlTrace:
         """
         if cls.defaultProps is None:
             cls.setupLogging()
-            cls.setProps()
+            cls.setProps(logtoScreen=False)
         return cls.defaultProps
     
     @classmethod
@@ -210,7 +210,7 @@ class SlTrace:
         :dp: number of decimal places in timestamp
                 Iff present, modify current setting
         :logToScreen: put log to screen in addition to log file
-            default: output goes to both
+            default: output goes only to file
             iff present, modify current setting
         :stdOutHasTs: put timestamp on STDOUT (screen)
             default: no timestamp on screen
@@ -281,7 +281,7 @@ class SlTrace:
         cls.started = True
         atexit.register(cls.onexit)        # close down at end
         cls.lg("Creating Log File Name: %s" % abs_logName)
-        cls.setProps(cls.propName)         # Setup properties file
+        cls.setProps(cls.propName, logtoScreen=False)         # Setup properties file
 
         return fw
 
@@ -318,7 +318,8 @@ class SlTrace:
 
 
     @classmethod
-    def lg(cls, msg="", trace_flag=None, level=1, to_stdout=None, dp=None):
+    def lg(cls, msg="", trace_flag=None, level=1, to_stdout=None,
+           dp=None):
         """
         Log string to file, and optionally to console STDOUT display is based on
         trace info
@@ -651,7 +652,8 @@ class SlTrace:
 
 
     @classmethod
-    def setProps(cls, propName=None, newExt=None, update=None):
+    def setProps(cls, propName=None, newExt=None, update=None,
+                 logtoScreen=None):
         """
         Set up based on Java style properties file
         :propName: given properties file name
@@ -659,6 +661,9 @@ class SlTrace:
         :newExt: Extension of created properties file
             default: Created properties file is same as source propertites
         :update: write out updated properties file a end (save_propfile)
+        :logtoScreen: True - write also to screen
+                      False - only to file  
+                default: do default
         @throws IOException
         """
         if propName is not None:
@@ -689,7 +694,7 @@ class SlTrace:
         cls.loadTraceFlags()        # Populate flags from properties
         if loadedProps is None:
             SlTrace.lg(f"Trace levels from properties file {cls.propName}")
-            cls.listFlags()
+            cls.listFlags(logtoScreen=logtoScreen)
 
 
     @classmethod
@@ -874,19 +879,19 @@ class SlTrace:
         return cls.recTraceFlags.keys()
 
     @classmethod
-    def listTraceFlagValues(cls, flags=None):
+    def listTraceFlagValues(cls, flags=None, logtoScreen=None):
         if flags is None:
             flags = cls.getAllTraceFlags()
         for flag in flags:
             level = cls.getLevel(flag)
-            cls.lg(f"{flag} = {level}")
+            cls.lg(f"{flag} = {level}", to_stdout=logtoScreen)
 
     @classmethod
-    def listFlags(cls):
+    def listFlags(cls, logtoScreen=None):
         all_flags = cls.getAllTraceFlags()
         for flag in all_flags:
             level = cls.getLevel(flag)
-            cls.lg(f"{flag} = {level}")
+            cls.lg(f"{flag} = {level}", to_stdout=logtoScreen)
 
     
     @classmethod

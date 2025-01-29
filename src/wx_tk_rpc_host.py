@@ -59,7 +59,7 @@ class TkRPCHost:
         self.bg = TkBgCall(root, canvas_grid=self.canvas_grid,
                 canvas_grid_snapshots=self.canvas_grid_snapshots)
         SlTrace.lg(f"self.to_host_server ="
-                   f" TkRPCServer({self.host_name}, {self.host_port})")
+                   f" TkRPCServer({self.host_name}, {self.host_port})", "HOST")
         self.to_host_server = RPCServer(self.bg, self.host_name, self.host_port)
 
         self.to_host_server.registerMethod(self.setup_calling_user)
@@ -73,12 +73,12 @@ class TkRPCHost:
 
         
         
-        SlTrace.lg("TkRPCHost __init__()")            
+        SlTrace.lg("TkRPCHost __init__()", "HOST")            
 
     def test_dummy(self, *args, **kwargs):
         """ dummy test function
         """
-        SlTrace.lg(f"test_dummy({args}, {kwargs})")
+        SlTrace.lg(f"test_dummy({args}, {kwargs})", "HOST")
         return ""
                                   
     def cmd_in_th_proc(self):
@@ -95,11 +95,11 @@ class TkRPCHost:
         if user_port is None:
             user_port = self.host_port+1
         SlTrace.lg(f"self.from_host_client ="
-                   f" RPCClient({user_name}, {user_port})")
+                   f" RPCClient({user_name}, {user_port})", "HOST")
         self.from_host_client = RPCClient(user_name, user_port)
         self.from_host_client.connect()
         self.user_is_ready = True
-        SlTrace.lg("User is ready to accept calls")
+        SlTrace.lg("User is ready to accept calls", "HOST")
     
     def wait_for_user(self):
         """ Wait till user is ready
@@ -127,12 +127,12 @@ class TkRPCHost:
         self.wait_for_snapshot()    # incase double snapshot
         # must call from main thread
         self.snapshot_is_complete = False
-        SlTrace.lg(f"self.from_host_client.snapshot({title})")
+        SlTrace.lg(f"self.from_host_client.snapshot({title})", "snapshot")
         ###snapshot = copy.deepcopy(self.canvas_grid)   # fails
         snapshot = self.canvas_grid.copy()
         snapshot_str = snapshot.canvas_show_items()
         sno = len(self.canvas_grid_snapshots)+1
-        SlTrace.lg(f"\nsnapshot[{sno}]: {snapshot_str}")
+        SlTrace.lg(f"\nsnapshot[{sno}]: {snapshot_str}", "snapshot")
         self.canvas_grid_snapshots.append(snapshot)
         self.from_host_client.snapshot(title,
                         snapshot_num=len(self.canvas_grid_snapshots))
@@ -177,7 +177,7 @@ class TkRPCHost:
                         n_cols=None, n_rows=None):
 
         cell_specs = self.canvas_grid.get_cell_specs()
-        SlTrace.lg(f"\nTkRPCHost:canvas_grid.get_cell_specs cell_specs(): {cell_specs}")
+        SlTrace.lg(f"\nTkRPCHost:canvas_grid.get_cell_specs cell_specs(): {cell_specs}", "HOST")
         if snapshot_num is None or snapshot_num == 0:
             canvas_grid = self.canvas_grid
         else:
@@ -192,7 +192,7 @@ class TkRPCHost:
                         x_max={x_max}, y_max={y_max},
                         n_cols={n_cols}, n_rows={n_rows})
                     ret : {ret}
-                    """)        
+                    """, "cell_specs")        
         return ret
         #return cell_specs   # TFD return strait from grid
     '''        
@@ -216,7 +216,7 @@ class TkRPCHost:
 
         ret = self.canvas_grid.get_cell_rect_tur(
                         ix,iy)
-        SlTrace.lg(f"\nTkRPCHost:get_cell_rect_tur({ix},{iy}) ret: {ret}")
+        SlTrace.lg(f"\nTkRPCHost:get_cell_rect_tur({ix},{iy}) ret: {ret}", "cell_specs")
         return ret     # TFD
             
 
@@ -252,7 +252,7 @@ if __name__ == '__main__':
     port = None
     tkh = TkRPCHost(cvg)
     cell_specs = tkh.get_cell_specs()
-    SlTrace.lg(f"cell_specs: {cell_specs}")
+    SlTrace.lg(f"cell_specs: {cell_specs}", "cell_specs")
     '''
     '''
     root.mainloop()

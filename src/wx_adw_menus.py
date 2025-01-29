@@ -137,6 +137,7 @@ class AdwMenus:
                 {"name" : "Help", "cmd" : self.draw_help},
                 {"name" : "drawing", "cmd" : self.start_drawing},
                 {"name" : "stop_drawing", "cmd" : self.stop_drawing},
+                {"name" : "count_cells", "cmd" : self.count_cells},
                 ],
             "scanning" :
                 [
@@ -285,6 +286,7 @@ class AdwMenus:
         h - say this help message
         d - Start/enable drawing
         s - stop/disable drawing
+        c - count cells (squares)
         Escape - flush pending report output
         """
         self.speak_text(help_str)
@@ -393,6 +395,7 @@ class AdwMenus:
     """
     Links to front end 
     """
+    
     """
     General
     """
@@ -473,6 +476,11 @@ class AdwMenus:
         """
         self.fte.stop_drawing()
 
+    def count_cells(self, _=None):
+        """ report number of cells in figure
+        """
+        self.fte.count_cells()
+    
     """ End of Magnification links """
 
     """

@@ -871,7 +871,7 @@ class SlTrace:
         if cls.trace("trace_flags"):
             for flag in all_flags:
                 level = cls.getLevel(flag)
-                cls.lg(f"{flag} = {level}")
+                cls.lg(f"{flag} = {level}", to_stdout=False)
 
     
     @classmethod

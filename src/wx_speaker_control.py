@@ -410,7 +410,7 @@ class SpeakerControl(Singleton):
     def sc_sound_proc_thread(self):
         """ Process pending speech requests (SpeakerControlCmd)
         """
-        SlTrace.lg("sc_sounc_proc_thread running")
+        SlTrace.lg("sc_sounc_proc_thread running", "sound")
         #while not self.forced_clear and self._running:
         while True:
             qsize = self.sc_sound_queue.qsize()

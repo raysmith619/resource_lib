@@ -59,8 +59,7 @@ class TkBgCall:
         self.call_queue = queue.Queue()
         self.call_ret_queue = queue.Queue()
         cell_specs = self.canvas_grid.get_cell_specs()
-        SlTrace.lg(f"TkBgCall: cell_specs: {cell_specs}")
-        SlTrace.lg()
+        SlTrace.lg(f"TkBgCall: cell_specs: {cell_specs}", "cell_specs")
         self.set_check_queue()
 
     def set_check_queue(self):
@@ -97,15 +96,15 @@ class TkBgCall:
         MUST BE CALLED FROM MAIN THREAD
         :call_num: index in self.call_entry_d of function entry 
         """
-        SlTrace.lg(f"bg_caller calling {call_entry}")
+        SlTrace.lg(f"bg_caller calling {call_entry}", "bg_calling")
         name = call_entry.get_name()
         if name == "get_cell_specs":
             cell_specs = self.canvas_grid.get_cell_specs()
-            SlTrace.lg(f"\nTkBgCall:bg_caller cell_specs: {cell_specs}")
-            SlTrace.lg()
+            SlTrace.lg(f"\nTkBgCall:bg_caller cell_specs: {cell_specs}",
+                       "cell_specs")
             if "snapshot_num" in call_entry.kwargs:
                 snapshot_num = call_entry.kwargs["snapshot_num"]
-                SlTrace.lg(f"bg_caller snapshot[{snapshot_num}]")                
+                SlTrace.lg(f"bg_caller snapshot[{snapshot_num}]", "bg_caller")                
                 del call_entry.kwargs["snapshot_num"]
                 if snapshot_num is not None and snapshot_num > 0:
                     canvas_grid = self.canvas_grid_snapshots[snapshot_num-1]
@@ -117,18 +116,17 @@ class TkBgCall:
                                                       **call_entry.kwargs)
         elif name == "get_rect_tur":
             rect_tur = self.canvas_grid.get_cell_rect_tur()
-            SlTrace.lg(f"\nTkBgCall:bg_caller rec_tur: {rect_tur}")
-            SlTrace.lg()
+            SlTrace.lg(f"\nTkBgCall:bg_caller rec_tur: {rect_tur}", "bg_caller")
             retorig = rect_tur
         else:
             retorig = call_entry.function(*call_entry.args, **call_entry.kwargs)
             SlTrace.lg(f"""\n TkBgCall::bg_caller: call_entry: {call_entry}
                         \n retorig: {retorig}
-                    """)
+                    """, "bg_caller")
             
-        SlTrace.lg(f"TkBgCall.bg_caller: retorig:{retorig}")
+        SlTrace.lg(f"TkBgCall.bg_caller: retorig:{retorig}", "bg_caller")
         ret = copy.copy(retorig)
-        SlTrace.lg(f"TkBgCall:bg_caller ret: {ret}")
+        SlTrace.lg(f"TkBgCall:bg_caller ret: {ret}", "bg_caller")
         self.call_rets[call_entry.call_num] = ret
         call_entry.ret = ret     # Save function return for delayed return
         call_entry.done = True   # Set call completion indicator
@@ -144,7 +142,7 @@ class TkBgCall:
         :returns: unique call nunber
         """
         call_entry = BgCallEntry(self, function, args, kwargs, root=self.root)
-        SlTrace.lg(f"call_queue.put {call_entry}")
+        SlTrace.lg(f"call_queue.put {call_entry}", "bg_caller")
         self.call_queue.put(call_entry)
         return call_entry.call_num
        

@@ -473,10 +473,10 @@ class CanvasGrid(tk.Canvas):
         xs,ys = self.get_grid_lims(win_fract = win_fract,
                                    xmin=xmin, xmax=xmax, ymin=ymin,ymax=ymax,
                                    ncols=ncols,nrows=nrows)
-        SlTrace.lg(f"\nget_canvas_items")
+        SlTrace.lg(f"\nget_canvas_items", "canvas_items")
         SlTrace.lg(f"xmin={xmin}, xmax={xmax}"
                    f", ymin={ymin},ymax={ymax}"
-                   f", ncols={ncols},nrows={nrows}")
+                   f", ncols={ncols},nrows={nrows}", "canvas_items")
         SlTrace.lg(f"xs:{xs}\nys:{ys}", "canvas_items")
         ixy_ids_list = []       # Building list of (ix,iy), [overlapping ids]
         if types is not None and ex_types is not None:
@@ -575,7 +575,8 @@ class CanvasGrid(tk.Canvas):
         ixy_items = self.get_canvas_items(win_fract=win_fract,
                                           xmin=x_min, xmax=x_max,
                                           ymin=y_min,ymax=y_max,
-                                          ncols=n_cols,nrows=n_rows)
+                                          ncols=n_cols,
+                                          nrows=n_rows)
         cell_specs = []
         for ixy_item in ixy_items:
             (ix,iy), ids = ixy_item
@@ -583,7 +584,7 @@ class CanvasGrid(tk.Canvas):
             if color is not None:
                 cell_spec = (ix, iy, color)
                 cell_specs.append(cell_spec)
-        SlTrace.lg(f"cell_specs: {cell_specs}")
+        SlTrace.lg(f"cell_specs: {cell_specs}", "cell_specs")
         return cell_specs
 
     def show_canvas(self, title=None, types=None, ex_types=None,

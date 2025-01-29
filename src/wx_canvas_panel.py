@@ -107,7 +107,7 @@ class CanvasPanel(wx.Panel):
         use_orig_points = True
         use_orig_points = False
         if use_orig_points:
-            SlTrace.lg("use_orig_points")
+            SlTrace.lg("use_orig_points", "paint")
             return pts[:]   # Copy of original points, unchanged
         
         if sfx is None:
@@ -121,7 +121,7 @@ class CanvasPanel(wx.Panel):
         scale_1to1 = True
         if scale_1to1:
             sfx = sfy = 1.0
-            SlTrace.lg(f"Force sfx:{sfx} sfy:{sfy}", "force_scale")
+            SlTrace.lg(f"Force sfx:{sfx} sfy:{sfy}", "paint")
         x0,y0 = pts[0]
         for i in range(len(pts)):
             x,y = pts[i]
@@ -348,18 +348,18 @@ class CanvasPanel(wx.Panel):
         if self.on_paint_count == 1:
             self.orig_pos = self.GetPosition()  # After setup
             self.orig_size = self.GetSize()
-            SlTrace.lg(f"Set orig_size:{self.orig_size}")
+            SlTrace.lg(f"Set orig_size:{self.orig_size}", "paint")
             self.cur_pos = self.prev_pos = self.orig_pos
             self.cur_size = self.prev_size = self.orig_size
             if self.orig_size[0] < 50:
                 self.orig_size = self.frame.GetClientSize()
-                SlTrace.lg(f"Set orig_size:{self.orig_size}")
+                SlTrace.lg(f"Set orig_size:{self.orig_size}", "paint")
                 SlTrace.lg(f"use client size: {self.orig_size}", "paint")
                 self.cur_size = self.orig_size
                 SlTrace.lg(f"Set cur size: {self.cur_size}", "paint")
 
-            SlTrace.lg(f"First Paint size: {self.orig_size}")
-            SlTrace.lg(f"Frame size: {self.frame.GetSize()}")
+            SlTrace.lg(f"First Paint size: {self.orig_size}", "paint")
+            SlTrace.lg(f"Frame size: {self.frame.GetSize()}", "paint")
             SlTrace.lg(f"Frame size: {self.frame.GetSize()}", "paint")
             self.Show()
             SlTrace.lg(f"First Paint size: {self.GetSize()}", "paint")
@@ -504,7 +504,7 @@ class CanvasPanel(wx.Panel):
                    f" [{e.Position.x}, {e.Position.y}]"
                    f"window: pos: {self.GetPosition()}"
                    f" size: {self.GetSize()}"
-                   f" GetClientAreaOrigin: {self.GetClientAreaOrigin()}"
+                   f" GetClientAreaOrigin: {self.GetClientAreaOrigin()}", "paint"
                    )
         #e.Skip()
         size = self.grid_panel.GetSize()
@@ -525,7 +525,7 @@ class CanvasPanel(wx.Panel):
                    f" [{e.Position.x}, {e.Position.y}]"
                    f"window: pos: {self.GetPosition()}"
                    f" size: {self.GetSize()}"
-                   f" GetClientAreaOrigin: {self.GetClientAreaOrigin()}"
+                   f" GetClientAreaOrigin: {self.GetClientAreaOrigin()}", "paint"
                    )
         e.Skip()
 
@@ -538,7 +538,7 @@ class CanvasPanel(wx.Panel):
                    f" [{e.Position.x}, {e.Position.y}]"
                    f"window: pos: {self.GetPosition()}"
                    f" size: {self.GetSize()}"
-                   f" GetClientAreaOrigin: {self.GetClientAreaOrigin()}"
+                   f" GetClientAreaOrigin: {self.GetClientAreaOrigin()}", "paint"
                    )
         e.Skip()
         
