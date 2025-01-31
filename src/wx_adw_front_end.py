@@ -240,7 +240,7 @@ class AdwFrontEnd:
             SlTrace.lg("Magnification is not enabled")
             return False
 
-        ix_min, iy_min, ix_max, iy_max = self.adw.bounding_box_ci(cells=cells, add_edge=1)
+        ix_min, iy_min, ix_max, iy_max = self.adw.bounding_box_ci(cells=cells, add_edge=0)
         if (ix_min is None or iy_min is None
                 or ix_max is None or   iy_max is None):
             self.speak_text(f"Bad selection:"
@@ -297,7 +297,7 @@ class AdwFrontEnd:
             self.speak_text("No magnification created")
 
         else:
-            n_cells_created = len(adw.get_cell_specs())
+            n_cells_created = len(adw.cells)
             self.stop_scanning()    # Stop old scanning - possible confusion
             self.speak_text(f"Magnification has {n_cells_created} cell"
                             "s" if n_cells_created != 1 else "")
@@ -2058,13 +2058,16 @@ class AdwFrontEnd:
     def count_cells(self, _=None):
         """ report number of cells in figure
         """
-        cells = self.adw.get_cell_specs()
+        cells = self.adw.cells
+        SlTrace.lg(f"count_cells: adw.title: {self.adw.title}")
+        SlTrace.lg(f"count_cells, cells: {cells}", "cell_specs")
         ncells = len(cells)
         self.speak_text(f"{ncells} cell"
                             "s" if ncells != 1 else "")
         color_counts = {}
-        for cell in cells:
-            color = cell[2]
+        for cell_ixy in cells:
+            cell = cells[cell_ixy]
+            color = cell.color_string()
             if color not in color_counts:
                 color_counts[color] = 0
             color_counts[color] += 1

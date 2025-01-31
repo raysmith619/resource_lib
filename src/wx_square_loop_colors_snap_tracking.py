@@ -5,6 +5,7 @@ from wx_turtle_braille import *    # Get our graphics
 ##from turtle import *		     # Get standard stuff
 from select_trace import SlTrace
 import canvas_copy
+SlTrace.setFlags("snapshot")
 SlTrace.setFlags("user,host,rpc")
 colors = ["red","orange","yellow","green"]
 canvas = getcanvas()

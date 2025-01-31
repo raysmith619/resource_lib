@@ -102,7 +102,8 @@ class TkRPCUser:
         
         SlTrace.lg(f"USER: adw.create_audio_window(title={title},)"
                    f" snapshot_num={snapshot_num}", "tk_link")
-        adw = self.adw.create_audio_window(title=title,
+        sn_title = f"{title}: {self.adw.title}"
+        adw = self.adw.create_audio_window(title=sn_title,
                                 snapshot_num=snapshot_num)
         self.snapshots.append(adw)
         #adw.Refresh()

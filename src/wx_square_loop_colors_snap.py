@@ -9,7 +9,7 @@ from select_trace import SlTrace
 colors = ["red","orange","yellow","green"]
 
 nside = 0
-SlTrace.lg(f"Begining - before square")
+#snapshot(f"Begining - before square")   # WHY to get 1'st side
 for colr in colors:
     nside += 1
     SlTrace.lg(f"before side {nside}")

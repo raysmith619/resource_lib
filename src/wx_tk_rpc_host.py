@@ -134,8 +134,8 @@ class TkRPCHost:
         sno = len(self.canvas_grid_snapshots)+1
         SlTrace.lg(f"\nsnapshot[{sno}]: {snapshot_str}", "snapshot")
         self.canvas_grid_snapshots.append(snapshot)
-        self.from_host_client.snapshot(title,
-                        snapshot_num=len(self.canvas_grid_snapshots))
+        self.from_host_client.snapshot(f"{sno}: {title}",
+                        snapshot_num=sno)
         self.wait_for_snapshot()    # Block till completed
 
     def snapshot_complete(self):

@@ -1478,7 +1478,9 @@ class AudioDrawWindow(wx.Frame):
                                             x_max=xmax, y_max=ymax,
                                             n_cols=ncols, n_rows=nrows)    
         self.n_cells_created = len(cell_specs)
-        SlTrace.lg(f"{self.n_cells_created}: {cell_specs}", "cell_specs,adw")
+        SlTrace.lg(f"create_audio_window:"
+                   f" {self.n_cells_created} cells")
+        SlTrace.lg(f"cell_specs: {cell_specs}", "cell_specs")
         if self.n_cells_created == 0:
             if require_cells:
                 return None
@@ -1533,7 +1535,7 @@ class AudioDrawWindow(wx.Frame):
                                base_canvas=self)
         return mag_info
                    
-    def get_cell_bounds(self, title=None, cells=None, add_edge=None, display_region=None,
+    def get_cell_bounds(self, title=None, cells=None, add_edge=0, display_region=None,
                         special=False):
         """ Get cell list bounds
         :title: optional title display default: no title
@@ -1574,19 +1576,21 @@ class AudioDrawWindow(wx.Frame):
                    f" xmin:{xmin} ymin:{ymin} xmax:{xmax} ymax:{ymax}"
                    f" nrows:{dr.nrows} ncols:{dr.ncols}", "cell_bounds")
                    
-    def create_magnification_window(self, mag_info):
+    def create_magnification_window(self, mag_info, adj_cell=.1):
         """ Create magnification
         :mag_info: MagnificationInfo containing info
+        :adj_cell: Expansion adjustment fraction of cell
+                default: 0
         :returns: instance of AudioDrawWinfow or None if none was created
         """
         select = mag_info.select
         disp_region = mag_info.display_region
         disp_x_cell = (disp_region.x_max-disp_region.x_min)/disp_region.ncols
         disp_y_cell = (disp_region.y_max-disp_region.y_min)/disp_region.nrows
-        xmin = select.ix_min*disp_x_cell + disp_region.x_min
-        ymin = select.iy_min*disp_y_cell + disp_region.y_min
-        xmax = (select.ix_max+1)*disp_x_cell + disp_region.x_min
-        ymax = (select.iy_max+1)*disp_y_cell + disp_region.y_min
+        xmin = select.ix_min*disp_x_cell + disp_region.x_min - adj_cell*disp_x_cell
+        ymin = select.iy_min*disp_y_cell + disp_region.y_min - adj_cell*disp_y_cell
+        xmax = (select.ix_max+1)*disp_x_cell + disp_region.x_min + adj_cell*disp_x_cell
+        ymax = (select.iy_max+1)*disp_y_cell + disp_region.y_min + adj_cell*disp_y_cell
         SlTrace.lg(f"create_magnification_window:"
                    f" xmin:{xmin} ymin:{ymin} xmax:{xmax} ymax:{ymax}"
                    f" nrows:{disp_region.nrows} ncols:{disp_region.ncols}", "adw")
@@ -1596,7 +1600,9 @@ class AudioDrawWindow(wx.Frame):
         child_info.description = (f"{child_info.info_number}"
                                   + f" region min x: {xmin:.2f}, min y: {ymin:.2f},"
                                   + f" max x: {xmax:.2f}, max y: {ymax:.2f}")
-        adw = self.create_audio_window(xmin=xmin, xmax=xmax,
+        SlTrace.lg(f"create_audio_window: snapshot_num={self.snapshot_num}")
+        adw = self.create_audio_window(snapshot_num=self.snapshot_num,
+                                       xmin=xmin, xmax=xmax,
                                        ymin=ymin, ymax=ymax,
                                        nrows=disp_region.nrows,
                                        ncols=disp_region.ncols,

@@ -33,6 +33,7 @@ Some day may model after turtle's _make_global_funcs
 SlTrace.clearFlags()    # Start quiet
 tkh = None
 root = tk.Tk()
+root.withdraw()     # Hide tk window
 canvas = None
 pdisplay = None
 
@@ -103,9 +104,7 @@ def snapshot(title=None, port=None):
     """
     SlTrace.lg(f"snapshot title={title} port={port}")
     if pdisplay is None:
-        setup_main(title=title, port=port)                # Create first window with current display
-        return
-    
+        setup_main(title="Setup for snapshots", port=port)                # Create first window with current display
     tkh.snapshot(title=title)
 
     
