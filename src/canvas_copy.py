@@ -19,41 +19,16 @@ def deep_copy_canvas(canvas, root=None, trace=False):
     new_canvas = tk.Canvas(root, width=canvas.winfo_width(), height=canvas.winfo_height())
     new_canvas.pack()
     new_canvas.unsupported = []
-    for item in canvas.find_all():
-        item_type = canvas.type(item)
-        coords = canvas.coords(item)
-        options = canvas.itemconfig(item)
-        ###for i in range(len(coords)):
-        ###    coords[i] = int(coords[i])
+    for item_id in canvas.find_all():
+        item_type = canvas.type(item_id)
+        coords = canvas.coords(item_id)
+        options = canvas.itemconfig(item_id)
+        config = canvas.itemconfig(item_id)
+        new_config = {key: config[key][-1] for key in config.keys()}
         if trace: print(f"\n{item_type}: coords:{coords}")
-        #if trace: print(f"{item_type}: options:{options}")
-        our_options = {}
-        our_opts = ['fill', 'width']
-        for opt in our_opts:
-            if opt in options:
-                our_val = (options[opt])[1:]
-                if opt == 'fill' and our_val[-1] == '':
-                    continue
-                our_options[opt] = our_val[-1]    
-        if trace: print(f"{item_type}: our_options:{our_options}")
-        if item_type == "rectangle":
-            new_canvas.create_rectangle(coords, **options)
-        elif item_type == "oval":
-            new_canvas.create_oval(coords, **options)
-        elif item_type == "line":
-            new_canvas.create_line(coords,**our_options)
-            #new_canvas.create_line(coords, options)
-            pass
-
-        elif item_type == "polygon":
-            #new_canvas.create_polygon(coords)
-            new_canvas.create_polygon(coords, **our_options)
-            
-        # Add more item types as needed
-        else:
-            if trace:
-                print(f"\n\nUnsupported item_type:{item_type}")
-            new_canvas.unsupported.append(item_type)
+        if trace: print(f"{item_type}: options:{options}")
+        item = new_canvas._create(item_type, coords, {})
+        new_canvas.itemconfigure(item, new_config)
 
     return new_canvas
 
@@ -224,6 +199,15 @@ def canvas_diff(cv1, cv2, show_same=True, exclude_types=None,
 
 if __name__ == '__main__':
     from turtle import *    # Bring in turtle graphic functions
+    
+    show_coords = True
+    use_cache = True
+    #show_coords = False
+    #use_cache = False
+    
+    trace = True
+    trace = False
+    
     speed("fastest")
     colors = ["red","orange","yellow",
             "green"]
@@ -239,7 +223,7 @@ if __name__ == '__main__':
         color(colr)
         forward(200)
         right(90)
-        cvc = deep_copy_canvas(cv)
+        cvc = deep_copy_canvas(cv, trace=trace)
         canvas_copies.append(cvc)
     #done()
     
@@ -247,7 +231,6 @@ if __name__ == '__main__':
     for ut in canvas_copies[-1].unsupported:
         print(f"Unsupported type: {ut}")
     
-
     for i, cvc in enumerate(canvas_copies):
         cv = cvc
         if i < 1:
@@ -257,7 +240,7 @@ if __name__ == '__main__':
             cv1 = cv2
             cv2 = cvc
         res = canvas_diff(cv1, cv2, show_items=True,
-                          show_coords=False,
+                          show_coords=show_coords,
                           show_options=True,
-                          use_value_cache=True)
+                          use_value_cache=use_cache)
         print(f"\ncv(diff {i-1} to {i}: {res}")    
