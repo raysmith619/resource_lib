@@ -273,7 +273,7 @@ class SlTrace:
         fw = None
         try:
             abs_logName = os.path.abspath(cls.logName)
-            fw = open(abs_logName, "w")
+            fw = open(abs_logName, "w", encoding="utf-8")
             cls.logWriter = fw
         except IOError as e:
             print("Can't open logWriter %s - %s" % (abs_logName, e))
@@ -319,7 +319,7 @@ class SlTrace:
 
     @classmethod
     def lg(cls, msg="", trace_flag=None, level=1, to_stdout=None,
-           dp=None):
+           dp=None, replace_non_ascii="???"):
         """
         Log string to file, and optionally to console STDOUT display is based on
         trace info
@@ -334,6 +334,8 @@ class SlTrace:
                      default: use setup value
         @param dp decimal points in timestamp seconds
                 default: use pgm default
+        @replace_non_ascii: replacement for all non-ascii characters
+                        default: ???, None: no replacement
         @throws IOException
        
         @throws IOException
@@ -363,7 +365,8 @@ class SlTrace:
                 prefix += " " + ts
             try:
                 msg_str = prefix + " " + msg
-                msg_str = cls.remove_non_ascii(msg_str, "???")
+                if replace_non_ascii is not None:
+                    msg_str = cls.remove_non_ascii(msg_str, replace_non_ascii)
                 print(msg_str)
                 sys.stdout.flush()   # Force output
             except:
@@ -388,9 +391,13 @@ class SlTrace:
             return
 
         try:
-            msg_str = cls.remove_non_ascii(msg, "???")
-            print(" %s %s"  % (ts, msg_str),
-                  file=cls.logWriter)
+            out_str = ""
+            if not cls.trace("no_ts"):
+                out_str += " "+ts
+            out_str += msg
+            if replace_non_ascii is not None:
+                out_str = cls.remove_non_ascii(out_str, replace_non_ascii)
+            print(out_str, file=cls.logWriter)
             cls.logWriter.flush()    # Force output
         except IOError as e:
             print("IOError in lg write %s" % str(e))
