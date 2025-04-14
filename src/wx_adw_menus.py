@@ -479,7 +479,7 @@ class AdwMenus:
     def count_cells(self, _=None):
         """ report number of cells in figure
         """
-        self.fte.count_cells()
+        ###???self.fte.count_cells()
     
     """ End of Magnification links """
 

@@ -19,7 +19,7 @@ class CanvasPanel(wx.Panel):
     """
     def __init__(self, frame, app=None, color=None,
                 key_press_proc=None,
-                *args, **kw):
+                **kw):
         """
         :frame: parent frame
         :app: wx.App, default create
@@ -34,7 +34,7 @@ class CanvasPanel(wx.Panel):
         if app is None:
             app = wx.App()
         self.app = app
-        super().__init__(frame, *args, **kw)
+        super().__init__(frame, **kw)
         self.time_of_update = time.time()
         self.min_time_update = .01      # min time between updates (seconds)
         self.mouse_left_down_proc = self.mouse_left_down_def
@@ -170,6 +170,20 @@ class CanvasPanel(wx.Panel):
         """
         item = CanvasPanelItem(self, "create_rectangle",
                                cx1,cy1,cx2,cy2,
+                               **kwargs)
+        self.items.append(item)
+        self.items_by_id[item.canv_id] = item    # store by id
+        return item.canv_id
+                    
+    def create_bitmap(self, cx1,cy1,cx2,cy2,
+                      bitmap,
+                                **kwargs):
+        """ Implement create_bitmap
+        :returns: id
+        """
+        item = CanvasPanelItem(self, "create_bitmap",
+                               cx1,cy1,cx2,cy2,
+                               bitmap=bitmap,
                                **kwargs)
         self.items.append(item)
         self.items_by_id[item.canv_id] = item    # store by id
@@ -892,6 +906,15 @@ if __name__ == "__main__":
             canv_pan.create_point(x, y, fill="white")
             if x == y:
                 canv_pan.create_text(x+3,y+3,text=f"{x}")
+    ### TFD add items to pending
+    for item in canv_pan.items:
+        canv_pan.add_item(item)
+        
+    canv_pan.Refresh()
+    canv_pan.Update()
+    canv_pan.Show()
+
+
 
     def test_msg_before(msg="Before delay"):
         SlTrace.lg(msg)

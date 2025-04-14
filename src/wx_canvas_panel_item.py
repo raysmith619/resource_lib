@@ -49,6 +49,9 @@ class CanvasPanelItem:
         if self.canv_type == "create_rectangle":
             self.points = [wx_Point(args[0],args[1]),
                            wx_Point(args[2],args[3])]
+        elif self.canv_type == "create_bitmap":
+            self.points = [wx_Point(args[0],args[1]),   # scaling like rect
+                           wx_Point(args[2],args[3])]
         elif self.canv_type == "create_oval":
             self.points = [wx_Point(args[0],args[1]),
                            wx_Point(args[2],args[3])]
@@ -150,6 +153,8 @@ class CanvasPanelItem:
             ret = self.create_composite_draw(points, rect=rect)
         elif self.canv_type == "create_rectangle":
             ret = self.create_rectangle_draw(points, rect=rect)
+        elif self.canv_type == "create_bitmap":
+            ret = self.create_bitmap_draw(points, rect=rect)
         elif self.canv_type == "create_oval":
             ret = self.create_oval_draw(points, rect=rect)
         elif self.canv_type == "create_line":
@@ -204,6 +209,8 @@ class CanvasPanelItem:
         :returns: wx.Rect bounding rectangle
         """
         if self.canv_type == "create_rectangle":
+            brect = wx.Rect(self.points[0], self.points[1])
+        elif self.canv_type == "create_bitmap":
             brect = wx.Rect(self.points[0], self.points[1])
         elif self.canv_type == "create_oval":
             brect = wx.Rect(wx.Point(self.points[0].x,self.points[0].y),
@@ -263,6 +270,34 @@ class CanvasPanelItem:
         SlTrace.lg(f"DrawRect: {self.fill} {points[0]},"
                    f"  {points[1]}", "draw_rect")
         pass
+
+         
+    ###### create_bitmap    
+    def create_bitmap_draw(self, points, rect=None):
+        """ draw bitmap
+        :points: points deternining figure
+                default: use items points
+        :bitmap: 
+                default: always draw
+        """
+        if points is None:
+            points = self.points
+        if len(points) < 2:
+            return
+        
+        brect = wx.Rect(points[0], points[1])
+        if rect is not None and not brect.Intersects(rect):
+            return
+             
+        dc = wx.PaintDC(self.canvas_panel.grid_panel)
+        SlTrace.lg(f"DrawBitMap: {self.fill} {points[0]},"
+                   f"  {points[1]}", "draw_rect")
+        kwargs = self.kwargs
+        c_x,c_y = points[0].x,points[0].y
+        dc.DrawBitmap(kwargs["bitmap"], c_x, c_y)
+        pass
+
+
     ###### create_oval
     def create_oval_draw(self, points=None, rect=None):
         """ Simulate tkinter canvas create_oval
