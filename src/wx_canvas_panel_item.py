@@ -31,6 +31,7 @@ class CanvasPanelItem:
         :canvas_panel: parent panel, in which items are displayed
         :canv_type: basic display units: rect, oval,...composite
         :disp_type: top level display units default: not top level
+        :desc: descriptive text e.g. "Nf3" for chess position
         """
         self.canvas_panel = canvas_panel
         CanvasPanelItem.CANV_ID += 1

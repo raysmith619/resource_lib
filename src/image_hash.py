@@ -69,7 +69,8 @@ class ImageHash:
         """
         if image_dir is None:
             image_dir = os.path.join("..", "images")
-        self.image_path = os.path.abspath(image_dir)
+        image_path = os.path.abspath(image_dir)
+        self.image_path = image_path
         self.image_infos_by_key = {}    # Image information
         self.images_by_key = {}
         self.destroy_function = None
@@ -154,9 +155,16 @@ class ImageHash:
             file_dir = self.image_path
         if name is not None:
             file_dir = os.path.join(file_dir, name)
+        if not os.path.isdir(file_dir):
+            SlTrace.lg(f"Ignoring non-directory path:{file_dir}")
+            return []
+        
         names = os.listdir(file_dir)
         image_files = []
         for name in sorted(names):
+            if name.endswith(".txt"):
+                continue
+            
             path = os.path.join(file_dir, name)
             if (os.path.exists(path)
                  and not os.path.isdir(path)):
@@ -165,7 +173,7 @@ class ImageHash:
                     image_files.append(path)
                     im.close() 
                 except IOError:
-                    SlTrace.lg(f"Not an image file: {path}")
+                    SlTrace.lg(f"Ignoring non-image file path:{path}")
         return image_files   
 
     def width2size(self, width=None):
@@ -185,8 +193,9 @@ class ImageHash:
     def get_load_image(self, file_path):
         if not re.match(r'.*\.[^.]*$', file_path):
             file_path += ".jpg"
+        base_path = file_path
         if not os.path.isabs(file_path):
-            file_path = os.path.join("..", "images", file_path)
+            file_path = os.path.join(self.image_path, file_path)
             if not os.path.isabs(file_path):
                 file_path = os.path.abspath(file_path)
         if not os.path.exists(file_path):

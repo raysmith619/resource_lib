@@ -176,7 +176,7 @@ class CanvasPanel(wx.Panel):
         return item.canv_id
                     
     def create_bitmap(self, cx1,cy1,cx2,cy2,
-                      bitmap,
+                      bitmap, desc=None,
                                 **kwargs):
         """ Implement create_bitmap
         :returns: id
@@ -184,6 +184,7 @@ class CanvasPanel(wx.Panel):
         item = CanvasPanelItem(self, "create_bitmap",
                                cx1,cy1,cx2,cy2,
                                bitmap=bitmap,
+                               desc=desc,
                                **kwargs)
         self.items.append(item)
         self.items_by_id[item.canv_id] = item    # store by id
@@ -419,8 +420,9 @@ class CanvasPanel(wx.Panel):
             my_app.MainLoop()
             pass
 
-    def clear(self):
+    def clear(self, refresh=True):
         """ Clear panel
+        :refresh: True - refresh after clear
         """
         self.items_by_id = {}   # Items stored by item.canv_id
                                 # Augmented by CanvasPanelItem.__init__()

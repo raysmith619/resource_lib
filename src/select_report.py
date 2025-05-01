@@ -20,7 +20,8 @@ class SelectReport(tkSimpleDialog.Dialog):
             master_focus = Tk()
             self.standalone = True
         self.initial_focus = master
-        super().__init__(master_focus, title=title, grab_set=grab_set)
+        ###super().__init__(master_focus, title=title, grab_set=grab_set)   # TFD remove grab_set
+        super().__init__(master_focus, title=title)
         
     def body(self, master):
 
