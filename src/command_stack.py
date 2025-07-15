@@ -8,7 +8,16 @@ class CommandStack:
     
     def __init__(self):
         self.our_stack = []
+
+    def __str__(self):
+        st = "CommandStack:" 
+        if self.is_empty():
+            return st + " EMPTY"
         
+        for cmd in reversed(self.our_stack):
+            st += f"\n  {cmd}"
+        return st
+           
     def is_empty(self):
         return len(self.our_stack)==0
     

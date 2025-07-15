@@ -1,6 +1,6 @@
 # wx_canvas_panel.py 28Nov2023  crs, rename canvas_panel.py
 #                    08Nov2023  crs
-"""
+"""0
 Support for very limited list of tkinter Canvas type actions
 on wxPython Panel  Our attempt here was to ease a port
 from tkinter Canvas use to wxPython.
@@ -353,7 +353,7 @@ class CanvasPanel(wx.Panel):
     def OnPaint(self, e):
         """ Response to paint event
         """
-        
+        dc = wx.PaintDC(self.grid_panel)
         self.on_paint_count += 1
         SlTrace.lg(f"\nOnPaint {self.on_paint_count}", "paint")
         size = self.GetSize()
@@ -391,7 +391,7 @@ class CanvasPanel(wx.Panel):
             SlTrace.lg(f"Frame size: {self.frame.GetSize()}", "paint")
             pass
 
-        self.display_pending()
+        self.display_pending(dc)
 #        self.check_for_display()    # TFD - wait while events are processed
         self.prev_pos = self.cur_pos
         self.prev_size = self.cur_size
@@ -429,7 +429,7 @@ class CanvasPanel(wx.Panel):
         self.items = []         # Items in order drawn
         self.prev_reg = None    # Previously displayed
         self.adw_dp.clear()
-        self.Refresh()
+        #self.Refresh()
         
                 
                     
@@ -829,10 +829,11 @@ class CanvasPanel(wx.Panel):
         self.adw_dp.add_cursor(cursor)
 
     
-    def display_pending(self):
+    def display_pending(self, dc):
         """ Display list and clear it
+        :dc: wx.PaintDC(self)
         """
-        self.adw_dp.display_pending()
+        self.adw_dp.display_pending(dc)
 
 if __name__ == "__main__":
     add_menus = True     # True add menus to frame

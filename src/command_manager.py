@@ -333,6 +333,12 @@ class CommandManager:
         return self.drawing_controller.display_update(cmd=cmd)
 
     
+    def command_stack_str(self):
+        """ Return command_stack as string
+        :returns: command_stack as string
+        """
+        return self.command_stack.command_stack_str()
+
 
     """
      * Print command stack

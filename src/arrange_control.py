@@ -1,5 +1,7 @@
 # arrange_control.py 25Sep2018
 
+import re
+
 from tkinter import *
 import random
 from select_error import SelectError

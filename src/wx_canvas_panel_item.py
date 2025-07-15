@@ -8,11 +8,11 @@ from wx_stuff import *
 from select_trace import SlTrace
 
    
-class CanvasPanelItem:
-    """ Item to display canvas panel item
-    """
-    CANV_ID = 0
+""" Item to display canvas panel item
+"""
     
+class CanvasPanelItem:
+    CANV_ID = 0
     # Display types top level
     DT_NONE = None                  # Not top level
     DT_CELL = "DT_CELL"             # BrailleCell

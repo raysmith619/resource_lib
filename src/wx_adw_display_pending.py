@@ -45,7 +45,7 @@ class AdwDisplayPending:
             SlTrace.lg("item: {item}")
         self.items.append(itm)
         self.add_perm_item(itm)
-        self.canv_pan.refresh_item(itm)
+        ##self.canv_pan.refresh_item(itm)
         
     def add_perm_item(self, item):
         """ Add permanent item to support redrawing
@@ -91,14 +91,15 @@ class AdwDisplayPending:
         """
         
         
-    def display_pending(self):
+    def display_pending(self, dc):
         """ Display list and clear it
+        :dc: wx.PaintDC(self)
         """
         if len(self.items) > 0:
             self.npending = len(self.items)
             
             color = self.canv_pan.color
-            dc = wx.PaintDC(self.canv_pan.grid_panel)
+            #dc = wx.PaintDC(self.canv_pan.grid_panel)
             dc.SetPen(wx.Pen(color))
             style = wx.SOLID
             dc.SetBrush(wx.Brush(color, style))
