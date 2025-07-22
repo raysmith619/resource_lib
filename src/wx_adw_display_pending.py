@@ -89,7 +89,10 @@ class AdwDisplayPending:
         """ Check if two display items are overlapping
         :returns: True iff overlapping
         """
-        
+    def clear_pending(self):
+        """ Clear pending
+        """
+        self.clear()    
         
     def display_pending(self, dc):
         """ Display list and clear it
