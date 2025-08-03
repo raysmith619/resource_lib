@@ -364,14 +364,14 @@ class SlTrace:
             if cls.stdOutHasTs or SlTrace.trace("stdOutHasTs"):
                 prefix += " " + ts
             try:
-                msg_str = prefix + " " + msg
+                msg_str = prefix + " " + str(msg)
                 if replace_non_ascii is not None:
                     msg_str = cls.remove_non_ascii(msg_str, replace_non_ascii)
                 print(msg_str)
                 sys.stdout.flush()   # Force output
             except:
                 try:
-                    print("Unexpected error in", msg_str)
+                    print("Unexpected error in", str(msg_str))
                 except:
                     print("Unexpected error: - can't print msg_str")
                     return
