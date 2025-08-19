@@ -725,7 +725,9 @@ if __name__ == '__main__':
     root = Tk()
     ###root.withdraw()       # Hide main window
     test_general = False
+    test_general = True
     test_radio_button = True
+    test_radio_button = False
     if test_radio_button:
         scw = SelectControlWindow(title="SelectControlWindow Testing", display=True)
         mf = Frame(root)

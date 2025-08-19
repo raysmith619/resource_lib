@@ -62,6 +62,8 @@ class SlTrace:
     mw = None                       # Master window widget, if one
     mw_standalone = False           # Set True if we're responsible for cleanup
     all_quiet = False               # Eliminate all trace flagged output
+    start_time = datetime.now()     # Starting time
+    
     @classmethod
     def getDefaultProps(cls):
         """ Return properties access
@@ -75,6 +77,40 @@ class SlTrace:
     def setup(cls):
         dummy = 0
     
+    @classmethod
+    def now(cls):
+        """ Shorthand for datetime access
+        """
+        return datetime.now()
+    
+    @classmethod
+    def set_start_time(cls, start_time=None):
+        """ Set beginning for duration
+        :start_time: (datetime) starting time
+                    default: now
+        """
+        if start_time is None:
+            start_time = cls.now()
+        cls.start_time = start_time
+    
+    @classmethod
+    def time_since(cls, tend=None, tbeg=None):
+        """ Set beginning for duration
+        :tend: (datetime) end of duration
+                    default: now
+        :tbeg: (datetime) beginning of duration
+                    default: start_time default: pgm start
+        :returns: duration in seconds (float)
+        """
+        if tend is None:
+            tend = cls.now()
+        if tbeg is None:
+            tbeg = cls.start_time
+            
+        tdelta = tend-tbeg
+        tdiff_sec = tdelta.total_seconds()
+        return tdiff_sec
+            
     @classmethod
     def tr(cls, flag, level=1):
     
@@ -594,6 +630,8 @@ class SlTrace:
     @classmethod
     def onexit(cls):
         print("onexit")
+        pgm_duration = cls.time_since()
+        cls.lg(f"Program duration: {pgm_duration:.3f} sec")
         cls.save_propfile()
         try:
             if not cls.closed and cls.logWriter is not None:

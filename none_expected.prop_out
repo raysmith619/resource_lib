@@ -1,12 +1,12 @@
-#  C:\Users\raysm\vscode\resource_lib\none_expected.prop_out  20240319_113553
+#  C:\Users\raysm\vscode\resource_lib\none_expected.prop_out  20250807_145944
 traceFlag.decpl=1
 traceFlag.f1=1
 traceFlag.f2=2
 traceFlag.f3=3
 traceFlag.fnone=1
 traceFlag.list_props=1
+traceFlag.no_ts=1
 traceFlag.prop_change=1
 traceFlag.sf1=True
 traceFlag.sf2=3
 traceFlag.stdouthasts=1
-traceFlag.trace_flags=1
