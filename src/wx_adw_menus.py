@@ -449,7 +449,7 @@ class AdwMenus:
     def mag_expand_top(self, _=None):
         """ Expand selection region top/bottom by 20%
         """
-        self.fte.mag_exapnd_top()
+        self.fte.mag_expand_top()
 
     def mag_view(self, cells=None, _=None):
         """ View selected region, creating a new AudioDrawWindow

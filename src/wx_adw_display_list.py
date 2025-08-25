@@ -54,8 +54,8 @@ class AdwDisplayList:
         self.add_item(self.DI_CELL, cell)
         
     def add_cursor(self, cursor):
-        """ Add cell to be displayed
-        :cell: BrailleCell
+        """ Add cursor to be displayed
+        :cursor: BrailleCell
         """            
         self.add_item(self.DI_CURSOR, cursor)
         

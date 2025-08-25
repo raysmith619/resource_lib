@@ -1,0 +1,17 @@
+move_to(self, x,y, quiet=False):
+	set_cursor_pos_win(self, x=0, y=0, quiet=False)
+		self.set_xy((x,y))      # All set coordinate memory
+        	self.get_ixy_at()
+        	self.add_to_pos_history(loc_ixiy)
+        	cell_ixiy = self.get_cell_at()
+            	self.cell_history.append(cell_ixiy)
+                self.mark_cell(cell_ixiy)   # Mark cell if one
+        	self.cursor_update()
+        		self.remove_cursor()
+        		self.add_cursor()
+        			self.canv_pan.create_cursor()
+        			self.canv_pan.add_cursor()
+
+        		self.refresh_cursor()
+        			if self.mag_is not None:
+            				self.canv_pan.add_item(..._id)

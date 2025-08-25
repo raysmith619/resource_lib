@@ -62,8 +62,8 @@ class AdwDisplayPending:
         self.add_item(di_item)
         
     def add_cursor(self, cursor):
-        """ Add cell to be displayed
-        :cell: BrailleCell
+        """ Add cursor to be displayed
+        :cursor: item
         """            
         self.add_item(cursor)
         
@@ -110,8 +110,18 @@ class AdwDisplayPending:
                 SlTrace.lg(f"{self.npending} display_pending prev = {self.prev_npending}",
                            "display_pending")
                 self.prev_npending = self.npending
+            create_cursor = None
+            create_mag_select = None
             for diitem in self.items:
-                self.display_item(diitem)
+                if diitem.canv_type == "create_cursor":
+                    SlTrace.lg(f"diitem:{diitem}", "display_pending")
+                    create_cursor = diitem
+                elif diitem.canv_type == "create_mag_select":
+                    create_mag_select = diitem
+                else:    
+                    self.display_item(diitem)
+            if create_cursor is not None:
+                self.display_item(create_cursor)
             #self.items = []     # Clear list
     
     def display_item(self, item):

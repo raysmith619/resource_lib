@@ -301,7 +301,8 @@ class AdwFrontEnd:
             self.stop_scanning()    # Stop old scanning - possible confusion
             self.speak_text(f"Magnification has {n_cells_created} cell"
                             "s" if n_cells_created != 1 else "")
-            adw.Raise() # Bring to top   
+            adw.Raise() # Bring to top
+            adw.print_braille()   
 
     def remove_mag_selection(self):
         """ Remove magnify selection and marker

@@ -11,7 +11,11 @@ TBD: Using wxPython to facilitate cursor movement within screen
 Adapted from audio_window to concentrate on figure drawing
 as well as presentation.
 """
+import sys
 import os
+import datetime
+import re
+
 import wx
 import traceback
 
@@ -34,6 +38,7 @@ class AudioDrawWindow(wx.Frame):
         snapshot_num=None,
         display_list=None,
         app=None,
+        id_title = "unknown",
         title=None, speaker_control=None,
         win_width=800, win_height=800,
         grid_width=40, grid_height=25,
@@ -59,12 +64,13 @@ class AudioDrawWindow(wx.Frame):
         setup_wx_win = True,
         iy0_is_top=True,        # OBSOLETE
                  ):
-        
+        self.id_title = id_title
         SlTrace.lg(f"""\nAudioDrawWindow:
         tkr={tkr},
         snapshot_num={snapshot_num},
         display_list={display_list},
         app={app},
+        id_title={id_title},
         title={title},
         speaker_control={speaker_control},
         win_width={win_width}, win_height={win_height},
@@ -91,7 +97,7 @@ class AudioDrawWindow(wx.Frame):
         setup_wx_win = {setup_wx_win},
         iy0_is_top={iy0_is_top},        # OBSOLETE           
                    """, "adw")
-        
+        SlTrace.lg(f"AudioDrawWindow: {id_title = }")
         #frame = CanvasFrame(title=mytitle, size=wx.Size(width,height))
         """ Setup audio window
         :tkr: Access to remote tk information default: simulated access
@@ -179,6 +185,9 @@ class AudioDrawWindow(wx.Frame):
                          size=wx.Size(win_width, win_height))
         self.cells = {}         # Dictionary of cells by (ix,iy)
         self.cells_comps = {}   # Dictionary of cell composite items by (ix,iy)
+        self._cursor_xy = None  # Cursor, if one, position
+                                #   xy pair on canvas (0-max)
+        self._cursor_rect = None    # Refresh rectangle, if one
         self._cursor_item = None    # position cursor tag
         self.snapshot_num = snapshot_num
         if tkr is None:
@@ -470,10 +479,16 @@ class AudioDrawWindow(wx.Frame):
                     
     def print_braille(self, title=None, shift_to_edge=None):
         """ Output braille display
+            with an "identificatin title" created
+            from source file name, date, login name
+            to start each print for identification
         :title: title default: self.title
         :shift_to_edge: shift figure towards edge to ease finding figure
                         default: self.shift_to_edge
         """
+        if self.id_title is not None:
+            id_title = self.id_title
+        SlTrace.lg(f"print_braille: {id_title = }")
         if title is None:
             title = self.title
         if title is not None:
@@ -508,10 +523,11 @@ class AudioDrawWindow(wx.Frame):
                 line = line.replace(" ", self.blank_char)
             ###print(f"{iy:2}", end=":")
             braille_text += line + "\n"
-        SlTrace.lg(braille_text)
+        data = f"\n{id_title}"
+        data += f"\n{title}\n"
+        data += braille_text
+        SlTrace.lg(f"clipboard data:\n{data}")
         if wx.TheClipboard.Open():
-            data = f"\n{title}\n"
-            data += braille_text
             wx.TheClipboard.SetData(wx.TextDataObject(data))
             wx.TheClipboard.Close()
         else:
@@ -839,6 +855,10 @@ class AudioDrawWindow(wx.Frame):
         :show_points: show points instead of braille
                 default: False --> show braille dots
         """
+        if not cell.is_visible():
+            self.erase_cell(cell)
+            return              # Nothing to show
+        
         ix = cell.ix
         iy = cell.iy
         comp_id = self.canv_pan.create_composite(disp_type=CanvasPanelItem.DT_CELL,
@@ -1429,7 +1449,7 @@ class AudioDrawWindow(wx.Frame):
                  silent=False,
                  cell_specs=None):
         """ Create new AudioDrawWindow to navigate canvas from the section
-        :title: optinal title
+        :title: optional title
                 region (xmin,ymin, xmax,ymax) with nrows, ncols
         :snapshot_num: create a snapshot of current window
                 default: track main window
@@ -1488,6 +1508,7 @@ class AudioDrawWindow(wx.Frame):
         adw = AudioDrawWindow(tkr=self.tkr,
                               snapshot_num=snapshot_num,
                               app=self.app,
+                              id_title=self.id_title,
                               title=title,
                               speaker_control=self.speaker_control,
                               iy0_is_top=True, mag_info=mag_info,
@@ -1612,6 +1633,19 @@ class AudioDrawWindow(wx.Frame):
 
 
     def cursor_update(self):
+        """ Update cursor (current position) display
+        Cursor is displayed at end of OnPaint
+        
+        """
+        self._cursor_xy = self.get_xy_canvas()
+        self.canv_pan.refresh_cursor()   # Remove old cursor, if any
+
+        if self.mag_selection_id is not None:
+            self.canv_pan.add_item(self.mag_selection_id)
+
+    # REPLACED to set cursor
+    # which is diplayed at end of OnPaint()
+    def cursor_update_OLD(self):
         """ Update cursor (current position) display
         """
         self.remove_cursor()
@@ -1913,6 +1947,7 @@ if __name__ == "__main__":
         
         tkr = TkRPCUser(simulated=True)
         aw = AudioDrawWindow(tkr=tkr,
+                            id_title = "Selftest-no turtle",
                             title="AudioDrawWindow Self-Test",
                             app=app,
                             menu_str=menu_str,

@@ -14,8 +14,10 @@ else: multiprocessing process:
 """
 
 import os
-import select
+import datetime
 import sys
+import re
+import select
 from threading import Thread
 import subprocess
 import tkinter as tk
@@ -47,14 +49,32 @@ def setup_main(title=None, port=None):
     cg = CanvasGrid(base=canvas)
     cells = cg.get_cell_specs()
     SlTrace.lg(f"\nsetup_main: cells:{cells}", "cell_specs")
+    src_file = __file__     # To be replaced with src file
+    if '__main__' in sys.modules:        
+        src_file = sys.modules['__main__'].__file__
+    base_src_file = os.path.basename(src_file)
+    id_title = f"File:{base_src_file}"    
+    current_time = str(datetime.datetime.now())
+    mt = re.match(r'(.*):\d+\.\d+$', current_time)
+    if mt is not None:
+        current_time = mt.group(1)  # Ignore seconds
+    username = os.getlogin()
+    id_title += f"  Date:{current_time}"
+    if username is not None and username != "":
+        id_title += f"  User:{username}"
+
     #root.withdraw()
     if tkh is None:
         tkh = TkRPCHost(canvas_grid=cg, root=root,host_port=port)
     src_dir = os.path.dirname(__file__)
-    title = title.replace(" ", "_")
+    id_title = id_title.replace(" ", "_")
+    title = id_title.replace(" ", "_")
+    SlTrace.lg(f"setup_main: {id_title = }")
     pdisplay = subprocess.Popen(f"python wx_display_main.py"
+                                f" --id_title {id_title}"
                                 f" --title {title}"
                                 f" --host_port={tkh.host_port}"
+                                f" --src_file={src_file}"
                                  " --subprocess",
                     cwd=src_dir,
                     shell=True)
@@ -62,7 +82,7 @@ def setup_main(title=None, port=None):
     tkh.wait_for_user()     # Wait till setup, possibly snapshot is done
 
 n_check = 0
-def mainloop(title=None, port=None):
+def mainloop(title=None, file=None, port=None):
     """ tk's mainloop
     :port: host socket port
     """
@@ -107,9 +127,9 @@ def snapshot(title=None, port=None):
         setup_main(title="Setup for snapshots", port=port)                # Create first window with current display
     tkh.snapshot(title=title)
 
-    
+        
 def done(port=None):
-    mainloop(title="done", port=port)
+    mainloop(title="From turtle pgm", port=port)
 
 if __name__ ==  '__main__':
     colors = ["red","orange","yellow","green"]

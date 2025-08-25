@@ -1,6 +1,9 @@
 # wx_canvas_panel.py 28Nov2023  crs, rename canvas_panel.py
 #                    08Nov2023  crs
-"""0
+"""
+Require AudioDrawWindow as parent
+We may make this a derived class AdwCanvasPanel of CanvasPanel
+in the future
 Support for very limited list of tkinter Canvas type actions
 on wxPython Panel  Our attempt here was to ease a port
 from tkinter Canvas use to wxPython.
@@ -28,7 +31,9 @@ class CanvasPanel(wx.Panel):
                     keyboard command
                     default: echo sym
         """
-        self.frame = frame
+        self.adw = self.frame = frame
+        self._cursor_rect = None    # for erasing old cursor
+        
         self.sfx =  1       # default scaling
         self.sfy = 1
         if app is None:
@@ -396,7 +401,41 @@ class CanvasPanel(wx.Panel):
         self.prev_pos = self.cur_pos
         self.prev_size = self.cur_size
         SlTrace.lg(f"OnPaint: {self.cur_pos} {self.cur_size}", "paint")
+        self.display_cursor(dc)     # Display cursor if any
 
+    def display_cursor(self, dc):
+        """ Display cursor, if any
+        This is called at end of OnPaint 
+        :dc: current display context (wx.PaintDC)
+        """
+        adw = self.adw
+        if adw._cursor_xy is None:
+            return
+        
+        pos_x,pos_y = adw._cursor_xy
+        x = int(pos_x)
+        y = int(pos_y)
+        outline = "black"
+        fill = "red"
+        dc.SetPen(wx.Pen(outline, style=wx.SOLID))
+        dc.SetBrush(wx.Brush(fill, wx.SOLID))
+        radius = 5
+        pt = wx.Point(x,y)
+        dc.DrawCircle(pt=pt, radius=radius)
+        sur = 10*radius  # extra
+        self._cursor_rect = wx.Rect(
+                wx.Point(x-sur, y-sur),
+                wx.Point(x+sur, y+sur))
+                                    
+    def refresh_cursor(self):
+        """ Refresh previous cursor if any
+        """
+        if self._cursor_rect is not None:
+            self.RefreshRect(self._cursor_rect)
+            #self.Refresh()
+            self._cursor_rect = None
+            
+        
     def set_check_proceed(self, proceed=True):
         self.check_proceed = proceed
 

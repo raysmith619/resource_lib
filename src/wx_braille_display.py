@@ -34,7 +34,9 @@ class BrailleDisplay:
 
     def __init__(self,
                  tkr=None,
+                 id_title=None,
                  title="Braille Display",
+                 src_file="unknown",
                  display_list=None,
                  win_width=800, win_height=800,
                  grid_width=40, grid_height=25,
@@ -57,7 +59,10 @@ class BrailleDisplay:
         """ Setup display
         :wxr
         :tkr: Access to tkinter from remote user
+        :id_title: identification title, especially for braille
         :title: display screen title
+        :src_file: source file name/path
+                if in "src_file() stmt
         :display_list: list of (ix,iy,color) to display
             default: get display from tk
         :win_width: display window width in pixels
@@ -106,6 +111,9 @@ class BrailleDisplay:
         :speaker_control: unified sound speach and text control
                 default: create
         """
+        self.id_title = id_title
+        self.title = title
+        self.src_file = src_file
         self.display_depth = 0
         if speaker_control is None:
             speaker_control = SpeakerControlLocal()   # access to sound/speech engine
@@ -246,6 +254,7 @@ class BrailleDisplay:
                             self.tkr,
                             display_list=self.display_list,
                             app=self.app,
+                            id_title=self.id_title,
                             title=title,
                             speaker_control=self.speaker_control,
                             iy0_is_top=True,
@@ -340,7 +349,8 @@ if __name__ == "__main__":
     SlTrace.lg(f"args: {args}\n")
     tkr = TkRPCUser(simulated=True)
 
-    bd = BrailleDisplay(tkr=tkr, display_list=spokes_bcs)
+    bd = BrailleDisplay(tkr=tkr, src_file=__file__,
+                        display_list=spokes_bcs)
     bd.display(title="Selftest")
     bd.MainLoop()
 
