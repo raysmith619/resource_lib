@@ -44,7 +44,7 @@ class Setting:
         
     def get_val(self):     # Get current value
         return self.value
-
+        
     def get_user_val(self):
         """ Get value from user
         """

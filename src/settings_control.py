@@ -7,6 +7,8 @@ Facilitates
     persistent storage of values
 """
 import re
+import copy
+
 import wx
 
 from select_error import SelectError
@@ -55,6 +57,7 @@ class SettingsControl:
             control_prefix = self.CONTROL_NAME_PREFIX
         self.control_prefix = control_prefix
         self.settings = {}          # Settings dictionary, by field name (Setting)
+        self.orig_setting_values = {}   # Set to orig pgm
         self.changed = False        # Set if any value is changed vie set_val
         self.save_stack = []        # Settings stack
         self.unsave_stack = []      # Settings redo stack
@@ -119,11 +122,17 @@ class SettingsControl:
         if name == "Save":
             self.save_settings()
         elif name == "Restore":
-            self.restore_vals()
+            self.stacks_save()
+            self.restore_settings()
+            self.stacks_changes("After Restore:")
         elif name == "Undo":
-            self.undo_settings()
+            self.stacks_save()
+            if self.undo_settings():
+                self.stacks_changes("After Undo:")
         elif name == "Redo":
-            self.redo_settings()
+            self.stacks_save()
+            if self.redo_settings():
+                self.stacks_changes("After Redo:")
         else:
             raise SelectError(f"Unrecognized button name \"{name}\"")    
             
@@ -296,7 +305,13 @@ class SettingsControl:
                         get_fun=get_fun, set_fun=set_fun,
                         display_get_fun=display_get_fun,
                         display_set_fun=display_set_fun)
-        self.load_prop_stack()
+        self.load_prop_stack(to_redo=False)
+        self.load_prop_stack(to_redo=True)
+        self.orig_setting_values = {}
+        for setting_name in self.settings:
+            setting = self.settings[setting_name]
+            self.orig_setting_values[setting_name] = (
+                setting.get_val())
 
     def attr_to_get_set(self, settings_server, attr):
         """ Generate get/set functions from attribute
@@ -332,6 +347,10 @@ class SettingsControl:
         value = self.settings[field].get_display_val()
         return value
 
+    def get_orig_vals(self):
+        """ Return dictionary of original setting values
+        """
+        return self.orig_setting_values
     
     def set_vals(self):
         """ Read form, if displayed, and update internal values
@@ -512,9 +531,26 @@ class SettingsControl:
         if force or is_changed:
             self.save_settings()
 
+    def restore_settings(self):
+        """ Backup setting values as of program
+        beginning
+        Can be  undone
+        """
+        self.save_vals()    # Enable undo
+        orig_set_vals = self.get_orig_vals()
+        for setting_name in orig_set_vals:
+            self.set_val(setting_name,
+                         orig_set_vals[setting_name])
+        
+        
+        
+        
+        
     def restore_vals(self, redo=False):
-        """ Backup current values, clearing changed flag
-        :redo: if True, restore before last undo
+        """
+        :redo: if True, (Redo) restore from unsave_stack
+                    False, (Undo) restore from save_stack
+                    default: False - from save_stack 
         :returns: True if successful else False
         """
         
@@ -524,9 +560,17 @@ class SettingsControl:
         if redo:
             if len(self.unsave_stack)  > 0:
                 restored_entry = self.unsave_stack.pop()
+            else:
+                SlTrace.lg("Empty Redo - Can't Redo")
+                return False
+            
         else:
             if len(self.save_stack) > 0:
                 restored_entry = self.save_stack.pop()
+            else:
+                SlTrace.lg("Empty Undo - can't Undo")
+                return False
+            
         if restored_entry is not None:
             cur_vals = self.get_settings()
             self.save_vals(entry=cur_vals, to_redo=not redo)
@@ -535,8 +579,9 @@ class SettingsControl:
             self.changed = False
             SlTrace.lg("restore_vals")
             se = restored_entry
-            for name in se:
-                SlTrace.lg(f"{name}: {se[name]}")
+            if SlTrace.trace("restore"):
+                for name in se:
+                    SlTrace.lg(f"{name}: {se[name]}")
             return True
         
         else:
@@ -666,17 +711,23 @@ class SettingsControl:
             self.print_stack("After loading", to_redo)
 
     def print_stack(self, prefix=None, to_redo=False):
+        """ List stack
+        :prefix: optional string before each line
+        :to_redo: which stack True - Redo, False - undo
+                default: redo
+        """
         if to_redo:
             stack_name = "unsave"
             stack = self.unsave_stack
         else:
             stack_name = "save"
             stack = self.save_stack
-        SlTrace.lg(f"{stack_name} stack" )
+        prefix = "" if prefix is None else f"{prefix} "
+        SlTrace.lg(f"{prefix}{stack_name} stack" )
         for i, se in enumerate(reversed(stack)):
-            se_str = f"{i}: "
+            se_str = f"{prefix}{i}: "
             for name in se:
-                se_str += f"\n    {name}={se[name]}"
+                se_str += f"\n{prefix}    {name}={se[name]}"
             SlTrace.lg(se_str)        
                     
             
@@ -691,11 +742,144 @@ class SettingsControl:
         property_keys = SlTrace.getPropKeys(startswith=prefix)
         for prop_key in property_keys:
             SlTrace.deleteProperty(prop_key)
-                           
+
+    def stacks_save(self):
+        """ Save stacks, and values for comparison
+            undo, redo, current settings
+        """
+        self.saved_save_stack = self.save_stack[:]
+        self.saved_unsave_stack = self.unsave_stack[:]
+        self.saved_settings = self.get_settings()
+
+    def stacks_changes(self, prefix=None):
+        """ List a concise changes from
+        saved stacks(save_stack, unsave_stack)
+        and current stacks
+        :prefix: optional prefix to changes lines
+        """
+        self.stack_change(prefix=prefix, name="save",
+                           old_stack=self.saved_save_stack,
+                           new_stack=self.save_stack)
+        self.stack_change(prefix=prefix, name="unsave",
+                           old_stack=self.saved_unsave_stack,
+                           new_stack=self.unsave_stack)
+
+    def stack_change(self, prefix=None, name=None,
+                      old_stack=[], new_stack=[]):
+        """ Compare stack new to old
+        :prefix: optional prefix
+        :name: stack name (save, unsave)
+        :old_stack: previous stack
+        :new_stack: current stack
+        """
+        if self.simple_stack_change(prefix=prefix, name=name,
+                      old_stack=old_stack, new_stack=new_stack):
+            return
+        
+        msg = self.raw_stack_diff(old_stack=old_stack,
+                                  new_stack=new_stack)
+        SlTrace.lg(f"{prefix} {name} Unexpected Change: {msg}")
+
+    def raw_stack_diff(self,old_stack=None,
+                            new_stack=None):
+        """ Give simple raw stack difference
+        :old_stack:
+        :new_stack:
+        :returns: string, suitable for output
+        """
+        new_len = len(new_stack)
+        old_len = len(old_stack)
+        chg_len = old_len - new_len
+        msg = f"Len:{old_len}->{new_len}"
+        for i in range(max(new_len, old_len)):
+            if i >= old_len:
+                old_entry_str = "empty" 
+            else:
+                old_entry_str = f"{old_stack[-i]}"
+            if i >= new_len:
+                new_entry_str = "empty" 
+            else:
+                new_entry_str = f"{new_stack[-i]}"
+            msg += f"\n{i}: {old_entry_str} -> {new_entry_str}"       
+        return msg
+    
+    def simple_stack_change(self, prefix=None, name=None,
+                      old_stack=[], new_stack=[]):
+        """ Check for and display simple stack change, and settings changes
+        Display only if simple stack change
+        Simple change:
+            iff +1,-1 length change with
+            setting changes only between last
+            and previous level
+        Display:
+            -1,+1 -> len: setting changes in last level
+        :prefix: optional prefix displayed at
+                beginning of each line
+        :name: stack name Undo/Redo
+        :old_stack: beginning stack (List) 0 oldest
+        :new_stack: ending stack (List)
+        :returns: True if simple, False if not
+        """
+        
+        new_len = len(new_stack)
+        old_len = len(old_stack)
+        chg_len = old_len - new_len
+        if abs(chg_len) != 1:
+            return False
+        
+        msg = f"{prefix} {name}"
+        if chg_len > 0:
+            msg += " +1"
+        else:
+            msg += " -1"
+        min_len = min(new_len, old_len)
+        if min_len == 0:
+            msg += (" empty" if new_len == 0 else " new")
+            if new_len > 0:
+                msg += f" {new_stack[0]}"
+            else:
+                msg += f" {old_stack[0]}"
+            SlTrace.lg(msg)
+            return True
+        
+        msg += f" {new_len}: "
+        old_entry = old_stack[-1]
+        new_entry = new_stack[-1]
+        nset = 0        # Count differences
+        for setting_name in old_entry:
+            old_val = old_entry[setting_name]
+            new_val = new_entry[setting_name]
+            if new_val != old_val:
+                nset += 1
+                if nset > 1:
+                    msg += ", "
+                msg_setting = (f"{setting_name}:"
+                        f"{old_val}->{new_val}")
+                msg += msg_setting
+        SlTrace.lg(msg)
+        if chg_len < 0:
+            old_settings = self.saved_settings
+            new_settings = self.get_settings()
+            nchg = 0
+            msg = ""
+            for setting_name in old_settings:
+                old_set_val = old_settings[setting_name]
+                new_set_val = new_settings[setting_name]
+                if new_set_val != old_set_val:
+                    nchg += 1
+                    if nchg > 1:
+                        msg += ", "
+                    msg += f"{setting_name}:{old_set_val}->{new_set_val}"
+            if nchg == 0:
+                msg += "no changes"
+            SlTrace.lg(f"{prefix} {name} settings: {msg}")
+        return True
+
+
     def undo_settings(self):
         """ Recover previous saved window settings
         """
-        self.restore_vals()
+        return self.restore_vals(redo=False)
     
     def redo_settings(self):
         """ Recover settings replaced by last undo
@@ -703,7 +887,7 @@ class SettingsControl:
         self.redo_no += 1
         SlTrace.lg(f"redo_settings redo_no: {self.redo_no}", "track_vals")
         self.redo_no += 1
-        self.restore_vals(redo=True)
+        return self.restore_vals(redo=True)
                         
     def set_val(self, name, value, no_change=False,
                 update_display=True):
@@ -731,6 +915,7 @@ if __name__ == '__main__':
     from wx_settings_display_demo import SettingsDisplayDemo
     
     SlTrace.setProps()
+    SlTrace.clearFlags()
     class TestFrame(wx.Frame):
         def __init__(self,
             parent=None,
