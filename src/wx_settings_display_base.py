@@ -1,7 +1,8 @@
-#wx_settings_display_demo.py
+#wx_settings_display_base.py
 """ 
-Settings demo for display control (SettingsDisplay)
-Converted from wx_chess_settings_display.py
+Settings base for display control (SettingsDisplay)
+Converted from wx_settings_display_demo.py
+May compress SettingsDisplay->SettingsDisplayBase->ChessSettingsDisplay...
 wxPython version of settings frame
 
 TBD load/save settings from properties file
@@ -12,21 +13,28 @@ import wx
 from select_trace import SlTrace
 from settings_display import SettingsDisplay
 
-from wx_settings_data_panel_demo import SettingsDataPanelDemo
-from wx_settings_control_panel_demo import SettingsControlPanelDemo
+from wx_settings_data_panel_base import SettingsDataPanelBase
+from wx_settings_control_panel_base import SettingsControlPanelBase
 
         
-class SettingsDisplayDemo(wx.Frame, SettingsDisplay):
+class SettingsDisplayBase(wx.Frame, SettingsDisplay):
     def __init__(self, parent=None, title=None, size=None,
-                 control_prefix="DEMO_SETTINGS_FRAME",
-                 update_data_fun=None,
-                 update_control_fun=None,
-                 onclose=None):
+                control_prefix="BASE_SETTINGS_FRAME",
+                 
+                data_panel_type=SettingsDataPanelBase,
+                control_panel_type=SettingsControlPanelBase,
+                update_data_fun=None,
+                update_control_fun=None,
+                onclose=None):
         """
         :parent: containg frame
         :title: optional title
         :size: frame size (wx.Size)
         :control_prefix: properties prefix
+        :data_panel_type: settings data panel class
+                    default: SettingsDataPanelDemo,
+        :control_panel_type: settings control(button) panel class
+                    default: SettingsControlPanelDemo,
         :update_data_fun: data change function
                         update_data_fun(name, value)
         :update_control_fun: control(e.g. button) function
@@ -54,14 +62,14 @@ class SettingsDisplayDemo(wx.Frame, SettingsDisplay):
         self.settings_panel = wx.Panel(self, size=size, name=title)
         self.settings_panel.SetBackgroundColour(wx.Colour(246,246,246))
         settings_sizer = wx.BoxSizer(wx.VERTICAL)
-        self.settings_data_panel = SettingsDataPanelDemo(
+        self.settings_data_panel = data_panel_type(
                         self.settings_panel,
                         size = wx.Size(120, 200),
                         update_data_fun=self.update_data_fun)
         settings_sizer.Add(self.settings_data_panel, 0, wx.ALL)
         settings_sizer.Add(wx.StaticLine(self.settings_panel), 0,
                                 wx.EXPAND|wx.TOP|wx.BOTTOM)
-        self.control_panel = SettingsControlPanelDemo(
+        self.control_panel = control_panel_type(
             self.settings_panel, size=wx.Size(320, 30),
             update_control_fun=self.update_control_fun)
         settings_sizer.Add(self.control_panel, 0, wx.EXPAND)
@@ -155,7 +163,7 @@ if __name__ == '__main__':
         SlTrace.lg("settings_frame closed")
         sys.exit(0)
         
-    settings_frame = SettingsDisplayDemo(frame,
+    settings_frame = SettingsDisplayBase(frame,
                         title="SettingsFrameDemo",
                         size=size,
                         onclose=onclose

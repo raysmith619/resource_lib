@@ -31,19 +31,31 @@ from select_trace import SlTrace,SelectError
 class SettingsDisplay:
     def __init__(self,
                  update_data_fun=None,
-                 update_control_fun=None):
+                 update_control_fun=None,
+                 onclose=None):
         """ Setup settings data
         These may be called with functions
         if not known at creation time
         :update_data_fun: called when data updated
             fun(name,value)
         :update_control_fun: called when control activated
-                                e.g., button clicked 
+                                e.g., button clicked
+        :onclose: called, if present when window closes
+            Derived class is respnsible for binding window event
+            to self.onclose.  self.onclose will pass this call
+            to saved onclose(self._onclose) if present
+            default: no action 
         """
         self.update_data_fun = update_data_fun
         self.update_control_fun = update_control_fun
+        self._onclose = onclose
 
-
+    def onclose(self, event=None):
+        """ Called to do window closing processing
+        """
+        if self._onclose is not None:
+            self._onclose()
+            
     def set_get_name_val_fun(self, get_name_val_fun):
         self.get_name_val_fun = get_name_val_fun
 

@@ -14,15 +14,15 @@ class ChessSettingsFrame(wx.Frame):
         parent=None,
         width=400,
         height=400,
-        size=None):
+        size=None,
+        onclose=None):
         if size is None:
             size = wx.Size(width, height)
         super().__init__(parent)
-        self.Bind(wx.EVT_CLOSE, self.on_close)
         settings_display = SettingsDisplayDemo(self,
                             title="wx_settings_frame2",
                             size=size,
-                            onclose=self.on_close) 
+                            onclose=onclose) 
         settings_display.Show()
         settings_server = SettingsServerDemo()
         
@@ -58,15 +58,20 @@ class ChessSettingsFrame(wx.Frame):
         sys.exit()    
 
 if __name__ == '__main__':
-
+    import sys
+    
     app = wx.App()
     SlTrace.setProps()
     SlTrace.clearFlags()
-                
-                
+
+    def onclose():
+        """ Window closing processing
+        """                
+        SlTrace.lg("onclose - end of ChessSettingsFrame")
+        sys.exit(0)     
             
-    csf = ChessSettingsFrame(None)
+    csf = ChessSettingsFrame(None,onclose=onclose)
 
     app.MainLoop()
     SlTrace.lg("After app.MainLoop")
-    tF.on_close()
+    csf.on_close()

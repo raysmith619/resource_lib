@@ -60,7 +60,13 @@ class SettingsControl:
         self.orig_setting_values = {}   # Set to orig pgm
         self.changed = False        # Set if any value is changed vie set_val
         self.save_stack = []        # Settings stack
-        self.unsave_stack = []      # Settings redo stack
+                                    # Save,Redo builds
+                                    # Undo shrinks (takes from)
+                                    # __undo__.n properties section
+        self.unsave_stack = []      # Settings
+                                    # Undo builds
+                                    # Redo shrinks (takes from)
+                                    # __redo__.n properties section
         self.save_no = 0            # Track saves
         self.restore_no = 0
         self.redo_no = 0
@@ -145,7 +151,7 @@ class SettingsControl:
             raise SelectError(f"update_setting {name}, {value}"
                               " not in settings")
         
-            return self.settings[name].update(value)
+        return self.settings[name].update(value)
         
     def make_setting(self, name,
                      value=None,
@@ -312,7 +318,13 @@ class SettingsControl:
             setting = self.settings[setting_name]
             self.orig_setting_values[setting_name] = (
                 setting.get_val())
-
+        self.print_stacks("After make_settings_group")
+            
+    def on_close(self, event=None):
+        SlTrace.lg("SettingsControl closing")
+        self.update_prop_stack(to_redo=False)        
+        self.update_prop_stack(to_redo=True)        
+        
     def attr_to_get_set(self, settings_server, attr):
         """ Generate get/set functions from attribute
         :settings_server: class instance containing attribute
@@ -346,7 +358,20 @@ class SettingsControl:
             raise SelectError(f"Command has no attribute {field}")
         value = self.settings[field].get_display_val()
         return value
+    
+    def set_val_from_display(self, name):
+        """ Set value from display
+        :name: setting name
+        """
+        value = self.get_val_from_display(name=name)
+        self.set_val(name=name, value=value, update_display=False)
 
+    def set_vals_from_display(self):
+        """ Update values from display
+        """
+        for name in self.get_setting_names():
+            self.set_val_from_display(name=name)
+            
     def get_orig_vals(self):
         """ Return dictionary of original setting values
         """
@@ -546,8 +571,9 @@ class SettingsControl:
         
         
         
-    def restore_vals(self, redo=False):
-        """
+    def restore_vals(self, to_redo=False):
+        """ Restore values poped from stack, no saving of pre-restored
+        values.
         :redo: if True, (Redo) restore from unsave_stack
                     False, (Undo) restore from save_stack
                     default: False - from save_stack 
@@ -557,7 +583,7 @@ class SettingsControl:
         restored_entry = None
         self.restore_no += 1
         SlTrace.lg(f"restore_vals restore_no: {self.restore_no}", "track_vals")
-        if redo:
+        if to_redo:
             if len(self.unsave_stack)  > 0:
                 restored_entry = self.unsave_stack.pop()
             else:
@@ -571,23 +597,10 @@ class SettingsControl:
                 SlTrace.lg("Empty Undo - can't Undo")
                 return False
             
-        if restored_entry is not None:
-            cur_vals = self.get_settings()
-            self.save_vals(entry=cur_vals, to_redo=not redo)
-            for name in restored_entry:
-                self.set_val(name, restored_entry[name])
-            self.changed = False
-            SlTrace.lg("restore_vals")
-            se = restored_entry
-            if SlTrace.trace("restore"):
-                for name in se:
-                    SlTrace.lg(f"{name}: {se[name]}")
-            return True
-        
-        else:
-            SlTrace.lg(f"empty {'redo' if redo else 'save'} stack")
-            return False
-        
+        for name in restored_entry:
+            self.set_val(name, restored_entry[name])
+        self.changed = False
+        return True        
 
     def save_if_change(self):
         """ Save values if any change since last save_vals
@@ -610,25 +623,34 @@ class SettingsControl:
             entry[name] = self.settings[name].get_val()
         return entry    
                     
-    def save_vals(self, entry=None, to_redo=False):
+    def save_vals(self, entry=None, to_redo=False, update_prop=False,
+                  use_display=True):
         """ Backup current values, or others, clearing changed flag
         :entry: values dictionary default: use self.get_settings()
         :to_redo: if True save to unsave_stack
+        :update_prop: True - update properties
+                    default: False
+        :use_display: True->use display values, first updating local vals
+                    Done ONLY if using settings (entry is None)
+                    default: True
         """
         if entry is None:
+            if use_display:
+                self.set_vals_from_display()
             entry = self.get_settings()            
         self.save_no += 1
         SlTrace.lg(f"save_vals save_no: {self.save_no}", "track_vals")
         if to_redo:
-            self.unsave_stack.append(entry)
+            self.unsave_stack.append(dict(entry))
         else:
-            self.save_stack.append(entry)
-        self.changed = False
-        SlTrace.lg("save_vals", "track_vals")
-        se = entry
-        for name in se:
-            SlTrace.lg(f"{name}: {se[name]}", "track_vals")
-        self.update_prop_stack(to_redo=to_redo) 
+            self.save_stack.append(dict(entry))
+        if update_prop:
+            self.changed = False
+            SlTrace.lg("save_vals", "track_vals")
+            se = entry
+            for name in se:
+                SlTrace.lg(f"{name}: {se[name]}", "track_vals")
+            ##self.update_prop_stack(to_redo=to_redo) 
 
     def get_stack_prefix(self, to_redo=False):
         """ Get properties prefix for stack
@@ -695,20 +717,18 @@ class SettingsControl:
                     if setting.value_type == bool:
                         val = str2bool(val)
                     else:
-                        val = setting.value_type()
+                        val = setting.value_type(val)
                 entry[name] = val
             entries.append(entry)
-            stack = list(reversed(entries))
+        loaded_stack = list(reversed(entries)) 
+        if to_redo:
+            self.unsave_stack = loaded_stack
+        else:
+            self.save_stack = loaded_stack
         if len(entries) == 0:
             return      # No stack in properties
         
-        if to_redo:
-            self.unsave_stack = stack
-        else:
-            self.save_stack = stack
-
-        if SlTrace.trace("stack") or True:
-            self.print_stack("After loading", to_redo)
+        self.print_stacks("After loading")
 
     def print_stack(self, prefix=None, to_redo=False):
         """ List stack
@@ -727,13 +747,54 @@ class SettingsControl:
         for i, se in enumerate(reversed(stack)):
             se_str = f"{prefix}{i}: "
             for name in se:
-                se_str += f"\n{prefix}    {name}={se[name]}"
+                se_str += f"\n{prefix} {stack_name} {i}:   {name}={se[name]}"
             SlTrace.lg(se_str)        
+
+    def print_stacks(self, prefix=None):
+        """ List stacks save, unsave, and settings values
+        :prefix: optional prefix
+        """
+        self.print_settings(prefix=prefix)
+        self.print_stack(prefix=prefix, to_redo=False)
+        self.print_stack(prefix=prefix, to_redo=True)
                     
             
-            
+    def print_settings(self, vald=None,
+                       prefix=None, sep=", "):
+        """ Create string for settings vals or dictionary
+        :vald: dictionary of name,val
+                default: self.get_settings()
+        :prefix: optional prefix before each line
+        :sep: separator between setting values
+                default: ", "
+                if sep includes "\n" add prefix after each sep
+        """
+        set_str = self.settings_str(prefix=prefix, vald=vald, sep=sep)
+        SlTrace.lg(set_str)        
         
-                    
+    def settings_str(self, vald=None, prefix=None, sep=", "):
+        """ Create string for settings
+        :vald: dictionary of name,val
+                default: self.get_settings()
+        :prefix: optional prefix before each line
+        :sep: separator between setting values
+                default: ", "
+                if sep includes "\n" add prefix after each sep
+        :returns: string of list
+        """
+        if vald is None:
+            vald = self.get_settings()
+        if prefix is None:
+            prefix = ""
+        set_str = prefix
+        for i,setting_name in enumerate(vald):
+            if i > 0:
+                set_str += sep
+                if "\n" in sep:
+                    set_str += prefix
+            val = vald[setting_name]
+            set_str += f" {setting_name}: {vald[setting_name]}" 
+        return set_str                        
 
     def remove_props(self, prefix):
         """ Remove properties starting with prefix
@@ -763,7 +824,8 @@ class SettingsControl:
         self.stack_change(prefix=prefix, name="unsave",
                            old_stack=self.saved_unsave_stack,
                            new_stack=self.unsave_stack)
-
+        SlTrace.lg("")
+        
     def stack_change(self, prefix=None, name=None,
                       old_stack=[], new_stack=[]):
         """ Compare stack new to old
@@ -823,25 +885,24 @@ class SettingsControl:
         
         new_len = len(new_stack)
         old_len = len(old_stack)
-        chg_len = old_len - new_len
+        chg_len = new_len - old_len
         if abs(chg_len) != 1:
             return False
         
         msg = f"{prefix} {name}"
+        msg += f" {old_len}->{new_len}"
         if chg_len > 0:
-            msg += " +1"
+            msg += f" +{chg_len}"
         else:
-            msg += " -1"
+            msg += f" {chg_len}"
         min_len = min(new_len, old_len)
-        if min_len == 0:
-            msg += (" empty" if new_len == 0 else " new")
-            if new_len > 0:
-                msg += f" {new_stack[0]}"
-            else:
-                msg += f" {old_stack[0]}"
-            SlTrace.lg(msg)
-            return True
-        
+        if new_len > 0:
+            msg += f" new:{new_stack[0]}"
+        if old_len > 0:
+            msg += f" old:{old_stack[0]}"
+        SlTrace.lg(msg)
+        return True
+
         msg += f" {new_len}: "
         old_entry = old_stack[-1]
         new_entry = new_stack[-1]
@@ -878,16 +939,25 @@ class SettingsControl:
 
     def undo_settings(self):
         """ Recover previous saved window settings
+        :returns: True iff successful
         """
-        return self.restore_vals(redo=False)
+        settings_vals = self.get_settings()
+        if not self.restore_vals(to_redo=False):
+            return False
+        
+        # Place previous setting vals in unsave stack for (Redo)
+        self.save_vals(entry=settings_vals, to_redo=True)
+        return True
     
     def redo_settings(self):
         """ Recover settings replaced by last undo
         """
-        self.redo_no += 1
-        SlTrace.lg(f"redo_settings redo_no: {self.redo_no}", "track_vals")
-        self.redo_no += 1
-        return self.restore_vals(redo=True)
+        settings_vals = self.get_settings()
+        if not self.restore_vals(to_redo=True):
+            return False
+        
+        self.save_vals(entry=settings_vals, to_redo=False)    # Undo of Redo
+        return True
                         
     def set_val(self, name, value, no_change=False,
                 update_display=True):
@@ -912,7 +982,7 @@ if __name__ == '__main__':
     
     app = wx.App()
     from settings_server_demo import SettingsServerDemo
-    from wx_settings_display_demo import SettingsDisplayDemo
+    from wx_settings_display_base import SettingsDisplayBase
     
     SlTrace.setProps()
     SlTrace.clearFlags()
@@ -926,7 +996,7 @@ if __name__ == '__main__':
                 size = wx.Size(width, height)
             super().__init__(parent)
             self.Bind(wx.EVT_CLOSE, self.on_close)
-            settings_display = SettingsDisplayDemo(self,
+            settings_display = SettingsDisplayBase(self,
                                 title="wx_settings_frame2",
                                 size=size,
                                 onclose=self.on_close) 
@@ -953,14 +1023,15 @@ if __name__ == '__main__':
                     "Move_Interval" :
                         {"attr" : "loop_interval"},
             }
-            settings_control = SettingsControl(
+            self.settings_control = SettingsControl(
                 settings_server=settings_server,
                 settings_display=settings_display)
-            settings_control.make_settings_group(
+            self.settings_control.make_settings_group(
                 settings_dict=settings_dict)
             
         def on_close(self, event=None):
-            SlTrace.lg("SettingsControl closeing")
+            SlTrace.lg("SettingsControl closing")
+            self.settings_control.on_close()
             SlTrace.onexit()
             sys.exit()    
                 
